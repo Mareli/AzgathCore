@@ -7,11 +7,6 @@
 * [Copyright](#copyright)
 * [Links](#links)
 
-## Build Status
-
-[![master Build Status](https://api.travis-ci.org/AzgathCore/AzgathCore.svg?branch=master)](https://travis-ci.org/github/AzgathCore/AzgathCore)
-[![Build status](https://ci.appveyor.com/api/projects/status/x59wy2wejskf4q0a/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/AzgathCore/branch/master)
-
 ## Introduction
 
 Az'gathCore is a *MMORPG* Framework based mostly in C++.
