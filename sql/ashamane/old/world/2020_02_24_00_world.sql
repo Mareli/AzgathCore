@@ -1,0 +1,5 @@
+SET @CGUID = 280007801;
+SET @OGUID = 210413264;
+
+UPDATE `creature` SET `terrainSwapMap`= 1945 WHERE `guid` BETWEEN @CGUID+4 AND @CGUID+1316;
+UPDATE `gameobject` SET `terrainSwapMap`= 1945 WHERE `guid` BETWEEN @OGUID+2 AND @OGUID+276;
