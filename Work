@@ -1,0 +1,17 @@
+Spell:
+      Druid:
+            Mastery: Nature's Guardian and fix Proc
+      Warloc:
+	        Fix crashe Create Healthstone
+
+
+Quest:
+    Draenor:
+	       fix "For the Alliance!"
+
+Dungeon:
+
+Mehanic:
+        Rework WarMode system
+        fix 7 crashe server
+        fix Kul` Tiran and Zandalar form druid
