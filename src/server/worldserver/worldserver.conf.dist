@@ -1348,7 +1348,7 @@ FeatureSystem.WarMode.Enabled = 1
 #                     4  - (Enable world only)
 #                     0  - (All Disabled)
 
-Updates.EnableDatabases = 15
+Updates.EnableDatabases = 0
 
 #
 #    Updates.AutoSetup
