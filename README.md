@@ -1,6 +1,5 @@
 # ![logo](https://azgath.com/download/img/AZCC.png) Az'gathCore 8.3.0 
 
-* [Build Status](#build-status)
 * [Introduction](#introduction)
 * [Requirements](#requirements)
 * [Install](#install)
