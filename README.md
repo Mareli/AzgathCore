@@ -67,4 +67,4 @@ Read file [COPYING](COPYING)
 * [Website](https://azgath.com/fr/)
 * [Discord](https://discord.com/invite/z8Qmhpw)
 
-[![Donate](https://www.paypalobjects.com/fr_FR/FR/i/btn/btn_donate_LG.gif "Donate")](https://www.paypal.com/donate/?token=ImYYqJVcXnEdYKk-4JC7m7xKQL-ezTPYdf_z3oYEw7tSF7xFm7bNVObbmdVqpkNEBVivSW&country.x=FR&locale.x=FR)
+[![Donate](https://www.paypalobjects.com/fr_FR/FR/i/btn/btn_donate_LG.gif "Donate")](https://www.paypal.com/donate/?token=BQvKVV6B5u4FjT1vL58HKUf9dSw45lKwHQMPWoO7n_YEe_CclK-3jztb4oHZyIMEnHXAv0&country.x=FR&locale.x=FR)
