@@ -1903,6 +1903,6 @@ CREATE TABLE `uptime`  (
 -- ----------------------------
 -- Records of uptime
 -- ----------------------------
-INSERT INTO `uptime` VALUES (1, 1582637685, 0, 0, 'AshamaneCoreLegacy rev. a5e874af970f 2020-02-25 13:37:24 +0300 (warning_fix branch) (Win64, Release, Static)');
+INSERT INTO `uptime` VALUES (1, 1582637685, 0, 0, 'AzgathCore rev. a5e874af970f 2020-02-25 13:37:24 +0300 (warning_fix branch) (Win64, Release, Static)');
 
 SET FOREIGN_KEY_CHECKS = 1;
