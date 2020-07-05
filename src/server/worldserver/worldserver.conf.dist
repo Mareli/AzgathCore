@@ -128,7 +128,7 @@ ShopDatabaseInfo      = "127.0.0.1;3306;trinity;trinity;shop"
 #                     1 - (WorldDatabase.WorkerThreads)
 #                     1 - (CharacterDatabase.WorkerThreads)
 #                     1 - (HotfixDatabase.WorkerThreads)
-#                     1 - (ShopDatabase.SynchThreads)
+#                     1 - (ShopDatabase.WorkerThreads)
 
 LoginDatabase.WorkerThreads     = 1
 WorldDatabase.WorkerThreads     = 1
