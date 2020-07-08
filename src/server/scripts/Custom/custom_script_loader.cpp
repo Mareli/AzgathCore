@@ -20,6 +20,7 @@ void AddSC_custom_npcs();
 void AddSC_custom_player_script();
 void AddSC_XpWeekend();
 void AddSC_save_on_levelup();
+void AddSC_heirloom_mount_tempfix();
 
 // ADM declaration begin
 // ADM declaration end
@@ -32,6 +33,7 @@ void AddCustomScripts()
     AddSC_custom_player_script();
 	AddSC_XpWeekend();
 	AddSC_save_on_levelup();
+	AddSC_heirloom_mount_tempfix();
 
     // ADM call begin
     // ADM call end
