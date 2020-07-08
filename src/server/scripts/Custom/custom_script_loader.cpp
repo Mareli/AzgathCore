@@ -21,6 +21,7 @@ void AddSC_custom_player_script();
 void AddSC_XpWeekend();
 void AddSC_save_on_levelup();
 void AddSC_heirloom_mount_tempfix();
+void AddSC_NPC_Teleport();
 
 // ADM declaration begin
 // ADM declaration end
@@ -34,6 +35,7 @@ void AddCustomScripts()
 	AddSC_XpWeekend();
 	AddSC_save_on_levelup();
 	AddSC_heirloom_mount_tempfix();
+	AddSC_NPC_Teleport();
 
     // ADM call begin
     // ADM call end
