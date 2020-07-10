@@ -34,18 +34,3 @@ CREATE TABLE `daily_players_reports`  (
   `climb_reports` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`guid`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Records of daily_players_reports
--- ----------------------------
-INSERT INTO `daily_players_reports` VALUES (6, 2776923, 0.910256, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (7, 318897, 0.601695, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (10, 605960, 0.959459, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (13, 1167170, 1.61364, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (14, 653773, 5.07143, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (18, 603977, 1.775, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (920, 5699254, 2.36667, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (928, 475292, 4.4375, 71, 0, 71, 0, 0, 0, 0);
-INSERT INTO `daily_players_reports` VALUES (929, 398253, 1.0597, 71, 0, 71, 0, 0, 0, 0);
-
-SET FOREIGN_KEY_CHECKS = 1;
