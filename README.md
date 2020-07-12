@@ -54,7 +54,7 @@ website at [Azgath.com](https://www.azgath.com).
 
 Detailed installation guides are available in the [wiki](https://www.trinitycore.info/display/tc/Installation+Guide) for
 Windows, Linux and Mac OSX.  
-You can get database from  
+You can get database from.
 https://github.com/AzgathCore/AzgathCore/releases
 
 ## Copyright
