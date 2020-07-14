@@ -1,6 +1,5 @@
 /*Black Rok Hold Arena 
 100% MistiX
-Black Empire Server
 */
 
 #ifndef __BATTLEGROUNDBRH_H
