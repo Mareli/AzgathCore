@@ -1,6 +1,5 @@
 /*Black Rok Hold Arena 
 100% MistiX
-Black Empire Server
 */
 #include "Battleground.h"
 #include "BattlegroundBRH.h"
