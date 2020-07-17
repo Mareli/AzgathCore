@@ -1,7 +1,7 @@
 /*Black Rok Hold Arena 
 100% MistiX
 */
-#include "Battleground.h"
+#include "BattlegroundMgr.h"
 #include "BattlegroundBRH.h"
 
 enum BattlegroundBrhObjectTypes
@@ -55,12 +55,10 @@ const float BgBrhGoPositions[12][8] =
 };
 
 
-BattlegroundBRH::BattlegroundBRH()
+BattlegroundBRH::BattlegroundBRH(BattlegroundTemplate const* battlegroundTemplate) : Arena(battlegroundTemplate)
 {
     BgObjects.resize(BG_BRH_OBJECT_MAX);
 }
-
-BattlegroundBRH::~BattlegroundBRH() = default;
 
 void BattlegroundBRH::StartingEventCloseDoors()
 {

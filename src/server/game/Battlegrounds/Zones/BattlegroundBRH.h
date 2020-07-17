@@ -10,8 +10,7 @@
 class BattlegroundBRH : public Arena
 {
 public:
-    BattlegroundBRH();
-    ~BattlegroundBRH();
+    BattlegroundBRH(BattlegroundTemplate const* battlegroundTemplate);
 
     void StartingEventCloseDoors() override;
     void StartingEventOpenDoors() override;
