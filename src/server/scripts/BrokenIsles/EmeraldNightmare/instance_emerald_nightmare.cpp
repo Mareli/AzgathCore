@@ -35,7 +35,7 @@ struct instance_emerald_nightmare : public InstanceScript
 
     void Initialize() override
     {
-        SetBossNumber(DATA_MAX_ENCOUNTERS);
+        SetBossNumber(MAX_ENCOUNTERS);
         LoadDoorData(doorData);
     }
 
