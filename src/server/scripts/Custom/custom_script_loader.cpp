@@ -23,6 +23,7 @@ void AddSC_save_on_levelup();
 void AddSC_heirloom_mount_tempfix();
 void AddSC_NPC_Teleport();
 void AddSC_GOMove_commandscript();
+void AddSC_arwent_legit_quest_bypass();
 
 // ADM declaration begin
 // ADM declaration end
@@ -39,6 +40,7 @@ void AddCustomScripts()
 	AddSC_NPC_Teleport();
     AddSC_GOMove_commandscript();
 
+    AddSC_arwent_legit_quest_bypass();
     // ADM call begin
     // ADM call end
 }
