@@ -15,7 +15,7 @@
 #include "BattlegroundMgr.h"
 #include "WorldStatePackets.h"
 
-BattlegroundBRH::BattlegroundMB(BattlegroundTemplate const* battlegroundTemplate) : Arena(battlegroundTemplate)
+BattlegroundMB::BattlegroundMB(BattlegroundTemplate const* battlegroundTemplate) : Arena(battlegroundTemplate)
 {
     BgObjects.resize(BG_MB_OBJECT_MAX);
 }
