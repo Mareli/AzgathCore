@@ -108,7 +108,7 @@ public:
         }
 
         /* Insert into the quest_report table. */
-        QueryResult reportQuest = WorldDatabase.PQuery("INSERT INTO quest_report (`questId`, `questName`) VALUES (%u, '%s')", questId, quest->GetLogTitle());
+        QueryResult reportQuest = WorldDatabase.PQuery("INSERT INTO quest_report (`questId`, `questName`) VALUES (%u, \"%s\")", questId, quest->GetLogTitle());
         if (!reportQuest) {
             handler->PSendSysMessage("The quest ID: %u has been sucessfully reported. Thanks you for your report.", questId);
             return true;
