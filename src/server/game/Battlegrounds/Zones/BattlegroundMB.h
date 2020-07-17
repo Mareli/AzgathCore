@@ -37,7 +37,7 @@ enum BattlegroundMBObjects
 class BattlegroundMB : public Arena
 {
 public:
-    BattlegroundMB();
+    BattlegroundMB(BattlegroundTemplate const* battlegroundTemplate);
 
     /* BattlegroundClass */
     void StartingEventCloseDoors() override;
