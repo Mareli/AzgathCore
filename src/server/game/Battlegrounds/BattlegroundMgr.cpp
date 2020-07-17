@@ -489,7 +489,7 @@ bool BattlegroundMgr::CreateBattleground(BattlegroundTemplate const* bgTemplate)
                 bg = new BattlegroundBRH(bgTemplate);
                 break;
 			case BATTLEGROUND_MUGAMBALA
-                bg = new BattlegroundMB(bgTemplate);;
+                bg = new BattlegroundMB(bgTemplate);
                 break;
                 break;
             default:
