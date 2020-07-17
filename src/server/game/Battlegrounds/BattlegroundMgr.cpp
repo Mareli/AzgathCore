@@ -640,7 +640,7 @@ bool BattlegroundMgr::IsArenaType(BattlegroundTypeId bgTypeId)
             || bgTypeId == BATTLEGROUND_TTP
             || bgTypeId == BATTLEGROUND_TVA
 			|| bgTypeId == BATTLEGROUND_BRH
-            || bgTypeId == BATTLEGROUND_AF;
+            || bgTypeId == BATTLEGROUND_AF
 			|| bgTypeId == BATTLEGROUND_MUGAMBALA;
 }
 
