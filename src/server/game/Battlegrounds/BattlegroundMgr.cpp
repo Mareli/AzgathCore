@@ -482,7 +482,7 @@ bool BattlegroundMgr::CreateBattleground(BattlegroundTemplate const* bgTemplate)
             case BATTLEGROUND_AF:
                 bg = new BattlegroundAF(bgTemplate);
 			case BATTLEGROUND_BRH:
-                bg = new BattlegroundBRH;
+                bg = new BattlegroundBRH(bgTemplate);
                 break;
                 break;
             default:

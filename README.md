@@ -44,17 +44,18 @@ website at [Azgath.com](https://www.azgath.com).
 
 ## + Windows :
 + Processor with SSE2 support
-+ Boost ≥ 1.66
-+ MySQL ≥ 5.7
-+ OpenSSL ≥ 1.0.x
-+ CMake ≥ 3.14 (latest stable recommended)
++ Boost ≥ 1.72.0
++ MySQL ≥ 5.7.31
++ MariaDB 10.5
++ OpenSSL ≥ v1.1.1g
++ CMake ≥ 3.17.3 (latest stable recommended)
 + MS Visual Studio (Community) ≥ 16.4 (2019) (Desktop) (Not previews)
 
 ## Install
 
 Detailed installation guides are available in the [wiki](https://www.trinitycore.info/display/tc/Installation+Guide) for
 Windows, Linux and Mac OSX.  
-You can get database from  
+You can get database from.
 https://github.com/AzgathCore/AzgathCore/releases
 
 ## Copyright

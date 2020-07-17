@@ -1,6 +1,5 @@
 /*Black Rok Hold Arena 
 100% MistiX
-Black Empire Server
 */
 
 #ifndef __BATTLEGROUNDBRH_H
@@ -11,8 +10,7 @@ Black Empire Server
 class BattlegroundBRH : public Arena
 {
 public:
-    BattlegroundBRH();
-    ~BattlegroundBRH();
+    BattlegroundBRH(BattlegroundTemplate const* battlegroundTemplate);
 
     void StartingEventCloseDoors() override;
     void StartingEventOpenDoors() override;
