@@ -5135,9 +5135,11 @@ enum BattlegroundTypeId : uint32
     BATTLEGROUND_SS_VS_TM       = 789, // Southshore vs. Tarren Mill
     BATTLEGROUND_SMALL_D        = 803, // Small Battleground D
     BATTLEGROUND_BRH            = 808, // Black Rook Hold Arena
-    // 809 = "New Nagrand Arena (Legion)"
+    BATTLEGROUND_NNA            = 809, // "New Nagrand Arena (Legion)"
     BATTLEGROUND_AF             = 816, // Ashamane's Fall
-    // 844 = "New Blade's Edge Arena (Legion)"
+    BATTLEGROUND_BEG            = 844, // New Blade's Edge Arena (Legion)
+    BATTLEGROUND_MUGAMBALA      = 903, // New Arena BFA Mugambala 
+    BATTLEGROUND_HOOK_POINT     = 897, // New Arena Kultiras
     BATTLEGROUND_RANDOM_EPIC    = 901
 };
 

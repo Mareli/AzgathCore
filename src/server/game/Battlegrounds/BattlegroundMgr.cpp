@@ -36,6 +36,7 @@
 #include "BattlegroundWS.h"
 #include "BattlegroundAF.h"
 #include "BattlegroundBRH.h"
+#include "BattlegroundMB.h"
 #include "Common.h"
 #include "Containers.h"
 #include "DatabaseEnv.h"
@@ -391,6 +392,9 @@ Battleground* BattlegroundMgr::CreateNewBattleground(BattlegroundQueueTypeId que
 		case BATTLEGROUND_BRH:
             bg = new BattlegroundBRH(*(BattlegroundBRH*)bg_template);
             break;
+		case BATTLEGROUND_MUGAMBALA:
+            bg = new BattlegroundMB(*(BattlegroundMB*)bg_template);
+            break;
         case BATTLEGROUND_RB:
         case BATTLEGROUND_AA:
         case BATTLEGROUND_RANDOM_EPIC:
@@ -483,6 +487,9 @@ bool BattlegroundMgr::CreateBattleground(BattlegroundTemplate const* bgTemplate)
                 bg = new BattlegroundAF(bgTemplate);
 			case BATTLEGROUND_BRH:
                 bg = new BattlegroundBRH(bgTemplate);
+                break;
+			case BATTLEGROUND_MUGAMBALA:
+                bg = new BattlegroundMB;
                 break;
                 break;
             default:
@@ -634,6 +641,7 @@ bool BattlegroundMgr::IsArenaType(BattlegroundTypeId bgTypeId)
             || bgTypeId == BATTLEGROUND_TVA
 			|| bgTypeId == BATTLEGROUND_BRH
             || bgTypeId == BATTLEGROUND_AF;
+			|| bgTypeId == BATTLEGROUND_MUGAMBALA;
 }
 
 BattlegroundQueueTypeId BattlegroundMgr::BGQueueTypeId(uint16 battlemasterListId, BattlegroundQueueIdType type, bool rated, uint8 teamSize)
