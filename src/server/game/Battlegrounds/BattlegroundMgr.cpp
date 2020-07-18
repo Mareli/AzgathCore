@@ -488,7 +488,7 @@ bool BattlegroundMgr::CreateBattleground(BattlegroundTemplate const* bgTemplate)
 			case BATTLEGROUND_BRH:
                 bg = new BattlegroundBRH(bgTemplate);
                 break;
-			case BATTLEGROUND_MUGAMBALA
+            case BATTLEGROUND_MUGAMBALA:
                 bg = new BattlegroundMB(bgTemplate);
                 break;
                 break;
