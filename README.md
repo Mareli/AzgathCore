@@ -45,7 +45,7 @@ website at [Azgath.com](https://www.azgath.com).
 ## + Windows :
 + Processor with SSE2 support
 + Boost ≥ 1.72.0
-+ MySQL ≥ 5.7
++ MySQL ≥ 5.7.31
 + MariaDB 10.5
 + OpenSSL ≥ v1.1.1g
 + CMake ≥ 3.17.3 (latest stable recommended)
