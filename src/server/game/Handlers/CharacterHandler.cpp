@@ -1033,6 +1033,14 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
                     pCurrChar->GetSceneMgr().PlayScene(2137);
                 else if (pCurrChar->getRace() == RACE_MAGHAR_ORC)
                     pCurrChar->GetSceneMgr().PlaySceneByPackageId(2085, 2);
+                else if (pCurrChar->getRace() == RACE_KUL_TIRAN)
+                    pCurrChar->GetSceneMgr().PlaySceneByPackageId(2494);
+                else if (pCurrChar->getRace() == RACE_ZANDALARI_TROLL)
+                    pCurrChar->GetSceneMgr().PlaySceneByPackageId(2087);
+                else if (pCurrChar->getRace() == RACE_MECHAGNOME)
+                    pCurrChar->GetSceneMgr().PlaySceneByPackageId(2763);
+                else if (pCurrChar->getRace() == RACE_VULPERA)
+                    pCurrChar->GetSceneMgr().PlaySceneByPackageId(2790);
                 else if (rEntry->CinematicSequenceID)
                     pCurrChar->SendCinematicStart(rEntry->CinematicSequenceID);
             }
