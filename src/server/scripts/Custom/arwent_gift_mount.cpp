@@ -6,7 +6,7 @@
 class arwent_gift_mount : public PlayerScript
 {
 private:
-    bool isEnabled = true; /* À changer en false le 26/07/2020 */
+    bool isEnabled = false; /* À changer en false le 26/07/2020 */
     uint32 flySpell = 90265; /* Maître cavalier */
     uint32 mountSpell = 307932; /* Wyrm éternel ensorcelé */
 
