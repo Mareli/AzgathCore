@@ -9,10 +9,10 @@
  #define _SOURCE_DIRECTORY          R"(@CMAKE_SOURCE_DIR@)"
  #define _BUILD_DIRECTORY           R"(@BUILDDIR@)"
  #define _MYSQL_EXECUTABLE          R"(@MYSQL_EXECUTABLE@)"
- #define _FULL_DATABASE             "ACLDB_world_825.00.sql"
- #define _HOTFIXES_DATABASE         "ACLDB_hotfixes_825.00.sql"
+ #define _FULL_DATABASE             "AZDB_world_837.09.sql"
+ #define _HOTFIXES_DATABASE         "AZDB_hotfixes_837.09.sql"
  #define VER_COMPANYNAME_STR        "AzgathCore Developers"
- #define VER_LEGALCOPYRIGHT_STR     "(c)2019 AzgathCore"
+ #define VER_LEGALCOPYRIGHT_STR     "(c)2020 AzgathCore"
  #define VER_FILEVERSION            0,0,0
  #define VER_FILEVERSION_STR        "@rev_hash@ @rev_date@ (@rev_branch@ branch)"
  #define VER_PRODUCTVERSION         VER_FILEVERSION
