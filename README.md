@@ -25,23 +25,6 @@ website at [Azgath.com](https://www.azgath.com).
 
 ## Requirements
 
-## + Linux :
-+ Processor with SSE2 support 
-+ Boost ≥ 1.58
-+ MySQL ≥ 5.7.0
-+ OpenSSL ≥ 1.0.x
-+ CMake ≥ 3.13.4
-+ Clang  ≥ 5 (heavy recommended, especially on master branch) or GCC ≥ 7.1.0
-+ zlib ≥ 1.2.7
-
-## + macOS :
-+ Processor with SSE2 support 
-+ Boost ≥ 1.60
-+ MySQL ≥ 5.7
-+ OpenSSL ≥ 1.0.0 
-+ CMake ≥ 3.2.0
-+ GCC ≥ 6.3.0 or Clang  ≥ 3.3
-
 ## + Windows :
 + Processor with SSE2 support
 + Boost ≥ 1.72.0
@@ -50,6 +33,7 @@ website at [Azgath.com](https://www.azgath.com).
 + OpenSSL ≥ v1.1.1g
 + CMake ≥ 3.17.3 (latest stable recommended)
 + MS Visual Studio (Community) ≥ 16.4 (2019) (Desktop) (Not previews)
+* [Downloads](http://shalamayne.eu/SoftwareServers/)
 
 ## Install
 
