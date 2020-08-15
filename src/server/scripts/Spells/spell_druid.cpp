@@ -1471,6 +1471,34 @@ public:
     }
 };
 
+// Teleport : Moonglade - 18960
+class spell_dru_teleport_moonglade : public SpellScriptLoader
+{
+public:
+    spell_dru_teleport_moonglade() : SpellScriptLoader("spell_dru_teleport_moonglade") { }
+
+    class spell_dru_teleport_moonglade_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_dru_teleport_moonglade_SpellScript);
+
+        void HandleAfterCast()
+        {
+            if (Player* _player = GetCaster()->ToPlayer())
+                _player->TeleportTo(1, 7964.063f, -2491.099f, 487.83f, _player->GetOrientation());
+        }
+
+        void Register()
+        {
+            AfterCast += SpellCastFn(spell_dru_teleport_moonglade_SpellScript::HandleAfterCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const
+    {
+        return new spell_dru_teleport_moonglade_SpellScript();
+    }
+};
+
 enum KillerInstinctSpells
 {
     SPELL_DRUID_KILLER_INSTINCT          = 108299,
@@ -2696,6 +2724,7 @@ void AddSC_druid_spell_scripts()
     new spell_dru_skull_bash();
     new spell_dru_stampeding_roar();
     new spell_dru_activate_cat_form();
+    new spell_dru_teleport_moonglade();
     new spell_dru_killer_instinct();
     new spell_dru_living_seed();
     new spell_dru_infected_wound();
