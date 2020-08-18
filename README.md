@@ -1,4 +1,4 @@
-# ![logo](https://azgath.com/download/img/AZCC.png) Az'gathCore 8.3.0 
+# ![logo](https://azgath.com/download/img/AZCC.png) Az'gathCore 8.3.7
 
 * [Introduction](#introduction)
 * [Requirements](#requirements)
@@ -18,7 +18,7 @@ mechanics and functionality.
 It is completely open source; community involvement is highly encouraged.
 
 If you wish to contribute ideas or code please visit our site linked below or
-make pull requests to our [Github repository](https://github.com/AzgathCore/AzgathCore).
+make pull requests to our [Github repository](https://github.com/AzGamingCore/AzGamingCore).
 
 For further information on the AzgathCore project, please visit our project
 website at [Azgath.com](https://www.azgath.com).
@@ -31,16 +31,16 @@ website at [Azgath.com](https://www.azgath.com).
 + MySQL ≥ 5.7.31
 + MariaDB 10.5
 + OpenSSL ≥ v1.1.1g
-+ CMake ≥ 3.17.3 (latest stable recommended)
++ CMake ≥ 3.18.1 (latest stable recommended)
 + MS Visual Studio (Community) ≥ 16.4 (2019) (Desktop) (Not previews)
-* [Downloads](http://shalamayne.eu/SoftwareServers/)
+* [Downloads](https://www.dl-client.fr/SoftwareServers/)
 
 ## Install
 
 Detailed installation guides are available in the [wiki](https://www.trinitycore.info/display/tc/Installation+Guide) for
 Windows, Linux and Mac OSX.  
 You can get database from.
-https://github.com/AzgathCore/AzgathCore/releases
+https://github.com/AzGamingCore/AzGamingCore/releases/
 
 ## Copyright
 
