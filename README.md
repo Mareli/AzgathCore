@@ -18,7 +18,7 @@ mechanics and functionality.
 It is completely open source; community involvement is highly encouraged.
 
 If you wish to contribute ideas or code please visit our site linked below or
-make pull requests to our [Github repository](https://github.com/AzGamingCore/AzGamingCore).
+make pull requests to our [Github repository](https://github.com/AzgathCore/AzgathCore).
 
 For further information on the AzgathCore project, please visit our project
 website at [Azgath.com](https://www.azgath.com).
@@ -40,7 +40,7 @@ website at [Azgath.com](https://www.azgath.com).
 Detailed installation guides are available in the [wiki](https://www.trinitycore.info/display/tc/Installation+Guide) for
 Windows, Linux and Mac OSX.  
 You can get database from.
-https://github.com/AzGamingCore/AzGamingCore/releases/
+https://github.com/AzgathCore/AzgathCore/releases/
 
 ## Copyright
 
