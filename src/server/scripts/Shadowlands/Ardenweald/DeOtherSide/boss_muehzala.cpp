@@ -30,7 +30,6 @@ enum Spells
 {
     SPELL_MASTER_OF_DEATH_CHANNEL = 325258,
     SPELL_MASTER_OF_DEATH_DAMAGE = 334913,
-    SPELL_COSMIC_ARTIFICE = 325725,
     SPELL_SHATTER_REALITY = 326171,
     SPELL_BWONSAMDI_FURY = 327891, //periodic Dummy
     SPELL_BWONSAMDI_FEWOR = 327893,
@@ -64,7 +63,6 @@ struct boss_muehzala : public BossAI
     void EnterCombat(Unit* /*who*/) override
     {
         _EnterCombat();
-        events.ScheduleEvent(SPELL_COSMIC_ARTIFICE, 3s);
         events.ScheduleEvent(SPELL_SOULCRASHER, 6s);
         events.ScheduleEvent(SPELL_MASTER_OF_DEATH_CHANNEL, 15s);        
         events.ScheduleEvent(SPELL_SHATTER_REALITY, 30s);
@@ -95,11 +93,6 @@ struct boss_muehzala : public BossAI
         case SPELL_MASTER_OF_DEATH_CHANNEL:
             me->CastSpell(nullptr, SPELL_MASTER_OF_DEATH_CHANNEL, false);
             events.Repeat(30s);
-            break;
-
-        case SPELL_COSMIC_ARTIFICE:
-            me->CastSpell(nullptr, SPELL_COSMIC_ARTIFICE, 100.0f, false);
-            events.Repeat(15s, 18s);
             break;
 
         case SPELL_SHATTER_REALITY:
