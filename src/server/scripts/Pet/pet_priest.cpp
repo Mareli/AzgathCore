@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,30 +61,36 @@ class npc_pet_pri_lightwell : public CreatureScript
         }
 };
 
-class npc_pet_pri_shadowfiend : public CreatureScript
+//19668
+struct npc_pet_pri_shadowfiend : public PetAI
 {
-    public:
-        npc_pet_pri_shadowfiend() : CreatureScript("npc_pet_pri_shadowfiend") { }
+    npc_pet_pri_shadowfiend(Creature* creature) : PetAI(creature) { }
 
-        struct npc_pet_pri_shadowfiendAI : public PetAI
-        {
-            npc_pet_pri_shadowfiendAI(Creature* creature) : PetAI(creature) { }
+    bool CanAIAttack(Unit const* target) const override
+    {
+        if (!target)
+            return false;
+        Unit* owner = me->GetOwner();
+        if (owner && !target->IsInCombatWith(owner))
+            return false;
 
-            void IsSummonedBy(Unit* summoner) override
-            {
-                if (summoner->HasAura(SPELL_PRIEST_GLYPH_OF_SHADOWFIEND))
-                    DoCastAOE(SPELL_PRIEST_SHADOWFIEND_DEATH);
-            }
-        };
+        return PetAI::CanAIAttack(target);
+    }
 
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_pet_pri_shadowfiendAI(creature);
-        }
+     void IsSummonedBy(Unit* summoner) override
+     {
+        if (summoner->HasAura(SPELL_PRIEST_GLYPH_OF_SHADOWFIEND))
+            DoCastAOE(SPELL_PRIEST_SHADOWFIEND_DEATH);
+
+         me->InitCharmInfo();
+         me->SetReactState(REACT_DEFENSIVE);
+         if (Unit* target = summoner->ToPlayer()->GetSelectedUnit())
+             me->AI()->AttackStart(target);
+     }
 };
 
 void AddSC_priest_pet_scripts()
 {
     new npc_pet_pri_lightwell();
-    new npc_pet_pri_shadowfiend();
+    RegisterCreatureAI(npc_pet_pri_shadowfiend);
 }

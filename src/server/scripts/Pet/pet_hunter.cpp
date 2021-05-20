@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +24,7 @@
 #include "CreatureAIImpl.h"
 #include "ScriptedCreature.h"
 #include "TemporarySummon.h"
+#include "PetAI.h"
 
 enum HunterSpells
 {
@@ -141,7 +142,33 @@ class npc_pet_hunter_snake_trap : public CreatureScript
         }
 };
 
+//104493
+struct npc_hun_spitting_cobra : public PetAI
+{
+    npc_hun_spitting_cobra(Creature* creature) : PetAI(creature) { }
+
+    bool CanAIAttack(Unit const* target) const override
+    {
+        if (!target)
+            return false;
+        Unit* owner = me->GetOwner();
+        if (owner && !target->IsInCombatWith(owner))
+            return false;
+
+        return PetAI::CanAIAttack(target);
+    }
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        me->InitCharmInfo();
+        me->SetReactState(REACT_DEFENSIVE);
+        if (Unit* target = summoner->ToPlayer()->GetSelectedUnit())
+            me->AI()->AttackStart(target);
+    }
+};
+
 void AddSC_hunter_pet_scripts()
 {
     new npc_pet_hunter_snake_trap();
+    RegisterCreatureAI(npc_hun_spitting_cobra);
 }

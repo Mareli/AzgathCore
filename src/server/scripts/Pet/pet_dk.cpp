@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -111,7 +111,45 @@ class npc_pet_dk_ebon_gargoyle : public CreatureScript
         }
 };
 
+struct npc_pet_dk_guardian : public AggressorAI
+{
+    npc_pet_dk_guardian(Creature* creature) : AggressorAI(creature) { }
+
+    bool CanAIAttack(Unit const* target) const override
+    {
+        if (!target)
+            return false;
+        Unit* owner = me->GetOwner();
+        if (owner && !target->IsInCombatWith(owner))
+        return false;
+
+        return AggressorAI::CanAIAttack(target);
+    }
+};
+
+//51963
+class spell_dk_gargoyle_strike : public SpellScript
+{
+    PrepareSpellScript(spell_dk_gargoyle_strike);
+
+    void HandleOnHit()
+    {
+        if (Unit* owner = GetCaster()->GetOwner())
+        {
+            int32 damage = GetCaster()->GetOwner()->m_unitData->AttackPower / 100 * 15.0f;
+            SetHitDamage(damage);
+        }
+    }
+
+    void Register() override
+    {
+        OnHit += SpellHitFn(spell_dk_gargoyle_strike::HandleOnHit);
+    }
+};
+
 void AddSC_deathknight_pet_scripts()
 {
     new npc_pet_dk_ebon_gargoyle();
+    RegisterCreatureAI(npc_pet_dk_guardian);
+    RegisterSpellScript(spell_dk_gargoyle_strike);
 }
