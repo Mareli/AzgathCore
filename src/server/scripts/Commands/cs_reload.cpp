@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -78,7 +78,7 @@ public:
             { "auctions",                      rbac::RBAC_PERM_COMMAND_RELOAD_AUCTIONS,                         true,  &HandleReloadAuctionsCommand,                   "" },
             { "access_requirement",            rbac::RBAC_PERM_COMMAND_RELOAD_ACCESS_REQUIREMENT,               true,  &HandleReloadAccessRequirementCommand,          "" },
             { "achievement_reward",            rbac::RBAC_PERM_COMMAND_RELOAD_ACHIEVEMENT_REWARD,               true,  &HandleReloadAchievementRewardCommand,          "" },
-            { "all",                           rbac::RBAC_PERM_COMMAND_RELOAD_ALL,                              true,  NULL,                                           "", reloadAllCommandTable },
+            { "all",                           rbac::RBAC_PERM_COMMAND_RELOAD_ALL,                              true,  nullptr,                                        "", reloadAllCommandTable },
             { "areatrigger_involvedrelation",  rbac::RBAC_PERM_COMMAND_RELOAD_AREATRIGGER_INVOLVEDRELATION,     true,  &HandleReloadQuestAreaTriggersCommand,          "" },
             { "areatrigger_tavern",            rbac::RBAC_PERM_COMMAND_RELOAD_AREATRIGGER_TAVERN,               true,  &HandleReloadAreaTriggerTavernCommand,          "" },
             { "areatrigger_teleport",          rbac::RBAC_PERM_COMMAND_RELOAD_AREATRIGGER_TELEPORT,             true,  &HandleReloadAreaTriggerTeleportCommand,        "" },
@@ -94,7 +94,7 @@ public:
             { "creature_questender",           rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_QUESTENDER,              true,  &HandleReloadCreatureQuestEnderCommand,         "" },
             { "creature_linked_respawn",       rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_LINKED_RESPAWN,          true,  &HandleReloadLinkedRespawnCommand,              "" },
             { "creature_loot_template",        rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_LOOT_TEMPLATE,           true,  &HandleReloadLootTemplatesCreatureCommand,      "" },
-            { "creature_onkill_reputation",    rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_ONKILL_REPUTATION,       true,  &HandleReloadOnKillReputationCommand,           "" },
+            { "creature_onkill_reward",        rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_ONKILL_REWARD,           true,  &HandleReloadOnKillRewardCommand,               "" },
             { "creature_queststarter",         rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_QUESTSTARTER,            true,  &HandleReloadCreatureQuestStarterCommand,       "" },
             { "creature_summon_groups",        rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_SUMMON_GROUPS,           true,  &HandleReloadCreatureSummonGroupsCommand,       "" },
             { "creature_template",             rbac::RBAC_PERM_COMMAND_RELOAD_CREATURE_TEMPLATE,                true,  &HandleReloadCreatureTemplateCommand,           "" },
@@ -127,6 +127,7 @@ public:
             { "npc_vendor",                    rbac::RBAC_PERM_COMMAND_RELOAD_NPC_VENDOR,                       true,  &HandleReloadNpcVendorCommand,                  "" },
             { "page_text",                     rbac::RBAC_PERM_COMMAND_RELOAD_PAGE_TEXT,                        true,  &HandleReloadPageTextsCommand,                  "" },
             { "pickpocketing_loot_template",   rbac::RBAC_PERM_COMMAND_RELOAD_PICKPOCKETING_LOOT_TEMPLATE,      true,  &HandleReloadLootTemplatesPickpocketingCommand, "" },
+            { "player_choice",                 rbac::RBAC_PERM_COMMAND_RELOAD_PLAYER_CHOICE,                    true,  &HandleReloadPlayerChoiceCommand,               "" },
             { "points_of_interest",            rbac::RBAC_PERM_COMMAND_RELOAD_POINTS_OF_INTEREST,               true,  &HandleReloadPointsOfInterestCommand,           "" },
             { "prospecting_loot_template",     rbac::RBAC_PERM_COMMAND_RELOAD_PROSPECTING_LOOT_TEMPLATE,        true,  &HandleReloadLootTemplatesProspectingCommand,   "" },
             { "quest_greeting",                rbac::RBAC_PERM_COMMAND_RELOAD_QUEST_GREETING,                   true,  &HandleReloadQuestGreetingCommand,              "" },
@@ -170,7 +171,7 @@ public:
         };
         static std::vector<ChatCommand> commandTable =
         {
-            { "reload",                        rbac::RBAC_PERM_COMMAND_RELOAD,                                  true,  NULL,                                           "", reloadCommandTable },
+            { "reload",                        rbac::RBAC_PERM_COMMAND_RELOAD,                                  true,  nullptr,                                        "", reloadCommandTable },
         };
         return commandTable;
     }
@@ -410,11 +411,11 @@ public:
         return true;
     }
 
-    static bool HandleReloadOnKillReputationCommand(ChatHandler* handler, const char* /*args*/)
+    static bool HandleReloadOnKillRewardCommand(ChatHandler* handler, const char* /*args*/)
     {
         TC_LOG_INFO("misc", "Re-Loading creature award reputation definitions...");
-        sObjectMgr->LoadReputationOnKill();
-        handler->SendGlobalGMSysMessage("DB table `creature_onkill_reputation` reloaded.");
+        sObjectMgr->LoadRewardOnKill();
+        handler->SendGlobalGMSysMessage("DB table `creature_onkill_reward` reloaded.");
         return true;
     }
 
@@ -712,11 +713,11 @@ public:
     {
         TC_LOG_INFO("misc", "Re-Loading `trainer` Table!");
         sObjectMgr->LoadTrainers();
-        sObjectMgr->LoadCreatureDefaultTrainers();
+        sObjectMgr->LoadCreatureTrainers();
         handler->SendGlobalGMSysMessage("DB table `trainer` reloaded.");
         handler->SendGlobalGMSysMessage("DB table `trainer_locale` reloaded.");
         handler->SendGlobalGMSysMessage("DB table `trainer_spell` reloaded.");
-        handler->SendGlobalGMSysMessage("DB table `creature_default_trainer` reloaded.");
+        handler->SendGlobalGMSysMessage("DB table `creature_trainer` reloaded.");
         return true;
     }
 
@@ -733,6 +734,14 @@ public:
         TC_LOG_INFO("misc", "Re-Loading `points_of_interest` Table!");
         sObjectMgr->LoadPointsOfInterest();
         handler->SendGlobalGMSysMessage("DB table `points_of_interest` reloaded.");
+        return true;
+    }
+
+    static bool HandleReloadPlayerChoiceCommand(ChatHandler* handler, const char* /*args*/)
+    {
+        TC_LOG_INFO("misc", "Re-Loading `player_choice` related tables!");
+        sObjectMgr->LoadPlayerChoices();
+        handler->SendGlobalGMSysMessage("DB table related `player_choice` reloaded.");
         return true;
     }
 

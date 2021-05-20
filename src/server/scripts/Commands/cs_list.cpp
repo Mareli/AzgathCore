@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -54,7 +54,7 @@ public:
         };
         static std::vector<ChatCommand> commandTable =
         {
-            { "list", rbac::RBAC_PERM_COMMAND_LIST,true, NULL, "", listCommandTable },
+            { "list", rbac::RBAC_PERM_COMMAND_LIST,true, nullptr, "", listCommandTable },
         };
         return commandTable;
     }
@@ -85,7 +85,7 @@ public:
             return false;
         }
 
-        char* countStr = strtok(NULL, " ");
+        char* countStr = strtok(nullptr, " ");
         uint32 count = countStr ? atoul(countStr) : 10;
 
         if (count == 0)
@@ -120,7 +120,7 @@ public:
                 uint16 mapId    = fields[4].GetUInt16();
 
                 if (handler->GetSession())
-                    handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), std::to_string(guid).c_str(), cInfo->Name.c_str(), x, y, z, mapId);
+                    handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), creatureId, cInfo->Name.c_str(), x, y, z, mapId);
                 else
                     handler->PSendSysMessage(LANG_CREATURE_LIST_CONSOLE, std::to_string(guid).c_str(), cInfo->Name.c_str(), x, y, z, mapId);
             }
@@ -157,7 +157,7 @@ public:
             return false;
         }
 
-        char* countStr = strtok(NULL, " ");
+        char* countStr = strtok(nullptr, " ");
         uint32 count = countStr ? atoul(countStr) : 10;
 
         if (count == 0)
@@ -192,7 +192,7 @@ public:
                 uint32 ownerAccountId   = fields[4].GetUInt32();
                 std::string ownerName   = fields[5].GetString();
 
-                char const* itemPos = 0;
+                char const* itemPos = nullptr;
                 if (Player::IsEquipmentPos(itemBag, itemSlot))
                     itemPos = "[equipped]";
                 else if (Player::IsInventoryPos(itemBag, itemSlot))
@@ -232,7 +232,7 @@ public:
             result = CharacterDatabase.Query(stmt);
         }
         else
-            result = PreparedQueryResult(NULL);
+            result = PreparedQueryResult(nullptr);
 
         if (result)
         {
@@ -279,7 +279,7 @@ public:
             result = CharacterDatabase.Query(stmt);
         }
         else
-            result = PreparedQueryResult(NULL);
+            result = PreparedQueryResult(nullptr);
 
         if (result)
         {
@@ -374,7 +374,7 @@ public:
             return false;
         }
 
-        char* countStr = strtok(NULL, " ");
+        char* countStr = strtok(nullptr, " ");
         uint32 count = countStr ? atoul(countStr) : 10;
 
         if (count == 0)
@@ -410,7 +410,7 @@ public:
                 uint32 entry    = fields[5].GetUInt32();
 
                 if (handler->GetSession())
-                    handler->PSendSysMessage(LANG_GO_LIST_CHAT, std::to_string(guid).c_str(), entry, std::to_string(guid).c_str(), gInfo->name.c_str(), x, y, z, mapId);
+                    handler->PSendSysMessage(LANG_GO_LIST_CHAT, std::to_string(guid).c_str(), entry, gInfo->name.c_str(), x, y, z, mapId);
                 else
                     handler->PSendSysMessage(LANG_GO_LIST_CONSOLE, std::to_string(guid).c_str(), gInfo->name.c_str(), x, y, z, mapId);
             }
@@ -480,7 +480,7 @@ public:
         Player* target;
         ObjectGuid targetGuid;
         std::string targetName;
-        CharacterDatabasePreparedStatement* stmt = NULL;
+        CharacterDatabasePreparedStatement* stmt = nullptr;
 
         if (!*args)
             return false;

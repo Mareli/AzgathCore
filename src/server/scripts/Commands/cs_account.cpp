@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,13 +14,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-/* ScriptData
-Name: account_commandscript
-%Complete: 100
-Comment: All account related commands
-Category: commandscripts
-EndScriptData */
 
 #include "AccountMgr.h"
 #include "Chat.h"
@@ -49,7 +42,7 @@ public:
         static std::vector<ChatCommand> accountSetCommandTable =
         {
             { "addon",          rbac::RBAC_PERM_COMMAND_ACCOUNT_SET_ADDON,       true,  &HandleAccountSetAddonCommand,     ""       },
-            { "sec",            rbac::RBAC_PERM_COMMAND_ACCOUNT_SET_SEC,         true,  NULL,                "", accountSetSecTable },
+            { "sec",            rbac::RBAC_PERM_COMMAND_ACCOUNT_SET_SEC,         true,  nullptr,                "", accountSetSecTable },
             { "gmlevel",        rbac::RBAC_PERM_COMMAND_ACCOUNT_SET_GMLEVEL,     true,  &HandleAccountSetGmLevelCommand,   ""       },
             { "password",       rbac::RBAC_PERM_COMMAND_ACCOUNT_SET_PASSWORD,    true,  &HandleAccountSetPasswordCommand,  ""       },
         };
@@ -61,18 +54,17 @@ public:
         static std::vector<ChatCommand> accountCommandTable =
         {
             { "addon",          rbac::RBAC_PERM_COMMAND_ACCOUNT_ADDON,           false, &HandleAccountAddonCommand,        ""       },
-            { "create",         rbac::RBAC_PERM_COMMAND_ACCOUNT_CREATE,          true,  &HandleAccountCreateCommand,       ""       },
             { "delete",         rbac::RBAC_PERM_COMMAND_ACCOUNT_DELETE,          true,  &HandleAccountDeleteCommand,       ""       },
             { "email",          rbac::RBAC_PERM_COMMAND_ACCOUNT_EMAIL,           false, &HandleAccountEmailCommand,        ""       },
             { "onlinelist",     rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,     true,  &HandleAccountOnlineListCommand,   ""       },
-            { "lock",           rbac::RBAC_PERM_COMMAND_ACCOUNT_LOCK,            false, NULL,           "", accountLockCommandTable },
-            { "set",            rbac::RBAC_PERM_COMMAND_ACCOUNT_SET,             true,  NULL,            "", accountSetCommandTable },
+            { "lock",           rbac::RBAC_PERM_COMMAND_ACCOUNT_LOCK,            false, nullptr,           "", accountLockCommandTable },
+            { "set",            rbac::RBAC_PERM_COMMAND_ACCOUNT_SET,             true,  nullptr,            "", accountSetCommandTable },
             { "password",       rbac::RBAC_PERM_COMMAND_ACCOUNT_PASSWORD,        false, &HandleAccountPasswordCommand,     ""       },
             { "",               rbac::RBAC_PERM_COMMAND_ACCOUNT,                 false, &HandleAccountCommand,             ""       },
         };
         static std::vector<ChatCommand> commandTable =
         {
-            { "account",        rbac::RBAC_PERM_COMMAND_ACCOUNT,                 true,  NULL,              "",  accountCommandTable },
+            { "account",        rbac::RBAC_PERM_COMMAND_ACCOUNT,                 true,  nullptr,              "",  accountCommandTable },
         };
         return commandTable;
     }
@@ -109,68 +101,6 @@ public:
         return true;
     }
 
-    /// Create an account
-    static bool HandleAccountCreateCommand(ChatHandler* handler, char const* args)
-    {
-        if (!*args)
-            return false;
-
-        std::string email;
-
-        ///- %Parse the command line arguments
-        char* accountName = strtok((char*)args, " ");
-        char* password = strtok(NULL, " ");
-        char* possibleEmail = strtok(NULL, " ' ");
-        if (possibleEmail)
-            email = possibleEmail;
-
-        if (!accountName || !password)
-            return false;
-
-        if (strchr(accountName, '@'))
-        {
-            handler->PSendSysMessage(LANG_ACCOUNT_USE_BNET_COMMANDS);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        switch (sAccountMgr->CreateAccount(std::string(accountName), std::string(password), email))
-        {
-            case AccountOpResult::AOR_OK:
-                handler->PSendSysMessage(LANG_ACCOUNT_CREATED, accountName);
-                if (handler->GetSession())
-                {
-                    TC_LOG_INFO("entities.player.character", "Account: %u (IP: %s) Character:[%s] (%s) created Account %s (Email: '%s')",
-                        handler->GetSession()->GetAccountId(), handler->GetSession()->GetRemoteAddress().c_str(),
-                        handler->GetSession()->GetPlayer()->GetName().c_str(), handler->GetSession()->GetPlayer()->GetGUID().ToString().c_str(),
-                        accountName, email.c_str());
-                }
-                break;
-            case AccountOpResult::AOR_NAME_TOO_LONG:
-                handler->SendSysMessage(LANG_ACCOUNT_NAME_TOO_LONG);
-                handler->SetSentErrorMessage(true);
-                return false;
-            case AccountOpResult::AOR_PASS_TOO_LONG:
-                handler->SendSysMessage(LANG_ACCOUNT_PASS_TOO_LONG);
-                handler->SetSentErrorMessage(true);
-                return false;
-            case AccountOpResult::AOR_NAME_ALREADY_EXIST:
-                handler->SendSysMessage(LANG_ACCOUNT_ALREADY_EXIST);
-                handler->SetSentErrorMessage(true);
-                return false;
-            case AccountOpResult::AOR_DB_INTERNAL_ERROR:
-                handler->PSendSysMessage(LANG_ACCOUNT_NOT_CREATED_SQL_ERROR, accountName);
-                handler->SetSentErrorMessage(true);
-                return false;
-            default:
-                handler->PSendSysMessage(LANG_ACCOUNT_NOT_CREATED, accountName);
-                handler->SetSentErrorMessage(true);
-                return false;
-        }
-
-        return true;
-    }
-
     /// Delete a user account and all associated characters in this realm
     /// @todo This function has to be enhanced to respect the login/realm split (delete char, delete account chars in realm then delete account)
     static bool HandleAccountDeleteCommand(ChatHandler* handler, char const* args)
@@ -202,7 +132,7 @@ public:
         /// Commands not recommended call from chat, but support anyway
         /// can delete only for account with less security
         /// This is also reject self apply in fact
-        if (handler->HasLowerSecurityAccount(NULL, accountId, true))
+        if (handler->HasLowerSecurityAccount(nullptr, accountId, true))
             return false;
 
         AccountOpResult result = AccountMgr::DeleteAccount(accountId);
@@ -365,9 +295,9 @@ public:
         }
 
         char* oldEmail = strtok((char*)args, " ");
-        char* password = strtok(NULL, " ");
-        char* email = strtok(NULL, " ");
-        char* emailConfirmation = strtok(NULL, " ");
+        char* password = strtok(nullptr, " ");
+        char* email = strtok(nullptr, " ");
+        char* emailConfirmation = strtok(nullptr, " ");
 
         if (!oldEmail || !password || !email || !emailConfirmation)
         {
@@ -459,9 +389,9 @@ public:
 
         // Command is supposed to be: .account password [$oldpassword] [$newpassword] [$newpasswordconfirmation] [$emailconfirmation]
         char* oldPassword = strtok((char*)args, " ");       // This extracts [$oldpassword]
-        char* newPassword = strtok(NULL, " ");              // This extracts [$newpassword]
-        char* passwordConfirmation = strtok(NULL, " ");     // This extracts [$newpasswordconfirmation]
-        char const* emailConfirmation = strtok(NULL, " ");  // This defines the emailConfirmation variable, which is optional depending on sec type.
+        char* newPassword = strtok(nullptr, " ");              // This extracts [$newpassword]
+        char* passwordConfirmation = strtok(nullptr, " ");     // This extracts [$newpasswordconfirmation]
+        char const* emailConfirmation = strtok(nullptr, " ");  // This defines the emailConfirmation variable, which is optional depending on sec type.
         if (!emailConfirmation)                             // This extracts [$emailconfirmation]. If it doesn't exist, however...
             emailConfirmation = "";                         // ... it's simply "" for emailConfirmation.
 
@@ -577,7 +507,7 @@ public:
     {
         ///- Get the command line arguments
         char* account = strtok((char*)args, " ");
-        char* exp = strtok(NULL, " ");
+        char* exp = strtok(nullptr, " ");
 
         if (!account)
             return false;
@@ -618,7 +548,7 @@ public:
         // Let set addon state only for lesser (strong) security level
         // or to self account
         if (handler->GetSession() && handler->GetSession()->GetAccountId() != accountId &&
-            handler->HasLowerSecurityAccount(NULL, accountId, true))
+            handler->HasLowerSecurityAccount(nullptr, accountId, true))
             return false;
 
         uint8 expansion = static_cast<uint8>(atoul(exp));
@@ -650,8 +580,8 @@ public:
         uint32 targetSecurity = 0;
         uint32 gm = 0;
         char* arg1 = strtok((char*)args, " ");
-        char* arg2 = strtok(NULL, " ");
-        char* arg3 = strtok(NULL, " ");
+        char* arg2 = strtok(nullptr, " ");
+        char* arg3 = strtok(nullptr, " ");
         bool isAccountNameGiven = true;
 
         if (!arg3)
@@ -686,7 +616,7 @@ public:
             return false;
         }
 
-        // handler->getSession() == NULL only for console
+        // handler->getSession() == nullptr only for console
         targetAccountId = (isAccountNameGiven) ? AccountMgr::GetId(targetAccountName) : handler->getSelectedPlayer()->GetSession()->GetAccountId();
         int32 gmRealmID = (isAccountNameGiven) ? atoi(arg3) : atoi(arg2);
         uint32 playerSecurity;
@@ -731,7 +661,7 @@ public:
             return false;
         }
 
-        rbac::RBACData* rbac = isAccountNameGiven ? NULL : handler->getSelectedPlayer()->GetSession()->GetRBACData();
+        rbac::RBACData* rbac = isAccountNameGiven ? nullptr : handler->getSelectedPlayer()->GetSession()->GetRBACData();
         sAccountMgr->UpdateAccountAccess(rbac, targetAccountId, uint8(gm), gmRealmID);
 
         handler->PSendSysMessage(LANG_YOU_CHANGE_SECURITY, targetAccountName.c_str(), gm);
@@ -750,8 +680,8 @@ public:
 
         ///- Get the command line arguments
         char* account = strtok((char*)args, " ");
-        char* password = strtok(NULL, " ");
-        char* passwordConfirmation = strtok(NULL, " ");
+        char* password = strtok(nullptr, " ");
+        char* passwordConfirmation = strtok(nullptr, " ");
 
         if (!account || !password || !passwordConfirmation)
             return false;
@@ -774,7 +704,7 @@ public:
 
         /// can set password only for target with less security
         /// This also restricts setting handler's own password
-        if (handler->HasLowerSecurityAccount(NULL, targetAccountId, true))
+        if (handler->HasLowerSecurityAccount(nullptr, targetAccountId, true))
             return false;
 
         if (strcmp(password, passwordConfirmation) != 0)
@@ -815,8 +745,8 @@ public:
 
         ///- Get the command line arguments
         char* account = strtok((char*)args, " ");
-        char* email = strtok(NULL, " ");
-        char* emailConfirmation = strtok(NULL, " ");
+        char* email = strtok(nullptr, " ");
+        char* emailConfirmation = strtok(nullptr, " ");
 
         if (!account || !email || !emailConfirmation)
         {
@@ -843,7 +773,7 @@ public:
 
         /// can set email only for target with less security
         /// This also restricts setting handler's own email.
-        if (handler->HasLowerSecurityAccount(NULL, targetAccountId, true))
+        if (handler->HasLowerSecurityAccount(nullptr, targetAccountId, true))
             return false;
 
         if (strcmp(email, emailConfirmation) != 0)
@@ -891,8 +821,8 @@ public:
 
         ///- Get the command line arguments
         char* account = strtok((char*)args, " ");
-        char* email = strtok(NULL, " ");
-        char* emailConfirmation = strtok(NULL, " ");
+        char* email = strtok(nullptr, " ");
+        char* emailConfirmation = strtok(nullptr, " ");
 
         if (!account || !email || !emailConfirmation)
         {
@@ -919,7 +849,7 @@ public:
 
         /// can set email only for target with less security
         /// This also restricts setting handler's own email.
-        if (handler->HasLowerSecurityAccount(NULL, targetAccountId, true))
+        if (handler->HasLowerSecurityAccount(nullptr, targetAccountId, true))
             return false;
 
         if (strcmp(email, emailConfirmation) != 0)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,8 +59,8 @@ public:
         };
         static std::vector<ChatCommand> commandTable =
         {
-            { "wp",         rbac::RBAC_PERM_COMMAND_WP, false, NULL, "", wpCommandTable },
-            { "script_wp",  rbac::RBAC_PERM_COMMAND_WP, false, NULL, "", scriptWpCommandTable },
+            { "wp",         rbac::RBAC_PERM_COMMAND_WP, false, nullptr, "", wpCommandTable },
+            { "script_wp",  rbac::RBAC_PERM_COMMAND_WP, false, nullptr, "", scriptWpCommandTable },
         };
         return commandTable;
     }
@@ -81,14 +81,14 @@ public:
     * -> adds a waypoint to the currently selected creature
     *
     *
-    * @param args if the user did not provide a GUID, it is NULL
+    * @param args if the user did not provide a GUID, it is nullptr
     *
     * @return true - command did succeed, false - something went wrong
     */
     static bool HandleWpAddCommand(ChatHandler* handler, const char* args)
     {
         // optional
-        char* path_number = NULL;
+        char* path_number = nullptr;
         uint32 pathid = 0;
 
         if (*args)
@@ -154,7 +154,7 @@ public:
             return false;
 
         // optional
-        char* path_number = NULL;
+        char* path_number = nullptr;
 
         if (*args)
             path_number = strtok((char*)args, " ");
@@ -248,7 +248,7 @@ public:
     {
 
         Creature* target = handler->getSelectedCreature();
-        WorldDatabasePreparedStatement* stmt = NULL;
+        WorldDatabasePreparedStatement* stmt = nullptr;
 
         if (!target)
         {
@@ -296,13 +296,13 @@ public:
 
         char* show_str = strtok((char*)args, " ");
         std::string show = show_str;
-        WorldDatabasePreparedStatement* stmt = NULL;
+        WorldDatabasePreparedStatement* stmt = nullptr;
 
         // Check
         if ((show != "add") && (show != "mod") && (show != "del") && (show != "listid"))
             return false;
 
-        char* arg_id = strtok(NULL, " ");
+        char* arg_id = strtok(nullptr, " ");
         uint32 id = 0;
 
         if (show == "add")
@@ -431,7 +431,7 @@ public:
                 return true;
             }
 
-            char* arg_2 = strtok(NULL, " ");
+            char* arg_2 = strtok(nullptr, " ");
 
             if (!arg_2)
             {
@@ -451,7 +451,7 @@ public:
 
             char* arg_3;
             std::string arg_str_2 = arg_2;
-            arg_3 = strtok(NULL, " ");
+            arg_3 = strtok(nullptr, " ");
 
             if (!arg_3)
             {
@@ -569,7 +569,7 @@ public:
         }
 
         // Next arg is: <PATHID> <WPNUM> <ARGUMENT>
-        char* arg_str = NULL;
+        char* arg_str = nullptr;
 
         // Did user provide a GUID
         // or did the user select a creature?
@@ -577,7 +577,7 @@ public:
         uint32 pathid = 0;
         uint32 point = 0;
         Creature* target = handler->getSelectedCreature();
-        WorldDatabasePreparedStatement* stmt = NULL;
+        WorldDatabasePreparedStatement* stmt = nullptr;
 
         // User did select a visual waypoint?
         if (!target || target->GetEntry() != VISUAL_WAYPOINT)
@@ -628,10 +628,10 @@ public:
 
         // We have the waypoint number and the GUID of the "master npc"
         // Text is enclosed in "<>", all other arguments not
-        arg_str = strtok((char*)NULL, " ");
+        arg_str = strtok((char*)nullptr, " ");
 
         // Check for argument
-        if (show != "del" && show != "move" && arg_str == NULL)
+        if (show != "del" && show != "move" && arg_str == nullptr)
         {
             handler->PSendSysMessage(LANG_WAYPOINT_ARGUMENTREQ, show_str);
             return false;
@@ -712,7 +712,7 @@ public:
         if (text == 0)
         {
             // show_str check for present in list of correct values, no sql injection possible
-            WorldDatabase.PExecute("UPDATE waypoint_data SET %s=NULL WHERE id='%u' AND point='%u'", show_str, pathid, point); // Query can't be a prepared statement
+            WorldDatabase.PExecute("UPDATE waypoint_data SET %s=nullptr WHERE id='%u' AND point='%u'", show_str, pathid, point); // Query can't be a prepared statement
         }
         else
         {
@@ -737,11 +737,11 @@ public:
             return false;
 
         // second arg: GUID (optional, if a creature is selected)
-        char* guid_str = strtok((char*)NULL, " ");
+        char* guid_str = strtok((char*)nullptr, " ");
 
         uint32 pathid = 0;
         Creature* target = handler->getSelectedCreature();
-        WorldDatabasePreparedStatement* stmt = NULL;
+        WorldDatabasePreparedStatement* stmt = nullptr;
 
         // Did player provide a PathID?
 

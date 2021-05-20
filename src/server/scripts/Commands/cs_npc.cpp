@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -611,7 +611,7 @@ public:
             return false;
         }
 
-        creature->setFaction(factionId);
+        creature->SetFaction(factionId);
 
         // Faction is set in creature_template - not inside creature
 
@@ -727,7 +727,7 @@ public:
 
         CreatureTemplate const* cInfo = target->GetCreatureTemplate();
 
-        uint32 faction = target->getFaction();
+        uint32 faction = target->GetFaction();
         uint64 npcflags;
         memcpy(&npcflags, target->m_unitData->NpcFlags.begin(), sizeof(npcflags));
         uint32 mechanicImmuneMask = cInfo->MechanicImmuneMask;
@@ -735,7 +735,7 @@ public:
         uint32 nativeid = target->GetNativeDisplayId();
         uint32 Entry = target->GetEntry();
 
-        int64 curRespawnDelay = target->GetRespawnTimeEx()-time(NULL);
+        int64 curRespawnDelay = target->GetRespawnTimeEx()-time(nullptr);
         if (curRespawnDelay < 0)
             curRespawnDelay = 0;
         std::string curRespawnDelayStr = secsToTimeString(uint64(curRespawnDelay), true);
@@ -829,7 +829,7 @@ public:
                 if (!creatureTemplate)
                     continue;
 
-                handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), entry, std::to_string(guid).c_str(), creatureTemplate->Name.c_str(), x, y, z, o, mapId);
+                handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), entry,  creatureTemplate->Name.c_str(), x, y, z, mapId);
 
                 ++count;
             }
@@ -1467,7 +1467,7 @@ public:
 
         // place pet before player
         float x, y, z;
-        player->GetClosePoint (x, y, z, creatureTarget->GetCombatReach(), CONTACT_DISTANCE);
+        player->GetClosePoint (x, y, z, creatureTarget->GetObjectSize(), CONTACT_DISTANCE);
         pet->Relocate(x, y, z, float(M_PI) - player->GetOrientation());
 
         // set pet to defensive mode by default (some classes can't control controlled pets in fact).

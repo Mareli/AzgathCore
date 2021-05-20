@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -51,7 +51,7 @@ public:
 
         static std::vector<ChatCommand> commandTable =
         {
-            { "cheat",          rbac::RBAC_PERM_COMMAND_CHEAT, false, NULL, "", cheatCommandTable },
+            { "cheat",          rbac::RBAC_PERM_COMMAND_CHEAT, false, nullptr, "", cheatCommandTable },
         };
         return commandTable;
     }
@@ -152,7 +152,11 @@ public:
         }
         else if (argstr == "on")
         {
-            handler->GetSession()->GetPlayer()->SetCommandStatusOn(CHEAT_POWER);
+            Player* player = handler->GetSession()->GetPlayer();
+            // Set max power to all powers
+            for (uint32 i = 0; i < MAX_POWERS; ++i)
+                player->SetPower(Powers(i), player->GetMaxPower(Powers(i)));
+            player->SetCommandStatusOn(CHEAT_POWER);
             handler->SendSysMessage("Power Cheat is ON. You don't need mana/rage/energy to use spells.");
             return true;
         }

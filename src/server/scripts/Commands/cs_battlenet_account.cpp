@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,8 +17,8 @@
 
 #include "AccountMgr.h"
 #include "BattlenetAccountMgr.h"
-#include "BigNumber.h"
 #include "Chat.h"
+#include "CryptoRandom.h"
 #include "DatabaseEnv.h"
 #include "IpAddress.h"
 #include "IPLocation.h"
@@ -41,27 +41,17 @@ public:
             { "password", rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_SET_PASSWORD, true,  &HandleAccountSetPasswordCommand, "" },
         };
 
-        static std::vector<ChatCommand> accountLockCommandTable =
-        {
-            { "country", rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_LOCK_COUNTRY, true,  &HandleAccountLockCountryCommand, "" },
-            { "ip",      rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_LOCK_IP,      true,  &HandleAccountLockIpCommand,      "" },
-        };
-
         static std::vector<ChatCommand> accountCommandTable =
         {
             { "create",            rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_CREATE,             true,  &HandleAccountCreateCommand,     ""                          },
-            { "gameaccountcreate", rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_CREATE_GAME,        true,  &HandleGameAccountCreateCommand, ""                          },
-            { "lock",              rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT,                    false, NULL,                            "", accountLockCommandTable },
-            { "set",               rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_SET,                true,  NULL,                            "", accountSetCommandTable  },
+            { "set",               rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_SET,                true,  nullptr,                         "", accountSetCommandTable  },
             { "password",          rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_PASSWORD,           false, &HandleAccountPasswordCommand,   ""                          },
-            { "link",              rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_LINK,               true,  &HandleAccountLinkCommand,       ""                          },
-            { "unlink",            rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_UNLINK,             true,  &HandleAccountUnlinkCommand,     ""                          },
             { "listgameaccounts",  rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT_LIST_GAME_ACCOUTNS, true,  &HandleListGameAccountsCommand,  ""                          }
         };
 
         static std::vector<ChatCommand> commandTable =
         {
-            { "bnetaccount", rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT, true,  NULL, "", accountCommandTable },
+            { "bnetaccount", rbac::RBAC_PERM_COMMAND_BNET_ACCOUNT, true,  nullptr, "", accountCommandTable },
         };
 
         return commandTable;
@@ -75,7 +65,7 @@ public:
 
         ///- %Parse the command line arguments
         char* accountName = strtok((char*)args, " ");
-        char* password = strtok(NULL, " ");
+        char* password = strtok(nullptr, " ");
         if (!accountName || !password)
             return false;
 
@@ -86,27 +76,19 @@ public:
             return false;
         }
 
-        char* createGameAccountParam = strtok(NULL, " ");
-        bool createGameAccount = true;
-        if (createGameAccountParam)
-            createGameAccount = StringToBool(createGameAccountParam);
-
         std::string gameAccountName;
-        switch (Battlenet::AccountMgr::CreateBattlenetAccount(std::string(accountName), std::string(password), createGameAccount, &gameAccountName))
+        switch (Battlenet::AccountMgr::CreateBattlenetAccount(std::string(accountName), std::string(password), &gameAccountName))
         {
             case AccountOpResult::AOR_OK:
             {
-                if (createGameAccount)
-                    handler->PSendSysMessage(LANG_ACCOUNT_CREATED_BNET_WITH_GAME, accountName, gameAccountName.c_str());
-                else
-                    handler->PSendSysMessage(LANG_ACCOUNT_CREATED_BNET, accountName);
+                handler->PSendSysMessage(LANG_ACCOUNT_CREATED_BNET_WITH_GAME, accountName, gameAccountName.c_str());
 
                 if (handler->GetSession())
                 {
-                    TC_LOG_INFO("entities.player.character", "Account: %u (IP: %s) Character:[%s] (%s) created Battle.net account %s%s%s",
+                    TC_LOG_INFO("entities.player.character", "Account: %u (IP: %s) Character:[%s] (%s) created Battle.net account %s with game account %s",
                         handler->GetSession()->GetAccountId(), handler->GetSession()->GetRemoteAddress().c_str(),
                         handler->GetSession()->GetPlayer()->GetName().c_str(), handler->GetSession()->GetPlayer()->GetGUID().ToString().c_str(),
-                        accountName, createGameAccount ? " with game account " : "", createGameAccount ? gameAccountName.c_str() : "");
+                        accountName, gameAccountName.c_str());
                 }
                 break;
             }
@@ -129,89 +111,6 @@ public:
         return true;
     }
 
-    // Sets country lock on own account
-    static bool HandleAccountLockCountryCommand(ChatHandler* handler, char const* args)
-    {
-        if (!*args)
-        {
-            handler->SendSysMessage(LANG_USE_BOL);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        std::string param = (char*)args;
-        if (!param.empty())
-        {
-            if (param == "on")
-            {
-                if (IpLocationRecord const* location = sIPLocation->GetLocationRecord(handler->GetSession()->GetRemoteAddress()))
-                {
-                    LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_UPD_BNET_ACCOUNT_LOCK_CONTRY);
-                    stmt->setString(0, location->CountryCode);
-                    stmt->setUInt32(1, handler->GetSession()->GetBattlenetAccountId());
-                    LoginDatabase.Execute(stmt);
-                    handler->PSendSysMessage(LANG_COMMAND_ACCLOCKLOCKED);
-                }
-                else
-                {
-                    handler->PSendSysMessage("IP2Location] No information");
-                    TC_LOG_DEBUG("server.bnetserver", "IP2Location] No information");
-                }
-            }
-            else if (param == "off")
-            {
-                LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_UPD_BNET_ACCOUNT_LOCK_CONTRY);
-                stmt->setString(0, "00");
-                stmt->setUInt32(1, handler->GetSession()->GetBattlenetAccountId());
-                LoginDatabase.Execute(stmt);
-                handler->PSendSysMessage(LANG_COMMAND_ACCLOCKUNLOCKED);
-            }
-            return true;
-        }
-
-        handler->SendSysMessage(LANG_USE_BOL);
-        handler->SetSentErrorMessage(true);
-        return false;
-    }
-
-    // Sets ip lock on own account
-    static bool HandleAccountLockIpCommand(ChatHandler* handler, char const* args)
-    {
-        if (!*args)
-        {
-            handler->SendSysMessage(LANG_USE_BOL);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        std::string param = (char*)args;
-
-        if (!param.empty())
-        {
-            LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_UPD_BNET_ACCOUNT_LOCK);
-
-            if (param == "on")
-            {
-                stmt->setBool(0, true);                                     // locked
-                handler->PSendSysMessage(LANG_COMMAND_ACCLOCKLOCKED);
-            }
-            else if (param == "off")
-            {
-                stmt->setBool(0, false);                                    // unlocked
-                handler->PSendSysMessage(LANG_COMMAND_ACCLOCKUNLOCKED);
-            }
-
-            stmt->setUInt32(1, handler->GetSession()->GetBattlenetAccountId());
-
-            LoginDatabase.Execute(stmt);
-            return true;
-        }
-
-        handler->SendSysMessage(LANG_USE_BOL);
-        handler->SetSentErrorMessage(true);
-        return false;
-    }
-
     static bool HandleAccountPasswordCommand(ChatHandler* handler, char const* args)
     {
         // If no args are given at all, we can return false right away.
@@ -224,8 +123,8 @@ public:
 
         // Command is supposed to be: .account password [$oldpassword] [$newpassword] [$newpasswordconfirmation] [$emailconfirmation]
         char* oldPassword = strtok((char*)args, " ");       // This extracts [$oldpassword]
-        char* newPassword = strtok(NULL, " ");              // This extracts [$newpassword]
-        char* passwordConfirmation = strtok(NULL, " ");     // This extracts [$newpasswordconfirmation]
+        char* newPassword = strtok(nullptr, " ");              // This extracts [$newpassword]
+        char* passwordConfirmation = strtok(nullptr, " ");     // This extracts [$newpasswordconfirmation]
 
         //Is any of those variables missing for any reason ? We return false.
         if (!oldPassword || !newPassword || !passwordConfirmation)
@@ -289,8 +188,8 @@ public:
 
         ///- Get the command line arguments
         char* account = strtok((char*)args, " ");
-        char* password = strtok(NULL, " ");
-        char* passwordConfirmation = strtok(NULL, " ");
+        char* password = strtok(nullptr, " ");
+        char* passwordConfirmation = strtok(nullptr, " ");
 
         if (!account || !password || !passwordConfirmation)
             return false;
@@ -336,132 +235,6 @@ public:
             default:
                 break;
         }
-        return true;
-    }
-
-    static bool HandleAccountLinkCommand(ChatHandler* handler, char const* args)
-    {
-        Tokenizer tokens(args, ' ', 2);
-        if (tokens.size() != 2)
-        {
-            handler->SendSysMessage(LANG_CMD_SYNTAX);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        std::string bnetAccountName = tokens[0];
-        std::string gameAccountName = tokens[1];
-
-        switch (Battlenet::AccountMgr::LinkWithGameAccount(bnetAccountName, gameAccountName))
-        {
-            case AccountOpResult::AOR_OK:
-                handler->PSendSysMessage(LANG_ACCOUNT_BNET_LINKED, bnetAccountName.c_str(), gameAccountName.c_str());
-                break;
-            case AccountOpResult::AOR_NAME_NOT_EXIST:
-                handler->PSendSysMessage(LANG_ACCOUNT_OR_BNET_DOES_NOT_EXIST, bnetAccountName.c_str(), gameAccountName.c_str());
-                handler->SetSentErrorMessage(true);
-                break;
-            case AccountOpResult::AOR_ACCOUNT_BAD_LINK:
-                handler->PSendSysMessage(LANG_ACCOUNT_ALREADY_LINKED, gameAccountName.c_str());
-                handler->SetSentErrorMessage(true);
-                break;
-            default:
-                break;
-        }
-
-        return true;
-    }
-
-    static bool HandleAccountUnlinkCommand(ChatHandler* handler, char const* args)
-    {
-        if (!*args)
-        {
-            handler->SendSysMessage(LANG_CMD_SYNTAX);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        std::string gameAccountName = args;
-
-        switch (Battlenet::AccountMgr::UnlinkGameAccount(gameAccountName))
-        {
-            case AccountOpResult::AOR_OK:
-                handler->PSendSysMessage(LANG_ACCOUNT_BNET_UNLINKED, gameAccountName.c_str());
-                break;
-            case AccountOpResult::AOR_NAME_NOT_EXIST:
-                handler->PSendSysMessage(LANG_ACCOUNT_NOT_EXIST, gameAccountName.c_str());
-                handler->SetSentErrorMessage(true);
-                break;
-            case AccountOpResult::AOR_ACCOUNT_BAD_LINK:
-                handler->PSendSysMessage(LANG_ACCOUNT_BNET_NOT_LINKED, gameAccountName.c_str());
-                handler->SetSentErrorMessage(true);
-                break;
-            default:
-                break;
-        }
-
-        return true;
-    }
-
-    static bool HandleGameAccountCreateCommand(ChatHandler* handler, char const* args)
-    {
-        if (!*args)
-        {
-            handler->SendSysMessage(LANG_CMD_SYNTAX);
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        std::string bnetAccountName = args;
-        uint32 accountId = Battlenet::AccountMgr::GetId(bnetAccountName);
-        if (!accountId)
-        {
-            handler->PSendSysMessage(LANG_ACCOUNT_NOT_EXIST, bnetAccountName.c_str());
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
-        uint8 index = Battlenet::AccountMgr::GetMaxIndex(accountId) + 1;
-        std::string accountName = std::to_string(accountId) + '#' + std::to_string(uint32(index));
-
-        // Generate random hex string for password, these accounts must not be logged on with GRUNT
-        BigNumber randPassword;
-        randPassword.SetRand(8 * 16);
-
-        switch (sAccountMgr->CreateAccount(accountName, ByteArrayToHexStr(randPassword.AsByteArray().get(), randPassword.GetNumBytes()), bnetAccountName, accountId, index))
-        {
-            case AccountOpResult::AOR_OK:
-                handler->PSendSysMessage(LANG_ACCOUNT_CREATED, accountName.c_str());
-                if (handler->GetSession())
-                {
-                    TC_LOG_INFO("entities.player.character", "Account: %u (IP: %s) Character:[%s] (%s) created Account %s (Email: '%s')",
-                        handler->GetSession()->GetAccountId(), handler->GetSession()->GetRemoteAddress().c_str(),
-                        handler->GetSession()->GetPlayer()->GetName().c_str(), handler->GetSession()->GetPlayer()->GetGUID().ToString().c_str(),
-                        accountName.c_str(), bnetAccountName.c_str());
-                }
-                break;
-            case AccountOpResult::AOR_NAME_TOO_LONG:
-                handler->SendSysMessage(LANG_ACCOUNT_NAME_TOO_LONG);
-                handler->SetSentErrorMessage(true);
-                return false;
-            case AccountOpResult::AOR_PASS_TOO_LONG:
-                handler->SendSysMessage(LANG_ACCOUNT_PASS_TOO_LONG);
-                handler->SetSentErrorMessage(true);
-                return false;
-            case AccountOpResult::AOR_NAME_ALREADY_EXIST:
-                handler->SendSysMessage(LANG_ACCOUNT_ALREADY_EXIST);
-                handler->SetSentErrorMessage(true);
-                return false;
-            case AccountOpResult::AOR_DB_INTERNAL_ERROR:
-                handler->PSendSysMessage(LANG_ACCOUNT_NOT_CREATED_SQL_ERROR, accountName.c_str());
-                handler->SetSentErrorMessage(true);
-                return false;
-            default:
-                handler->PSendSysMessage(LANG_ACCOUNT_NOT_CREATED, accountName.c_str());
-                handler->SetSentErrorMessage(true);
-                return false;
-        }
-
         return true;
     }
 

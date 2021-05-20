@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,7 +44,7 @@ public:
         };
         static std::vector<ChatCommand> commandTable =
         {
-            { "bf",             rbac::RBAC_PERM_COMMAND_BF,        false, NULL,                     "", battlefieldcommandTable },
+            { "bf",             rbac::RBAC_PERM_COMMAND_BF,        false, nullptr,                     "", battlefieldcommandTable },
         };
         return commandTable;
     }
@@ -151,7 +151,7 @@ public:
         char* battleid_str = strtok((char*)args, " ");
         if (!battleid_str)
             return false;
-        char* time_str = strtok(NULL, " ");
+        char* time_str = strtok(nullptr, " ");
         if (!time_str)
             return false;
 

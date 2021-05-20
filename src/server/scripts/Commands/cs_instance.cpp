@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -52,11 +52,14 @@ public:
             { "setbossstate",       rbac::RBAC_PERM_COMMAND_INSTANCE_SET_BOSS_STATE, true, &HandleInstanceSetBossStateCommand, "" },
             { "getbossstate",       rbac::RBAC_PERM_COMMAND_INSTANCE_GET_BOSS_STATE, true, &HandleInstanceGetBossStateCommand, "" },
             { "complete_challenge", rbac::RBAC_PERM_COMMAND_INSTANCE_SET_BOSS_STATE,false, &HandleInstanceCompleteChallengeModeCommand, "" },
+            { "complete_scenario",  rbac::RBAC_PERM_COMMAND_DEBUG,false, &HandleInstanceCompleteScenarioCommand, "" },
+            { "complete_scenario_step", rbac::RBAC_PERM_COMMAND_DEBUG,false, &HandleInstanceCompleteScenarioCurrStepCommand, "" },
+            { "getscenario", rbac::RBAC_PERM_COMMAND_DEBUG,false, &HandleInstanceGetScenarioCommand, "" },
         };
 
         static std::vector<ChatCommand> commandTable =
         {
-            { "instance", rbac::RBAC_PERM_COMMAND_INSTANCE,  true, NULL, "", instanceCommandTable },
+            { "instance", rbac::RBAC_PERM_COMMAND_INSTANCE,  true, nullptr, "", instanceCommandTable },
         };
 
         return commandTable;
@@ -89,7 +92,7 @@ public:
                 for (auto itr = binds->second.begin(); itr != binds->second.end(); ++itr)
                 {
                     InstanceSave* save = itr->second.save;
-                    std::string timeleft = GetTimeString(save->GetResetTime() - time(NULL));
+                    std::string timeleft = GetTimeString(save->GetResetTime() - time(nullptr));
                     handler->PSendSysMessage(LANG_COMMAND_LIST_BIND_INFO, itr->first, save->GetInstanceId(), itr->second.perm ? "yes" : "no", itr->second.extendState == EXTEND_STATE_EXPIRED ? "expired" : itr->second.extendState == EXTEND_STATE_EXTENDED ? "yes" : "no", save->GetDifficultyID(), save->CanReset() ? "yes" : "no", timeleft.c_str());
                     counter++;
                 }
@@ -108,7 +111,7 @@ public:
                     for (auto itr = binds->second.begin(); itr != binds->second.end(); ++itr)
                     {
                         InstanceSave* save = itr->second.save;
-                        std::string timeleft = GetTimeString(save->GetResetTime() - time(NULL));
+                        std::string timeleft = GetTimeString(save->GetResetTime() - time(nullptr));
                         handler->PSendSysMessage(LANG_COMMAND_LIST_BIND_INFO, itr->first, save->GetInstanceId(), itr->second.perm ? "yes" : "no", "-", save->GetDifficultyID(), save->CanReset() ? "yes" : "no", timeleft.c_str());
                         counter++;
                     }
@@ -130,7 +133,7 @@ public:
             player = handler->GetSession()->GetPlayer();
 
         char* map = strtok((char*)args, " ");
-        char* pDiff = strtok(NULL, " ");
+        char* pDiff = strtok(nullptr, " ");
         int8 diff = -1;
         if (pDiff)
             diff = atoi(pDiff);
@@ -154,7 +157,7 @@ public:
                     InstanceSave* save = itr->second.save;
                     if (itr->first != player->GetMapId() && (!MapId || MapId == itr->first) && (diff == -1 || diff == save->GetDifficultyID()))
                     {
-                        std::string timeleft = GetTimeString(save->GetResetTime() - time(NULL));
+                        std::string timeleft = GetTimeString(save->GetResetTime() - time(nullptr));
                         handler->PSendSysMessage(LANG_COMMAND_INST_UNBIND_UNBINDING, itr->first, save->GetInstanceId(), itr->second.perm ? "yes" : "no", save->GetDifficultyID(), save->CanReset() ? "yes" : "no", timeleft.c_str());
                         player->UnbindInstance(itr, binds);
                         counter++;
@@ -366,6 +369,103 @@ public:
         map->GetInstanceScript()->CompleteChallengeMode();
         return true;
     }
+
+    static bool HandleInstanceGetScenarioCommand(ChatHandler* handler, char const* args)
+    {
+        if (!*args)
+            return false;
+
+        char* param1 = strtok((char*)args, " ");
+        uint32 scenarioId = 0;
+        Player* player = handler->getSelectedPlayerOrSelf();
+        scenarioId = atoi(param1);
+
+        if (!player)
+        {
+            handler->PSendSysMessage(LANG_PLAYER_NOT_FOUND);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        InstanceMap* map = player->GetMap()->ToInstanceMap();
+        if (!map)
+        {
+            handler->PSendSysMessage(LANG_NOT_DUNGEON);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (!player->GetInstanceScript())
+        {
+            handler->PSendSysMessage(LANG_NO_INSTANCE_DATA);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        map->GetInstanceScript()->GetScenarioByID(player, scenarioId);
+        return true;
+    }
+
+    static bool HandleInstanceCompleteScenarioCommand(ChatHandler* handler, char const* /*args*/)
+    {
+        Player* player = handler->getSelectedPlayerOrSelf();
+
+        if (!player)
+        {
+            handler->PSendSysMessage(LANG_PLAYER_NOT_FOUND);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        InstanceMap* map = player->GetMap()->ToInstanceMap();
+        if (!map)
+        {
+            handler->PSendSysMessage(LANG_NOT_DUNGEON);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (!player->GetInstanceScript())
+        {
+            handler->PSendSysMessage(LANG_NO_INSTANCE_DATA);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        map->GetInstanceScript()->CompleteScenario();
+        return true;
+    }
+
+    static bool HandleInstanceCompleteScenarioCurrStepCommand(ChatHandler* handler, char const* /*args*/)
+    {
+        Player* player = handler->getSelectedPlayerOrSelf();
+
+        if (!player)
+        {
+            handler->PSendSysMessage(LANG_PLAYER_NOT_FOUND);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        InstanceMap* map = player->GetMap()->ToInstanceMap();
+        if (!map)
+        {
+            handler->PSendSysMessage(LANG_NOT_DUNGEON);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (!player->GetInstanceScript())
+        {
+            handler->PSendSysMessage(LANG_NO_INSTANCE_DATA);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        map->GetInstanceScript()->CompleteCurrStep();
+        return true;
+    }
+
 };
 
 void AddSC_instance_commandscript()

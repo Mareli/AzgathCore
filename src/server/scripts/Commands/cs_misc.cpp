@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -249,8 +249,8 @@ public:
         CellCoord cellCoord = Trinity::ComputeCellCoord(object->GetPositionX(), object->GetPositionY());
         Cell cell(cellCoord);
 
-        uint32 zoneId = object->GetZoneId();
-        uint32 areaId = object->GetAreaId();
+        uint32 zoneId, areaId;
+        object->GetZoneAndAreaId(zoneId, areaId);
         uint32 mapId = object->GetMapId();
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
@@ -288,9 +288,9 @@ public:
         char const* unknown = handler->GetTrinityString(LANG_UNKNOWN);
 
         handler->PSendSysMessage(LANG_MAP_POSITION,
-            mapId, (mapEntry ? mapEntry->MapName->Str[handler->GetSessionDbcLocale()] : unknown),
-            zoneId, (zoneEntry ? zoneEntry->AreaName->Str[handler->GetSessionDbcLocale()] : unknown),
-            areaId, (areaEntry ? areaEntry->AreaName->Str[handler->GetSessionDbcLocale()] : unknown),
+            mapId, (mapEntry ? mapEntry->MapName[handler->GetSessionDbcLocale()] : unknown),
+            zoneId, (zoneEntry ? zoneEntry->AreaName[handler->GetSessionDbcLocale()] : unknown),
+            areaId, (areaEntry ? areaEntry->AreaName[handler->GetSessionDbcLocale()] : unknown),
             object->GetPositionX(), object->GetPositionY(), object->GetPositionZ(), object->GetOrientation());
         if (Transport* transport = object->GetTransport())
             handler->PSendSysMessage(LANG_TRANSPORT_POSITION,
@@ -301,7 +301,7 @@ public:
             zoneX, zoneY, groundZ, floorZ, haveMap, haveVMap, haveMMap);
 
         LiquidData liquidStatus;
-        ZLiquidStatus status = map->getLiquidStatus(object->GetPhaseShift(), object->GetPositionX(), object->GetPositionY(), object->GetPositionZ(), MAP_ALL_LIQUIDS, &liquidStatus);
+        ZLiquidStatus status = map->GetLiquidStatus(object->GetPhaseShift(), object->GetPositionX(), object->GetPositionY(), object->GetPositionZ(), MAP_ALL_LIQUIDS, &liquidStatus);
 
         if (status)
             handler->PSendSysMessage(LANG_LIQUID_STATUS, liquidStatus.level, liquidStatus.depth_level, liquidStatus.entry, liquidStatus.type_flags, status);
@@ -330,10 +330,20 @@ public:
         // number or [name] Shift-click form |color|Hspell:spell_id|h[name]|h|r or Htalent form
         uint32 spellId = handler->extractSpellIdFromLink((char*)args);
 
-        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId))
+        char* durationStr = strtok(nullptr, " ");
+
+        if (durationStr)
+        {
+            int32 duration = 0;
+            sscanf(durationStr, "%i", &duration);
+
+            if (Aura* aura = target->GetAura(spellId))
+                aura->SetDuration(duration);
+        }
+        else if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId, target->GetMap()->GetDifficultyID()))
         {
             ObjectGuid castId = ObjectGuid::Create<HighGuid::Cast>(SPELL_CAST_SOURCE_NORMAL, target->GetMapId(), spellId, target->GetMap()->GenerateLowGuid<HighGuid::Cast>());
-            Aura::TryRefreshStackOrCreate(spellInfo, castId, MAX_EFFECT_MASK, target, target);
+            Aura::TryRefreshStackOrCreate(spellInfo, castId, MAX_EFFECT_MASK, target, target, target->GetMap()->GetDifficultyID());
         }
 
         return true;
@@ -341,17 +351,15 @@ public:
 
     static bool HandleUnAuraCommand(ChatHandler* handler, char const* args)
     {
-        std::string argstr = strtok((char*)args, " ");
-        Unit* target = ObjectAccessor::FindPlayerByName(argstr);
-
+        Unit* target = handler->getSelectedUnit();
         if (!target)
-            target = handler->getSelectedUnit();
-        else
-            argstr = strtok(NULL, " ");
-
-        if (!target)
+        {
+            handler->SendSysMessage(LANG_SELECT_CHAR_OR_CREATURE);
+            handler->SetSentErrorMessage(true);
             return false;
+        }
 
+        std::string argstr = args;
         if (argstr == "all")
         {
             target->RemoveAllAuras();
@@ -359,7 +367,7 @@ public:
         }
 
         // number or [name] Shift-click form |color|Hspell:spell_id|h[name]|h|r or Htalent form
-        uint32 spellId = handler->extractSpellIdFromLink((char*)argstr.c_str());
+        uint32 spellId = handler->extractSpellIdFromLink((char*)args);
         if (!spellId)
             return false;
 
@@ -446,7 +454,7 @@ public:
                 {
                     Group* group = _player->GetGroup();
                     // if no bind exists, create a solo bind
-                    InstanceGroupBind* gBind = group ? group->GetBoundInstance(target) : NULL;                // if no bind exists, create a solo bind
+                    InstanceGroupBind* gBind = group ? group->GetBoundInstance(target) : nullptr;                // if no bind exists, create a solo bind
                     if (!gBind)
                         if (InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(target->GetInstanceId()))
                             _player->BindToInstance(save, !save->CanReset());
@@ -484,7 +492,7 @@ public:
         else
         {
             // check offline security
-            if (handler->HasLowerSecurity(NULL, targetGuid))
+            if (handler->HasLowerSecurity(nullptr, targetGuid))
                 return false;
 
             std::string nameLink = handler->playerLink(targetName);
@@ -601,7 +609,7 @@ public:
 
             // before GM
             float x, y, z;
-            handler->GetSession()->GetPlayer()->GetClosePoint(x, y, z, target->GetCombatReach());
+            handler->GetSession()->GetPlayer()->GetClosePoint(x, y, z, target->GetObjectSize());
             target->TeleportTo(handler->GetSession()->GetPlayer()->GetMapId(), x, y, z, target->GetOrientation());
             PhasingHandler::InheritPhaseShift(target, handler->GetSession()->GetPlayer());
             target->UpdateObjectVisibility();
@@ -609,7 +617,7 @@ public:
         else
         {
             // check offline security
-            if (handler->HasLowerSecurity(NULL, targetGuid))
+            if (handler->HasLowerSecurity(nullptr, targetGuid))
                 return false;
 
             std::string nameLink = handler->playerLink(targetName);
@@ -656,7 +664,7 @@ public:
             if (sWorld->getBoolConfig(CONFIG_DIE_COMMAND_MODE))
                 handler->GetSession()->GetPlayer()->Kill(target);
             else
-                handler->GetSession()->GetPlayer()->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                handler->GetSession()->GetPlayer()->DealDamage(target, target->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
         }
 
         return true;
@@ -749,7 +757,7 @@ public:
         if (!param1)
             return false;
 
-        char const* param2 = strtok(NULL, " ");
+        char const* param2 = strtok(nullptr, " ");
         if (!param2)
             return false;
 
@@ -805,7 +813,7 @@ public:
             if (!spellIid)
                 return false;
 
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellIid);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellIid, target->GetMap()->GetDifficultyID());
             if (!spellInfo)
             {
                 handler->PSendSysMessage(LANG_UNKNOWN_SPELL, owner == handler->GetSession()->GetPlayer() ? handler->GetTrinityString(LANG_YOU) : nameLink.c_str());
@@ -944,9 +952,9 @@ public:
     // kick player
     static bool HandleKickPlayerCommand(ChatHandler* handler, char const* args)
     {
-        Player* target = NULL;
+        Player* target = nullptr;
         std::string playerName;
-        if (!handler->extractPlayerTarget((char*)args, &target, NULL, &playerName))
+        if (!handler->extractPlayerTarget((char*)args, &target, nullptr, &playerName))
             return false;
 
         if (handler->GetSession() && target == handler->GetSession()->GetPlayer())
@@ -963,8 +971,8 @@ public:
         std::string kickReasonStr = handler->GetTrinityString(LANG_NO_REASON);
         if (*args != '\0')
         {
-            char const* kickReason = strtok(NULL, "\r");
-            if (kickReason != NULL)
+            char const* kickReason = strtok(nullptr, "\r");
+            if (kickReason != nullptr)
                 kickReasonStr = kickReason;
         }
 
@@ -1000,7 +1008,7 @@ public:
             return false;
 
         std::string location_str = "inn";
-        if (char const* loc = strtok(NULL, " "))
+        if (char const* loc = strtok(nullptr, " "))
             location_str = loc;
 
         Player* player = nullptr;
@@ -1027,14 +1035,14 @@ public:
 
         if (player->IsInFlight() || player->IsInCombat())
         {
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_UNSTUCK_ID);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_UNSTUCK_ID, DIFFICULTY_NONE);
             if (!spellInfo)
                 return false;
 
             if (Player* caster = handler->GetSession()->GetPlayer())
             {
                 ObjectGuid castId = ObjectGuid::Create<HighGuid::Cast>(SPELL_CAST_SOURCE_NORMAL, player->GetMapId(), SPELL_UNSTUCK_ID, player->GetMap()->GenerateLowGuid<HighGuid::Cast>());
-                Spell::SendCastResult(caster, spellInfo, SPELL_UNSTUCK_VISUAL, castId, SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                Spell::SendCastResult(caster, spellInfo, { SPELL_UNSTUCK_VISUAL, 0 }, castId, SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
             }
 
             return false;
@@ -1076,7 +1084,7 @@ public:
 
         uint32 team;
 
-        char* px2 = strtok(NULL, " ");
+        char* px2 = strtok(nullptr, " ");
 
         if (!px2)
             team = 0;
@@ -1280,8 +1288,8 @@ public:
                 std::string itemName = itemNameStr+1;
                 auto itr = std::find_if(sItemSparseStore.begin(), sItemSparseStore.end(), [&itemName](ItemSparseEntry const* sparse)
                 {
-                    for (uint32 i = 0; i < TOTAL_LOCALES; ++i)
-                        if (itemName == sparse->Display->Str[i])
+                    for (LocaleConstant i = LOCALE_enUS; i < TOTAL_LOCALES; i = LocaleConstant(i + 1))
+                        if (itemName == sparse->Display[i])
                             return true;
                     return false;
                 });
@@ -1306,18 +1314,18 @@ public:
             itemId = atoul(id);
         }
 
-        char const* ccount = strtok(NULL, " ");
+        char const* ccount = strtok(nullptr, " ");
 
         int32 count = 1;
 
         if (ccount)
-            count = strtol(ccount, NULL, 10);
+            count = strtol(ccount, nullptr, 10);
 
         if (count == 0)
             count = 1;
 
         std::vector<int32> bonusListIDs;
-        char const* bonuses = strtok(NULL, " ");
+        char const* bonuses = strtok(nullptr, " ");
 
         // semicolon separated bonuslist ids (parse them after all arguments are extracted by strtok!)
         if (bonuses)
@@ -1415,7 +1423,7 @@ public:
         }
 
         std::vector<int32> bonusListIDs;
-        char const* bonuses = strtok(NULL, " ");
+        char const* bonuses = strtok(nullptr, " ");
 
         // semicolon separated bonuslist ids (parse them after all arguments are extracted by strtok!)
         if (bonuses)
@@ -1455,7 +1463,7 @@ public:
                 }
                 else
                 {
-                    player->SendEquipError(msg, NULL, NULL, itr->second.GetId());
+                    player->SendEquipError(msg, nullptr, nullptr, itr->second.GetId());
                     handler->PSendSysMessage(LANG_ITEM_CANNOT_CREATE, itr->second.GetId(), 1);
                 }
             }
@@ -1502,7 +1510,7 @@ public:
 
         // *Change the weather of a cell
         char const* px = strtok((char*)args, " ");
-        char const* py = strtok(NULL, " ");
+        char const* py = strtok(nullptr, " ");
 
         if (!px || !py)
             return false;
@@ -1549,11 +1557,11 @@ public:
         if (!skillStr)
             return false;
 
-        char const* levelStr = strtok(NULL, " ");
+        char const* levelStr = strtok(nullptr, " ");
         if (!levelStr)
             return false;
 
-        char const* maxPureSkill = strtok(NULL, " ");
+        char const* maxPureSkill = strtok(nullptr, " ");
 
         uint32 skill = atoul(skillStr);
         if (skill == 0)
@@ -1594,7 +1602,7 @@ public:
         // add the skill to the player's book with step 1 (which is the first rank, in most cases something
         // like 'Apprentice <skill>'.
         target->SetSkill(skill, targetHasSkill ? target->GetSkillStep(skill) : 1, level, max);
-        handler->PSendSysMessage(LANG_SET_SKILL, skill, skillLine->DisplayName->Str[handler->GetSessionDbcLocale()], handler->GetNameLink(target).c_str(), level, max);
+        handler->PSendSysMessage(LANG_SET_SKILL, skill, skillLine->DisplayName[handler->GetSessionDbcLocale()], handler->GetNameLink(target).c_str(), level, max);
         return true;
     }
 
@@ -1622,7 +1630,7 @@ public:
         Player* target;
         ObjectGuid targetGuid;
         std::string targetName;
-        CharacterDatabasePreparedStatement* stmt = NULL;
+        CharacterDatabasePreparedStatement* stmt = nullptr;
 
         // To make sure we get a target, we convert our guid to an omniversal...
         ObjectGuid parseGUID = ObjectGuid::Create<HighGuid::Player>(strtoull(args, nullptr, 10));
@@ -1739,13 +1747,13 @@ public:
             mapId             = target->GetMapId();
             areaId            = target->GetAreaId();
             alive             = target->IsAlive() ? handler->GetTrinityString(LANG_YES) : handler->GetTrinityString(LANG_NO);
-            gender            = target->m_playerData->NativeSex;
+            gender            = target->GetNativeSex();
         }
         // get additional information from DB
         else
         {
             // check offline security
-            if (handler->HasLowerSecurity(NULL, targetGuid))
+            if (handler->HasLowerSecurity(nullptr, targetGuid))
                 return false;
 
             // Query informations from the DB
@@ -1882,7 +1890,7 @@ public:
 
         // Output III. LANG_PINFO_BANNED if ban exists and is applied
         if (banTime >= 0)
-            handler->PSendSysMessage(LANG_PINFO_BANNED, banType.c_str(), banReason.c_str(), banTime > 0 ? secsToTimeString(banTime - time(NULL), true).c_str() : handler->GetTrinityString(LANG_PERMANENTLY), bannedBy.c_str());
+            handler->PSendSysMessage(LANG_PINFO_BANNED, banType.c_str(), banReason.c_str(), banTime > 0 ? secsToTimeString(banTime - time(nullptr), true).c_str() : handler->GetTrinityString(LANG_PERMANENTLY), bannedBy.c_str());
 
         // Output IV. LANG_PINFO_MUTED if mute is applied
         if (muteTime > 0)
@@ -1932,15 +1940,15 @@ public:
         AreaTableEntry const* area = sAreaTableStore.LookupEntry(areaId);
         if (area)
         {
-            areaName = area->AreaName->Str[handler->GetSessionDbcLocale()];
+            areaName = area->AreaName[handler->GetSessionDbcLocale()];
 
             AreaTableEntry const* zone = sAreaTableStore.LookupEntry(area->ParentAreaID);
             if (zone)
-                zoneName = zone->AreaName->Str[handler->GetSessionDbcLocale()];
+                zoneName = zone->AreaName[handler->GetSessionDbcLocale()];
         }
 
         if (target)
-            handler->PSendSysMessage(LANG_PINFO_CHR_MAP, map->MapName->Str[handler->GetSessionDbcLocale()],
+            handler->PSendSysMessage(LANG_PINFO_CHR_MAP, map->MapName[handler->GetSessionDbcLocale()],
                 (!zoneName.empty() ? zoneName.c_str() : handler->GetTrinityString(LANG_UNKNOWN)),
                 (!areaName.empty() ? areaName.c_str() : handler->GetTrinityString(LANG_UNKNOWN)));
 
@@ -2013,9 +2021,9 @@ public:
         if (!delayStr)
             return false;
 
-        char const* muteReason = strtok(NULL, "\r");
+        char const* muteReason = strtok(nullptr, "\r");
         std::string muteReasonStr = handler->GetTrinityString(LANG_NO_REASON);
-        if (muteReason != NULL)
+        if (muteReason != nullptr)
             muteReasonStr = muteReason;
 
         Player* target;
@@ -2047,7 +2055,7 @@ public:
         if (target)
         {
             // Target is online, mute will be in effect right away.
-            int64 muteTime = time(NULL) + notSpeakTime * MINUTE;
+            int64 muteTime = time(nullptr) + notSpeakTime * MINUTE;
             target->GetSession()->m_muteTime = muteTime;
             stmt->setInt64(0, muteTime);
             std::string nameLink = handler->playerLink(targetName);
@@ -2064,15 +2072,15 @@ public:
             stmt->setInt64(0, muteTime);
         }
 
-        stmt->setString(1, muteReasonStr.c_str());
-        stmt->setString(2, muteBy.c_str());
+        stmt->setString(1, muteReasonStr);
+        stmt->setString(2, muteBy);
         stmt->setUInt32(3, accountId);
         LoginDatabase.Execute(stmt);
         stmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_ACCOUNT_MUTE);
         stmt->setUInt32(0, accountId);
         stmt->setUInt32(1, notSpeakTime);
-        stmt->setString(2, muteBy.c_str());
-        stmt->setString(3, muteReasonStr.c_str());
+        stmt->setString(2, muteBy);
+        stmt->setString(3, muteReasonStr);
         LoginDatabase.Execute(stmt);
         std::string nameLink = handler->playerLink(targetName);
 
@@ -2237,7 +2245,7 @@ public:
                     break;
                 case CHASE_MOTION_TYPE:
                 {
-                    Unit* target = NULL;
+                    Unit* target = nullptr;
                     if (unit->GetTypeId() == TYPEID_PLAYER)
                         target = static_cast<ChaseMovementGenerator<Player> const*>(movementGenerator)->GetTarget();
                     else
@@ -2253,7 +2261,7 @@ public:
                 }
                 case FOLLOW_MOTION_TYPE:
                 {
-                    Unit* target = NULL;
+                    Unit* target = nullptr;
                     if (unit->GetTypeId() == TYPEID_PLAYER)
                         target = static_cast<FollowMovementGenerator<Player> const*>(movementGenerator)->GetTarget();
                     else
@@ -2329,7 +2337,7 @@ public:
 
         if (strcmp(str, "go") == 0)
         {
-            char* guidStr = strtok(NULL, " ");
+            char* guidStr = strtok(nullptr, " ");
             if (!guidStr)
             {
                 handler->SendSysMessage(LANG_BAD_VALUE);
@@ -2345,7 +2353,7 @@ public:
                 return false;
             }
 
-            char* damageStr = strtok(NULL, " ");
+            char* damageStr = strtok(nullptr, " ");
             if (!damageStr)
             {
                 handler->SendSysMessage(LANG_BAD_VALUE);
@@ -2410,12 +2418,12 @@ public:
 
         uint32 damage = damage_int;
 
-        char* schoolStr = strtok((char*)NULL, " ");
+        char* schoolStr = strtok((char*)nullptr, " ");
 
         // flat melee damage without resistence/etc reduction
         if (!schoolStr)
         {
-            handler->GetSession()->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+            handler->GetSession()->GetPlayer()->DealDamage(target, damage, nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
             if (target != handler->GetSession()->GetPlayer())
                 handler->GetSession()->GetPlayer()->SendAttackStateUpdate (HITINFO_AFFECTS_VICTIM, target, 1, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_HIT, 0);
             return true;
@@ -2428,9 +2436,9 @@ public:
         SpellSchoolMask schoolmask = SpellSchoolMask(1 << school);
 
         if (handler->GetSession()->GetPlayer()->IsDamageReducedByArmor(schoolmask))
-            damage = handler->GetSession()->GetPlayer()->CalcArmorReducedDamage(handler->GetSession()->GetPlayer(), target, damage, NULL, BASE_ATTACK);
+            damage = handler->GetSession()->GetPlayer()->CalcArmorReducedDamage(handler->GetSession()->GetPlayer(), target, damage, nullptr, BASE_ATTACK);
 
-        char* spellStr = strtok((char*)NULL, " ");
+        char* spellStr = strtok((char*)nullptr, " ");
 
         Player* attacker = handler->GetSession()->GetPlayer();
 
@@ -2460,11 +2468,11 @@ public:
         if (!spellid)
             return false;
 
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellid);
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellid, attacker->GetMap()->GetDifficultyID());
         if (!spellInfo)
             return false;
 
-        SpellNonMeleeDamage damageInfo(attacker, target, spellid, spellInfo->GetSpellXSpellVisualId(handler->GetSession()->GetPlayer()), spellInfo->SchoolMask);
+        SpellNonMeleeDamage damageInfo(attacker, target, spellInfo, { spellInfo->GetSpellXSpellVisualId(handler->GetSession()->GetPlayer()),0 }, spellInfo->SchoolMask);
         damageInfo.damage = damage;
         attacker->DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb, SPELL_DIRECT_DAMAGE);
         target->DealSpellDamage(&damageInfo, true);
@@ -2474,7 +2482,7 @@ public:
 
     static bool HandleCombatStopCommand(ChatHandler* handler, char const* args)
     {
-        Player* target = NULL;
+        Player* target = nullptr;
 
         if (args && args[0] != '\0')
         {
@@ -2548,7 +2556,7 @@ public:
         {
             // Get the args that we might have (up to 2)
             char const* arg1 = strtok((char*)args, " ");
-            char const* arg2 = strtok(NULL, " ");
+            char const* arg2 = strtok(nullptr, " ");
 
             // Analyze them to see if we got either a playerName or duration or both
             if (arg1)
@@ -2719,7 +2727,9 @@ public:
         if (!*args)
             return false;
 
-        uint32 soundId = atoul(args);
+        char const* soundIdToken = strtok((char*)args, " ");
+
+        uint32 soundId = atoul(soundIdToken);
 
         if (!sSoundKitStore.LookupEntry(soundId))
         {
@@ -2728,7 +2738,15 @@ public:
             return false;
         }
 
-        sWorld->SendGlobalMessage(WorldPackets::Misc::PlaySound(handler->GetSession()->GetPlayer()->GetGUID(), soundId).Write());
+        uint32 broadcastTextId = 0;
+        char const* broadcastTextIdToken = strtok(nullptr, " ");
+        if (broadcastTextIdToken)
+            broadcastTextId = atoul(broadcastTextIdToken);
+
+        if(broadcastTextId != 0)
+            sWorld->SendGlobalMessage(WorldPackets::Misc::PlaySound(handler->GetSession()->GetPlayer()->GetGUID(), soundId, broadcastTextId).Write());
+        //else
+            //sWorld->SendGlobalMessage(WorldPackets::Misc::PlaySound(handler->GetSession()->GetPlayer()->GetGUID(), soundId).Write());
 
         handler->PSendSysMessage(LANG_COMMAND_PLAYED_TO_ALL, soundId);
         return true;
