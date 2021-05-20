@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+# Copyright 2021 AzgathCore
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -11,6 +11,7 @@
 set(Recast_STAT_SRCS
     Source/Recast.cpp 
     Source/RecastAlloc.cpp 
+	Source/RecastAssert.cpp 
     Source/RecastArea.cpp 
     Source/RecastContour.cpp 
     Source/RecastFilter.cpp 
