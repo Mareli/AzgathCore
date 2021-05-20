@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+# Copyright 2021 AzgathCore
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -17,7 +17,7 @@ if(NOT BUILDDIR)
 endif()
 
 if(WITHOUT_GIT)
-  set(rev_date "2020-08-10 03:45:24 +0000")
+  set(rev_date "2021-05-11 20:30:00 +0000")
   set(rev_hash "unknown")
   set(rev_branch "Archived")
 else()
@@ -56,8 +56,8 @@ else()
     # No valid ways available to find/set the revision/hash, so let's force some defaults
     message(STATUS "
     Could not find a proper repository signature (hash) - you may need to pull tags with git fetch -t
-    Continuing anyway - note that the versionstring will be set to \"unknown 2020-08-10 03:45:24 (Archived)\"")
-    set(rev_date "2020-08-10 03:45:24 +0000")
+    Continuing anyway - note that the versionstring will be set to \"unknown 2021-05-11 20:30:00 (Archived)\"")
+    set(rev_date "2021-05-11 20:30:00 +0000")
     set(rev_hash "unknown")
     set(rev_branch "Archived")
   else()
@@ -67,10 +67,10 @@ else()
 endif()
 
 # Create the actual revision_data.h file from the above params
-if(NOT "${rev_hash_cached}" MATCHES "${rev_hash}" OR NOT "${rev_branch_cached}" MATCHES "${rev_branch}" OR NOT EXISTS "${BUILDDIR}/revision_data.h")
+if(NOT "${rev_hash_cached}" MATCHES "${rev_hash}" OR NOT "${rev_branch_cached}" MATCHES "${rev_branch}" OR NOT EXISTS "${BUILDDIR}/src/genrev/CMakeFiles/revision_data.h")
   configure_file(
     "${CMAKE_SOURCE_DIR}/revision_data.h.in.cmake"
-    "${BUILDDIR}/revision_data.h"
+    "${BUILDDIR}/src/genrev/CMakeFiles/revision_data.h"
     @ONLY
   )
   set(rev_hash_cached "${rev_hash}" CACHE INTERNAL "Cached commit-hash")

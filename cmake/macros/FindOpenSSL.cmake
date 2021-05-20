@@ -33,21 +33,30 @@ SET(_OPENSSL_ROOT_HINTS
   "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;Inno Setup: App Path]"
   )
 
+set(_OPENSSL_MSI_INSTALL_GUID "")
+
 IF(PLATFORM EQUAL 64)
+  set(_OPENSSL_MSI_INSTALL_GUID "117551DB-A110-4BBD-BB05-CFE0BCB3ED31")
   SET(_OPENSSL_ROOT_PATHS
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;InstallLocation]"
-    "C:/Program Files/OpenSSL-Win64/"
     "C:/OpenSSL-Win64/"
     "C:/OpenSSL/"
   )
 ELSE()
+  set(_OPENSSL_MSI_INSTALL_GUID "A1EEC576-43B9-4E75-9E02-03DA542D2A38")
   SET(_OPENSSL_ROOT_PATHS
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;InstallLocation]"
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;InstallLocation]"
-    "C:/Program Files/OpenSSL-Win32/"
     "C:/OpenSSL/"
   )
 ENDIF()
+
+# If OpenSSL was installed using .msi package instead of .exe, Inno Setup registry values are not written to Uninstall\OpenSSL
+# but because it is only a shim around Inno Setup it does write the location of uninstaller which we can use to determine path
+get_filename_component(_OPENSSL_MSI_INSTALL_PATH "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Inno Setup MSIs\\${_OPENSSL_MSI_INSTALL_GUID};]" DIRECTORY)
+if(NOT _OPENSSL_MSI_INSTALL_PATH STREQUAL "/")
+  list(APPEND _OPENSSL_ROOT_PATHS ${_OPENSSL_MSI_INSTALL_PATH})
+endif()
 
 FIND_PATH(OPENSSL_ROOT_DIR
   NAMES
@@ -232,7 +241,7 @@ if (OPENSSL_INCLUDE_DIR)
   include(EnsureVersion)
   ENSURE_VERSION_RANGE("${OPENSSL_EXPECTED_VERSION}" "${OPENSSL_VERSION}" "${OPENSSL_MAX_VERSION}" OPENSSL_VERSION_OK)
   if (NOT OPENSSL_VERSION_OK)
-      message(FATAL_ERROR "LegacyProjectBFA needs OpenSSL version ${OPENSSL_EXPECTED_VERSION} but found version ${OPENSSL_VERSION}")
+      message(FATAL_ERROR "AzgathCore needs OpenSSL version ${OPENSSL_EXPECTED_VERSION} but found version ${OPENSSL_VERSION}")
   endif()
 endif (OPENSSL_INCLUDE_DIR)
 
