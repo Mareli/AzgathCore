@@ -1,4 +1,4 @@
-# ![logo](https://azgath.com/download/img/AZCC.png) Az'gathCore 8.3.7
+# ![logo](https://azgath.com/download/img/AZCC.png) Az'gathCore 9.0.2
 
 * [Introduction](#introduction)
 * [Requirements](#requirements)
