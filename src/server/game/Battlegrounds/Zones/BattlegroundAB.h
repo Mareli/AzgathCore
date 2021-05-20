@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -115,7 +114,7 @@ enum BG_AB_Timers
 enum BG_AB_Score
 {
     BG_AB_WARNING_NEAR_VICTORY_SCORE    = 1200,
-    BG_AB_MAX_TEAM_SCORE                = 1600
+    BG_AB_MAX_TEAM_SCORE                = 1500
 };
 
 /* do NOT change the order, else wrong behaviour */
@@ -288,7 +287,7 @@ struct BattlegroundABScore final : public BattlegroundScore
             }
         }
 
-        void BuildPvPLogPlayerDataPacket(WorldPackets::Battleground::PVPLogData::PVPMatchPlayerStatistics& playerData) const override
+        void BuildPvPLogPlayerDataPacket(WorldPackets::Battleground::PVPMatchStatistics::PVPMatchPlayerStatistics& playerData) const override
         {
             BattlegroundScore::BuildPvPLogPlayerDataPacket(playerData);
 
@@ -306,7 +305,7 @@ struct BattlegroundABScore final : public BattlegroundScore
 class BattlegroundAB : public Battleground
 {
     public:
-        BattlegroundAB(BattlegroundTemplate const* battlegroundTemplate);
+        BattlegroundAB();
         ~BattlegroundAB();
 
         void AddPlayer(Player* player) override;

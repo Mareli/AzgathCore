@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -937,7 +936,7 @@ struct BattlegroundICScore final : public BattlegroundScore
             }
         }
 
-        void BuildPvPLogPlayerDataPacket(WorldPackets::Battleground::PVPLogData::PVPMatchPlayerStatistics& playerData) const override
+        void BuildPvPLogPlayerDataPacket(WorldPackets::Battleground::PVPMatchStatistics::PVPMatchPlayerStatistics& playerData) const override
         {
             BattlegroundScore::BuildPvPLogPlayerDataPacket(playerData);
 
@@ -955,7 +954,7 @@ struct BattlegroundICScore final : public BattlegroundScore
 class BattlegroundIC : public Battleground
 {
     public:
-        BattlegroundIC(BattlegroundTemplate const* battlegroundTemplate);
+        BattlegroundIC();
         ~BattlegroundIC();
 
         /* inherited from BattlegroundClass */

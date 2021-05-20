@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -40,7 +39,7 @@ enum BattlegroundRLGameObjects
 class BattlegroundRL : public Arena
 {
     public:
-        BattlegroundRL(BattlegroundTemplate const* battlegroundTemplate);
+        BattlegroundRL();
 
         /* inherited from BattlegroundClass */
         void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;

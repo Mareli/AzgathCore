@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- *
+ * Copyright 2021 AzgathCore
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2 of the License, or (at your
@@ -19,7 +18,7 @@
 #include "Player.h"
 #include "WorldStatePackets.h"
 
-BattlegroundTVA::BattlegroundTVA(BattlegroundTemplate const* battlegroundTemplate) : Arena(battlegroundTemplate)
+BattlegroundTVA::BattlegroundTVA()
 {
     BgObjects.resize(BG_TV_OBJECT_MAX);
 }
@@ -46,8 +45,8 @@ void BattlegroundTVA::HandleAreaTrigger(Player* player, uint32 trigger, bool ent
 
     switch (trigger)
     {
-        case 8451:
-        case 8452:
+    case 8451:
+    case 8452:
             break;
         default:
             Battleground::HandleAreaTrigger(player, trigger, entered);
@@ -67,7 +66,6 @@ bool BattlegroundTVA::SetupBattleground()
         !AddObject(BG_TV_OBJECT_DOOR_2, BG_TV_OBJECT_TYPE_DOOR_2, -10774.61f, 431.2383f, 23.54276f, 0, 0, 0, 0, 1.f, RESPAWN_IMMEDIATELY) ||
         !AddObject(BG_TV_OBJECT_BUFF_1, BG_TV_OBJECT_TYPE_BUFF_1, -10717.63f, 383.8223f, 24.412825f, 1.555f, 0.0f, 0.0f, 0.70154f, 120) ||
         !AddObject(BG_TV_OBJECT_BUFF_2, BG_TV_OBJECT_TYPE_BUFF_2, -10716.6f, 475.364f, 24.4131f, 0.0f, 0.0f, 0.70068f, -0.713476f, 120))
-
     {
         TC_LOG_ERROR("sql.sql", "BatteGroundTVA: Failed to spawn some object!");
         return false;

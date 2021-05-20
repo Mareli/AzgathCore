@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -122,9 +121,7 @@ enum BG_AV_OTHER_VALUES
 };
 enum BG_AV_ObjectIds
 {
-    //cause the mangos-system is a bit different, we don't use the right go-ids for every node.. if we want to be 100% like another big server, we must take one object for every node
-    //snowfall 4flags as eyecandy 179424 (alliance neutral)
-    //Banners - stolen from battleground_AB.h ;-)
+    //Banners - from battleground_AB.h
     BG_AV_OBJECTID_BANNER_A             = 178925, // can only be used by horde
     BG_AV_OBJECTID_BANNER_H             = 178943, // can only be used by alliance
     BG_AV_OBJECTID_BANNER_CONT_A        = 178940, // can only be used by horde
@@ -1598,7 +1595,7 @@ struct BattlegroundAVScore final : public BattlegroundScore
             }
         }
 
-        void BuildPvPLogPlayerDataPacket(WorldPackets::Battleground::PVPLogData::PVPMatchPlayerStatistics& playerData) const override
+        void BuildPvPLogPlayerDataPacket(WorldPackets::Battleground::PVPMatchStatistics::PVPMatchPlayerStatistics& playerData) const override
         {
             BattlegroundScore::BuildPvPLogPlayerDataPacket(playerData);
 
@@ -1625,7 +1622,7 @@ struct BattlegroundAVScore final : public BattlegroundScore
 class BattlegroundAV : public Battleground
 {
     public:
-        BattlegroundAV(BattlegroundTemplate const* battlegroundTemplate);
+        BattlegroundAV();
         ~BattlegroundAV();
 
         /* inherited from BattlegroundClass */

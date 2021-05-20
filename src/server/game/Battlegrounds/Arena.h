@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -48,7 +48,7 @@ enum ArenaWorldStates
 class TC_GAME_API Arena : public Battleground
 {
     protected:
-        Arena(BattlegroundTemplate const* battlegroundTemplate);
+        Arena();
 
         void AddPlayer(Player* player) override;
         void RemovePlayer(Player* /*player*/, ObjectGuid /*guid*/, uint32 /*team*/) override;
@@ -58,7 +58,7 @@ class TC_GAME_API Arena : public Battleground
 
         void HandleKillPlayer(Player* player, Player* killer) override;
 
-        void BuildPvPLogDataPacket(WorldPackets::Battleground::PVPLogData& pvpLogData) const override;
+        void BuildPvPLogDataPacket(WorldPackets::Battleground::PVPMatchStatistics& pvpLogData) const override;
 
     private:
         void RemovePlayerAtLeave(ObjectGuid guid, bool transport, bool sendPacket) override;

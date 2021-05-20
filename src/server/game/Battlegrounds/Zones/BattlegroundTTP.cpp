@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- *
+ * Copyright 2021 AzgathCore
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2 of the License, or (at your
@@ -19,7 +18,7 @@
 #include "Player.h"
 #include "WorldStatePackets.h"
 
-BattlegroundTTP::BattlegroundTTP(BattlegroundTemplate const* battlegroundTemplate) : Arena(battlegroundTemplate)
+BattlegroundTTP::BattlegroundTTP()
 {
     BgObjects.resize(BG_TTP_OBJECT_MAX);
 }
@@ -63,7 +62,7 @@ void BattlegroundTTP::FillInitialWorldStates(WorldPackets::WorldState::InitWorld
 
 bool BattlegroundTTP::SetupBattleground()
 {
-   if (!AddObject(BG_TTP_OBJECT_DOOR_1, BG_TTP_OBJECT_TYPE_DOOR_1, 501.932f, 633.429f, 380.708f, 0.0262353f, 0, 0, 0, 0, RESPAWN_IMMEDIATELY) ||
+    if (!AddObject(BG_TTP_OBJECT_DOOR_1, BG_TTP_OBJECT_TYPE_DOOR_1, 501.932f, 633.429f, 380.708f, 0.0262353f, 0, 0, 0, 0, RESPAWN_IMMEDIATELY) ||
         !AddObject(BG_TTP_OBJECT_DOOR_2, BG_TTP_OBJECT_TYPE_DOOR_2, 632.101f, 633.791f, 380.704f, 3.20989f, 0, 0, 0, 0, RESPAWN_IMMEDIATELY) ||
         !AddObject(BG_TTP_OBJECT_BUFF_1, BG_TTP_OBJECT_TYPE_BUFF_1, 566.6805f, 602.2274f, 383.6813f, 3.316144f, 0, 0, -1.f, 0, 120) ||
         !AddObject(BG_TTP_OBJECT_BUFF_2, BG_TTP_OBJECT_TYPE_BUFF_2, 566.6563f, 664.566f, 383.6809f, 2.460913f, 0, 0, 0, 1.f, 120))
