@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -261,7 +260,7 @@ public:
 
         void EnterCombat(Unit* /*who*/) override { }
 
-        void SaySound(uint8 textEntry, Unit* target = 0)
+        void SaySound(uint8 textEntry, Unit* target = nullptr)
         {
             Talk(textEntry, target);
 
@@ -532,7 +531,7 @@ public:
             }
         }
 
-        void SaySound(uint8 textEntry, Unit* target = 0)
+        void SaySound(uint8 textEntry, Unit* target = nullptr)
         {
             Talk(textEntry, target);
             laugh += 4000;
@@ -542,7 +541,7 @@ public:
         {
             Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
             if (PlayerList.isEmpty())
-                return NULL;
+                return nullptr;
 
             std::list<Player*> temp;
             for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
@@ -556,7 +555,7 @@ public:
                 advance(j, rand32() % temp.size());
                 return (*j);
             }
-            return NULL;
+            return nullptr;
         }
 
         void SpellHitTarget(Unit* unit, const SpellInfo* spell) override

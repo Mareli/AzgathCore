@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -149,9 +148,9 @@ public:
         return GetScarletMonasteryAI<npc_scarlet_traineeAI>(creature);
     }
 
-    struct npc_scarlet_traineeAI : public npc_escortAI
+    struct npc_scarlet_traineeAI : public EscortAI
     {
-        npc_scarlet_traineeAI(Creature* creature) : npc_escortAI(creature)
+        npc_scarlet_traineeAI(Creature* creature) : EscortAI(creature)
         {
             Start_Timer = urand(1000, 6000);
         }
@@ -173,7 +172,7 @@ public:
                 } else Start_Timer -= diff;
             }
 
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
         }
     };
 };

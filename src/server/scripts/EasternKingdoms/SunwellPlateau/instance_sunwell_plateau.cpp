@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -77,7 +77,7 @@ class instance_sunwell_plateau : public InstanceMapScript
                 else
                     TC_LOG_DEBUG("scripts", "Instance Sunwell Plateau: GetPlayerInMap, but PlayerList is empty!");
 
-                return NULL;
+                return nullptr;
             }
 
             void OnCreatureCreate(Creature* creature) override

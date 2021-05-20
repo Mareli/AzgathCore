@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -154,7 +154,7 @@ class spell_summon_worgen_spirits : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellEntry*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_SUMMON_WORGEN_SPIRIT))
+                if (!sSpellMgr->GetSpellInfo(SPELL_SUMMON_WORGEN_SPIRIT, DIFFICULTY_NONE))
                     return false;
                 return true;
             }

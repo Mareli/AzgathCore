@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -87,13 +87,13 @@ public:
                         playerGUID = player->GetGUID();
                         speechTimer = 1000;
                         speechCounter = 1;
-                        me->setFaction(player->getFaction());
+                        me->SetFaction(player->GetFaction());
                         me->CombatStop(true);
                         me->GetMotionMaster()->MoveIdle();
                         me->SetReactState(REACT_PASSIVE);
                         DoCastAOE(SPELL_THREAT_PULSE, true);
 
-                        sCreatureTextMgr->SendChat(me, SAY_PERSUADE_RAND, NULL, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
+                        sCreatureTextMgr->SendChat(me, SAY_PERSUADE_RAND, nullptr, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
                         Talk(SAY_CRUSADER);
                     }
                 }
@@ -136,7 +136,7 @@ public:
                             break;
 
                         case 5:
-                            sCreatureTextMgr->SendChat(me, SAY_PERSUADED5, NULL, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
+                            sCreatureTextMgr->SendChat(me, SAY_PERSUADED5, nullptr, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
                             speechTimer = 8000;
                             break;
 
@@ -207,15 +207,15 @@ public:
         {
             creature->SetStandState(UNIT_STAND_STATE_STAND);
 
-            if (npc_escortAI* escortAI = CAST_AI(npc_koltira_deathweaver::npc_koltira_deathweaverAI, creature->AI()))
+            if (EscortAI* escortAI = CAST_AI(npc_koltira_deathweaver::npc_koltira_deathweaverAI, creature->AI()))
                 escortAI->Start(false, false, player->GetGUID());
         }
         return true;
     }
 
-    struct npc_koltira_deathweaverAI : public npc_escortAI
+    struct npc_koltira_deathweaverAI : public EscortAI
     {
-        npc_koltira_deathweaverAI(Creature* creature) : npc_escortAI(creature)
+        npc_koltira_deathweaverAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             me->SetReactState(REACT_DEFENSIVE);
@@ -293,7 +293,7 @@ public:
 
         void UpdateAI(uint32 uiDiff) override
         {
-            npc_escortAI::UpdateAI(uiDiff);
+            EscortAI::UpdateAI(uiDiff);
 
             if (HasEscortState(STATE_ESCORT_PAUSED))
             {
@@ -768,6 +768,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -798,6 +799,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -828,6 +830,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -858,6 +861,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -888,6 +892,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -918,6 +923,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -948,6 +954,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -978,6 +985,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -1008,6 +1016,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -1038,6 +1047,7 @@ public:
                                     Talk(EMOTE_DIES);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -1068,6 +1078,7 @@ public:
                                     Talk(EMOTE_DIES, me);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;
@@ -1098,6 +1109,7 @@ public:
                                     Talk(EMOTE_DIES, me);
                                     me->setDeathState(JUST_DIED);
                                     me->SetHealth(0);
+                                    player->KilledMonsterCredit(me->GetEntry());
                                     return;
                             }
                             break;

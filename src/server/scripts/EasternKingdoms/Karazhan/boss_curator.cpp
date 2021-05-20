@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -143,8 +142,7 @@ public:
                 {
                     //Summon Astral Flare
                     Creature* AstralFlare = DoSpawnCreature(17096, float(rand32() % 37), float(rand32() % 37), 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                    Unit* target = NULL;
-                    target = SelectTarget(SELECT_TARGET_RANDOM, 0);
+                    Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0);
 
                     if (AstralFlare && target)
                     {

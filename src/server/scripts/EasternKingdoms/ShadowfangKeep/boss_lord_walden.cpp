@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,7 +30,6 @@ enum Spells
     SPELL_CONJURE_POISONOUS_MIXTURE        = 93697,
     SPELL_CONJURE_MYSTERY_TOXIN            = 93563,
     SPELL_TOXIC_COAGULANT_GREEN            = 93572,
-    SPELL_TOXIC_COAGULANT_RED              = 93573,
     SPELL_ICE_SHARDS                       = 93527,
     SPELL_TOXIC_COAGULANT_TRIGGERED        = 93617,
     SPELL_FULLY_COAGULATED                 = 93660
@@ -109,15 +108,10 @@ class boss_lord_walden : public CreatureScript
                     {
                         if (roll_chance_i(75))
                             summon->CastSpell(summon, SPELL_TOXIC_COAGULANT_GREEN, false);
-                        else
-                            summon->CastSpell(summon, SPELL_TOXIC_COAGULANT_RED, false);
                     }
                     else
                     {
-                        if (roll_chance_i(75))
-                            summon->CastSpell(summon, SPELL_TOXIC_COAGULANT_RED, false);
-                        else
-                            summon->CastSpell(summon, SPELL_TOXIC_COAGULANT_GREEN, false);
+                        summon->CastSpell(summon, SPELL_TOXIC_COAGULANT_GREEN, false);
                     }
                 }
             }
@@ -176,44 +170,6 @@ public:
     }
 };
 
-class spell_toxic_coagulant_red : public SpellScriptLoader
-{
-public:
-    spell_toxic_coagulant_red() : SpellScriptLoader("spell_toxic_coagulant_red") { }
-
-    class spell_toxic_coagulant_red_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_toxic_coagulant_red_SpellScript);
-
-        void FilterTargetsInitial(std::list<WorldObject*>& unitList)
-        {
-            unitList.remove_if(NotMovingFilter());
-
-            targetList.clear();
-            targetList.insert(targetList.end(), unitList.begin(), unitList.end());
-        }
-
-        void FilterTargetsSubsequential(std::list<WorldObject*>& unitList)
-        {
-            unitList.clear();
-            unitList.insert(unitList.end(), targetList.begin(), targetList.end());
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_toxic_coagulant_red_SpellScript::FilterTargetsInitial, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_toxic_coagulant_red_SpellScript::FilterTargetsSubsequential, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_toxic_coagulant_red_SpellScript::FilterTargetsSubsequential, EFFECT_2, TARGET_UNIT_SRC_AREA_ENEMY);
-        }
-        std::list<WorldObject*> targetList;
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_toxic_coagulant_red_SpellScript();
-    }
-};
-
 class spell_toxic_coagulant_green : public SpellScriptLoader
 {
 public:
@@ -252,6 +208,5 @@ public:
 void AddSC_boss_lord_walden()
 {
     new boss_lord_walden();
-    new spell_toxic_coagulant_red();
     new spell_toxic_coagulant_green();
 }

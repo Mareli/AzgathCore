@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -217,7 +217,7 @@ public:
                     summon->CastSpell(summon, SPELL_FOG_CHARM, true);
                     summon->CastSpell(summon, SPELL_FOG_CHARM2, true);
                 }
-                me->DealDamage(caster, caster->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                me->DealDamage(caster, caster->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
             }
         }
 
@@ -362,7 +362,7 @@ public:
                 }
                 case 6:
                     me->SetFacingTo(me->GetAngle(breathX, breathY));
-                    //DoTextEmote("takes a deep breath.", NULL);
+                    //DoTextEmote("takes a deep breath.", nullptr);
                     events.ScheduleEvent(EVENT_FLIGHT_SEQUENCE, 10000);
                     break;
                 case 7:

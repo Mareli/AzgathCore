@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2010-2011 Project Trinity <http://www.projecttrinity.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -481,38 +480,9 @@ public:
     Unit* caster;
 };
 
-
-class spell_shadow_gale_damage : public SpellScriptLoader
-{
-public:
-    spell_shadow_gale_damage() : SpellScriptLoader("spell_shadow_gale_damage") { }
-
-    class spell_shadow_gale_damage_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_shadow_gale_damage_SpellScript);
-
-        void FilterTargets(std::list<WorldObject*>& targetList)
-        {
-            targetList.remove_if(DistanceCheck(GetCaster()));
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shadow_gale_damage_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shadow_gale_damage_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_shadow_gale_damage_SpellScript();
-    }
-};
-
 void AddSC_boss_erudax()
 {
     new boss_erudax();
     new mob_faceless();
     new mob_alexstraszas_eggs();
-    new spell_shadow_gale_damage();
 }

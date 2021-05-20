@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -320,7 +319,7 @@ public:
 
             if (DispelTimer <= diff)
             {
-                Unit* target = NULL;
+                Unit* target = nullptr;
 
                 if (urand(0, 1))
                     target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true);

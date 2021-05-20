@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -268,8 +268,8 @@ public:
 
             if (ShadowimageTimer <= diff)
             {
-                Unit* target = NULL;
-                Creature* temp = NULL;
+                Unit* target = nullptr;
+                Creature* temp = nullptr;
                 for (uint8 i = 0; i<3; ++i)
                 {
                     target = SelectTarget(SELECT_TARGET_RANDOM, 0);

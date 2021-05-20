@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2010-2011 Project Trinity <http://www.projecttrinity.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -372,69 +371,6 @@ public:
     }
 };
 
-
-class spell_throngus_arrow_barage : public SpellScriptLoader
-{
-    class DistCheck
-    {
-    public:
-        DistCheck(Unit *caster)
-        {
-            _caster = caster;
-        }
-
-        bool operator() (WorldObject* obj)
-        {
-            if (_caster && obj)
-                if (_caster->GetDistance2d(obj) >= 60)
-                    return true;
-            return false;
-        }
-    private:
-        Unit *_caster;
-    };
-
-
-public:
-    spell_throngus_arrow_barage() : SpellScriptLoader("spell_throngus_arrow_barage")
-    {
-    }
-
-    class script_impl : public SpellScript
-    {
-        PrepareSpellScript(script_impl);
-
-        bool Load() override
-        {
-            return true;
-        }
-
-        void FilterTargets(std::list<WorldObject*>& unitList)
-        {
-            unitList.remove_if(DistCheck(GetCaster()));
-            if (unitList.empty())
-                return;
-            std::list<WorldObject*>::const_iterator itr = unitList.begin();
-            advance(itr, rand() % unitList.size());
-            if (WorldObject * tar = *itr)
-            {
-                unitList.clear();
-                unitList.push_back(tar);
-            }
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(script_impl::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new script_impl();
-    }
-};
-
 class spell_disoriented_roar : public SpellScriptLoader
 {
 public:
@@ -476,6 +412,5 @@ void AddSC_boss_forgemaster_throngus()
 {
     new boss_forgemaster_throngus();
     new spell_effect_fix();
-    new spell_throngus_arrow_barage();
     new spell_disoriented_roar();
 }

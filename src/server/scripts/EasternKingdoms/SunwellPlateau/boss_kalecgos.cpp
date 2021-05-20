@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -160,7 +159,7 @@ public:
             if (Creature* Sath = ObjectAccessor::GetCreature(*me, SathGUID))
                 Sath->AI()->EnterEvadeMode();
 
-            me->setFaction(14);
+            me->SetFaction(14);
             if (!bJustReset) //first reset at create
             {
                 me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
@@ -387,7 +386,7 @@ public:
             switch (TalkSequence)
             {
                 case 1:
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     TalkTimer = 1000;
                     break;
                 case 2:
