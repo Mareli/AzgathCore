@@ -20,7 +20,7 @@ void AddSC_custom_npcs();
 void AddSC_custom_player_script();
 void AddSC_cs_world_chat();
 void AddSC_solocraft();
-void AddSC_arwent_legit_quest_bypass();
+void AddSC_azgath_legit_quest_bypass();
 void AddSC_XpWeekend();
 void AddSC_heirloom_mount_tempfix();
 
@@ -35,7 +35,7 @@ void AddCustomScripts()
     AddSC_custom_player_script();
     AddSC_cs_world_chat();
 	AddSC_solocraft();
-	AddSC_arwent_legit_quest_bypass();
+	AddSC_azgath_legit_quest_bypass();
 	AddSC_XpWeekend();
 	AddSC_heirloom_mount_tempfix();
 
