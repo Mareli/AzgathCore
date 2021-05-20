@@ -1,4 +1,4 @@
-# ![logo](https://azgath.eu/img/githuba.png) Az'gathCore 9.0.2
+# ![logo](https://azgath.eu/img/githubaz.png) Az'gathCore 9.0.2
 
 * [Introduction](#introduction)
 * [Requirements](#requirements)
