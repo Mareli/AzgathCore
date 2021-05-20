@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -81,9 +80,13 @@ void ExtractGameobjectModels()
 
     DB2CascFileSource source(CascStorage, GameobjectDisplayInfoLoadInfo::Instance()->Meta->FileDataId);
     DB2FileLoader db2;
-    if (!db2.Load(&source, GameobjectDisplayInfoLoadInfo::Instance()))
+    try
     {
-        printf("Fatal error: Invalid GameObjectDisplayInfo.db2 file format!\n");
+        db2.Load(&source, GameobjectDisplayInfoLoadInfo::Instance());
+    }
+    catch (std::exception const& e)
+    {
+        printf("Fatal error: Invalid GameObjectDisplayInfo.db2 file format!\n%s\n", e.what());
         exit(1);
     }
 

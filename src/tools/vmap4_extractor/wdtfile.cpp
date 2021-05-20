@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,7 +32,7 @@ WDTFile::WDTFile(uint32 fileDataId, std::string const& description, std::string 
     memset(&_adtInfo, 0, sizeof(WDT::MAIN));
     if (cache)
     {
-        _adtCache = Trinity::make_unique<ADTCache>();
+        _adtCache = std::make_unique<ADTCache>();
         memset(_adtCache->file, 0, sizeof(_adtCache->file));
     }
     else
@@ -81,7 +80,7 @@ bool WDTFile::init(uint32 mapId)
         else if (!strcmp(fourcc, "MAID"))
         {
             ASSERT(size == sizeof(WDT::MAID));
-            _adtFileDataIds = Trinity::make_unique<WDT::MAID>();
+            _adtFileDataIds = std::make_unique<WDT::MAID>();
             _file.read(_adtFileDataIds.get(), sizeof(WDT::MAID));
         }
         else if (!strcmp(fourcc,"MWMO"))

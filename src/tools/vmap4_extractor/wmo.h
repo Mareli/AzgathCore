@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -65,7 +64,7 @@ namespace WMO
 }
 
 /* for whatever reason a certain company just can't stick to one coordinate system... */
-static inline Vec3D fixCoords(const Vec3D &v){ return Vec3D(v.z, v.x, v.y); }
+static inline Vec3D fixCoords(Vec3D const& v){ return Vec3D(v.z, v.x, v.y); }
 
 struct WMODoodadData
 {

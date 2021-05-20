@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,7 +38,7 @@
 #include <cerrno>
 #include <sys/stat.h>
 
-#ifdef WIN32
+#ifdef _WIN32
     #include <direct.h>
     #define mkdir _mkdir
 #endif
@@ -66,7 +65,7 @@ std::unordered_map<std::string, WMODoodadData> WmoDoodads;
 
 // Constants
 
-const char* szWorkDirWmo = "./Buildings";
+char const* szWorkDirWmo = "./Buildings";
 
 #define CASC_LOCALES_COUNT 17
 char const* CascLocaleNames[CASC_LOCALES_COUNT] =
@@ -112,7 +111,7 @@ bool OpenCascStorage(int locale)
 
         return true;
     }
-    catch (boost::filesystem::filesystem_error& error)
+    catch (boost::filesystem::filesystem_error const& error)
     {
         printf("error opening casc storage : %s\n", error.what());
         return false;
@@ -146,7 +145,7 @@ uint32 GenerateUniqueObjectId(uint32 clientId, uint16 clientDoodadId)
 }
 
 // Local testing functions
-bool FileExists(const char* file)
+bool FileExists(char const* file)
 {
     if (FILE* n = fopen(file, "rb"))
     {
@@ -427,7 +426,7 @@ int main(int argc, char ** argv)
         }
     }
 
-    printf("Extract %s. Beginning work ....\n\n", versionString);
+    printf("Extract %s. Beginning work ....\n", versionString);
     //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     // Create the working directory
     if (mkdir(szWorkDirWmo
@@ -479,9 +478,13 @@ int main(int argc, char ** argv)
 
         DB2CascFileSource source(CascStorage, MapLoadInfo::Instance()->Meta->FileDataId);
         DB2FileLoader db2;
-        if (!db2.Load(&source, MapLoadInfo::Instance()))
+        try
         {
-            printf("Fatal error: Invalid Map.db2 file format! %s\n", CASC::HumanReadableCASCError(GetLastError()));
+            db2.Load(&source, MapLoadInfo::Instance());
+        }
+        catch (std::exception const& e)
+        {
+            printf("Fatal error: Invalid Map.db2 file format! %s\n%s\n", CASC::HumanReadableCASCError(GetCascError()), e.what());
             exit(1);
         }
 
@@ -499,6 +502,10 @@ int main(int argc, char ** argv)
             map.ParentMapID = int16(record.GetUInt16("ParentMapID"));
             map.Name = record.GetString("MapName");
             map.Directory = record.GetString("Directory");
+
+            if (map.ParentMapID < 0)
+                map.ParentMapID = int16(record.GetUInt16("CosmeticParentMapID"));
+
             if (map.ParentMapID >= 0)
                 maps_that_are_parents.insert(map.ParentMapID);
 
