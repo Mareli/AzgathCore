@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -98,6 +98,9 @@ void AddSC_the_scarlet_enclave();               //Scarlet Enclave
 void AddSC_the_scarlet_enclave_c1();
 void AddSC_the_scarlet_enclave_c2();
 void AddSC_the_scarlet_enclave_c5();
+void AddSC_houndmaster_braun();                  //Scarlet Halls
+void AddSC_armsmaster_harlan();
+void AddSC_flameweaver_koegler();
 void AddSC_boss_arcanist_doan();                //Scarlet Monastery
 void AddSC_boss_azshir_the_sleepless();
 void AddSC_boss_bloodmage_thalnos();
@@ -340,6 +343,9 @@ void AddEasternKingdomsScripts()
     AddSC_the_scarlet_enclave_c1();
     AddSC_the_scarlet_enclave_c2();
     AddSC_the_scarlet_enclave_c5();
+    AddSC_houndmaster_braun();                  //Scarlet Halls
+    AddSC_armsmaster_harlan();
+    AddSC_flameweaver_koegler();
     AddSC_boss_arcanist_doan();                 //Scarlet Monastery
     AddSC_boss_azshir_the_sleepless();
     AddSC_boss_bloodmage_thalnos();

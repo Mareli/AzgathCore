@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -35,6 +34,7 @@ EndContentData */
 #include "SpellInfo.h"
 #include "ScriptedGossip.h"
 #include "SpellScript.h"
+#include "PhasingHandler.h"
 
 /*######
 ## npc_professor_phizzlethorpe
@@ -65,9 +65,9 @@ enum ProfessorPhizzlethorpe
     FACTION_SUNKEN_TREASURE = 113
 };
 
-struct npc_professor_phizzlethorpe : public npc_escortAI
+struct npc_professor_phizzlethorpe : public EscortAI
 {
-    npc_professor_phizzlethorpe(Creature* creature) : npc_escortAI(creature) { }
+    npc_professor_phizzlethorpe(Creature* creature) : EscortAI(creature) { }
 
     void WaypointReached(uint32 waypointId) override
     {
@@ -107,13 +107,13 @@ struct npc_professor_phizzlethorpe : public npc_escortAI
         Talk(SAY_AGGRO);
     }
 
-    void sQuestAccept(Player* player, Quest const* quest) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
         if (quest->GetQuestId() == QUEST_SUNKEN_TREASURE)
         {
             Talk(SAY_PROGRESS_1, player);
-            npc_escortAI::Start(false, false, player->GetGUID(), quest);
-            me->setFaction(FACTION_SUNKEN_TREASURE);
+            EscortAI::Start(false, false, player->GetGUID(), quest);
+            me->SetFaction(FACTION_SUNKEN_TREASURE);
         }
     }
 
@@ -143,39 +143,59 @@ struct npc_professor_phizzlethorpe : public npc_escortAI
                     break;
             }
         }
-        npc_escortAI::UpdateAI(diff);
+        EscortAI::UpdateAI(diff);
     }
 
     EventMap events;
 };
 
-enum Myzrael
+// I decided not to delete a piece of code, it may come in handy in the future.
+// This code creates a second copy of Myzrael and appears to be outdated for the BFA 
+// since Myzrael appears without this script.
+// enum Myzrael
+// {
+//     NPC_MYZRAEL = 2755
+// };
+
+// class spell_summon_myzrael : public SpellScript
+// {
+//     PrepareSpellScript(spell_summon_myzrael);
+
+//     void HandleDummy(SpellEffIndex /*effIndex*/)
+//     {
+//         if (Creature* myzrael = GetCaster()->SummonCreature(NPC_MYZRAEL, -948.493f, -3113.98f, 50.4207f, 3.14159f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 90000))
+//         {
+//             myzrael->SetReactState(REACT_AGGRESSIVE);
+//             myzrael->SetFaction(14);
+//             myzrael->AddUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
+//         }
+//     }
+
+//     void Register() override
+//     {
+//         OnEffectHitTarget += SpellEffectFn(spell_summon_myzrael::HandleDummy, EFFECT_1, SPELL_EFFECT_DUMMY);
+//     }
+// };
+
+ // @TODO Rewrite levels
+class arathi_highlands : public PlayerScript
 {
-    NPC_MYZRAEL = 2755
-};
-
-class spell_summon_myzrael : public SpellScript
-{
-    PrepareSpellScript(spell_summon_myzrael);
-
-    void HandleDummy(SpellEffIndex /*effIndex*/)
+public:
+    arathi_highlands() : PlayerScript("arathi_highlands") { }
+    
+    void OnUpdateZone(Player* player, uint32 newZone, uint32 /*oldZone*/, uint32 /*newArea*/) override
     {
-        if (Creature* myzrael = GetCaster()->SummonCreature(NPC_MYZRAEL, -948.493f, -3113.98f, 50.4207f, 3.14159f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 90000))
-        {
-            myzrael->SetReactState(REACT_AGGRESSIVE);
-            myzrael->setFaction(14);
-            myzrael->AddUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
-        }
-    }
+        if (player->getLevel() == 120 && player->GetZoneId() == 9734 && newZone == 9734)
+            PhasingHandler::AddPhase(player, 11292, true);
 
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_summon_myzrael::HandleDummy, EFFECT_1, SPELL_EFFECT_DUMMY);
+        if (player->getLevel() == 120 && player->GetZoneId() != 9734 && newZone != 9734)
+            PhasingHandler::RemovePhase(player, 11292, true);
     }
 };
 
 void AddSC_arathi_highlands()
 {
     RegisterCreatureAI(npc_professor_phizzlethorpe);
-    RegisterSpellScript(spell_summon_myzrael);
+    // RegisterSpellScript(spell_summon_myzrael);
+    RegisterPlayerScript(arathi_highlands);
 }

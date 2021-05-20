@@ -1,8 +1,5 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
-* Copyright (C) 2011-2013 Project Trinity <http://www.projectTrinity.org/>
-* Copyright (C) 2008-2013 Trinity <http://www.trinitycore.org/>
-* Copyright (C) 2005-2013 MaNGOS <http://www.getmangos.com/>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -43,6 +40,7 @@ EndContentData */
 #include "ScriptMgr.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
+#include "PhasingHandler.h"
 
 enum eThug
 {
@@ -85,6 +83,12 @@ public:
             Phase = 0;
             bSummoned = false;
             SummonTimer = 2000;
+        }
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            me->SetReactState(REACT_PASSIVE);
+            me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         }
 
         void MoveInLineOfSight(Unit* who) override
@@ -210,8 +214,9 @@ public:
                                 {
                                     if (Creature* thug = GetThug(i))
                                     {
+                                        thug->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                                         thug->SetReactState(REACT_AGGRESSIVE);
-                                        thug->setFaction(14);
+                                        thug->SetFaction(14);
                                         thug->AddUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
                                     }
                                 }
@@ -233,7 +238,11 @@ public:
                             case 10:
                             {
                                 if (Player* player = ObjectAccessor::GetPlayer(*me, PlayerGUID))
+                                {
                                     player->KilledMonsterCredit(42417, PlayerGUID);
+                                    if (!player->GetPhaseShift().HasPhase(171))
+                                        PhasingHandler::AddPhase(player, 171, true);
+                                }
                                 SummonTimer = 2500;
                                 Phase++;
                                 break;
@@ -447,10 +456,7 @@ enum edrifter
     QUEST_MURDER_WAS_THE_CASE_THAT_THEY_GAVE_ME = 26209
 };
 
-#define GOSSIP_COST 2
-#define GOSSIP_HELLO_DRIFTER1 "Did you see who killed the Furlbrows?"
-#define GOSSIP_HELLO_DRIFTER2 "Maybe a couple copper will loosen your tongue. Now tell me, did you see who killed the Furlbrows?"
-
+//42391
 class npc_westplains_drifter : public CreatureScript
 {
 public:
@@ -458,11 +464,11 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        if (player->GetQuestStatus(26209) == QUEST_STATUS_INCOMPLETE)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_HELLO_DRIFTER1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        if (player->GetQuestStatus(QUEST_MURDER_WAS_THE_CASE_THAT_THEY_GAVE_ME) == QUEST_STATUS_INCOMPLETE)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Did you see who killed the Furlbrows?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
-        if (player->GetQuestStatus(26209) == QUEST_STATUS_INCOMPLETE)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_HELLO_DRIFTER2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+        if (player->GetQuestStatus(QUEST_MURDER_WAS_THE_CASE_THAT_THEY_GAVE_ME) == QUEST_STATUS_INCOMPLETE)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT,  "Maybe a couple copper will loosen your tongue. Now tell me, did you see who killed the Furlbrows?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
 
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
         return true;
@@ -2001,9 +2007,7 @@ class npc_hungry_hobo : public CreatureScript
         void Reset() override
         {
             count = 0;
-            Miam = 2000;
-
-            me->SetStandState(UNIT_STAND_STATE_SLEEP);
+            Miam = 2000; 
         }
 
         void Eat()
@@ -2034,6 +2038,7 @@ class npc_hungry_hobo : public CreatureScript
                         {
                             Eat();
                             Miam = 2000;
+                            me->SetStandState(UNIT_STAND_STATE_SIT);
                             count++;
                             break;
                         }
@@ -2051,13 +2056,36 @@ class npc_hungry_hobo : public CreatureScript
                     }
                 }
                 else Miam = 3000;
-
+				
+				if (!me->HasAura(SPELL_FULL_BELLY))
+					 me->SetStandState(UNIT_STAND_STATE_STAND);
+					 
                 if (count == 3)
                     Reset();
             }
             else Miam -= diff;
         }
     };
+};
+
+enum Ripsnarl
+{
+    AURA_IN_STOCKS = 69196,
+};
+
+//42635
+struct npc_ripsnarl : public ScriptedAI
+{
+    npc_ripsnarl(Creature* c) : ScriptedAI(c) { }
+
+    void Reset() override
+    {
+        ScriptedAI::Reset();
+        me->SetFaction(7);
+        me->SetReactState(REACT_PASSIVE);
+        me->AddAura(AURA_IN_STOCKS);
+        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE));
+    }
 };
 
 void AddSC_westfall()
@@ -2074,4 +2102,5 @@ void AddSC_westfall()
     new npc_summoner();
     new npc_horatio_investigate();
     new npc_hungry_hobo();
+    RegisterCreatureAI(npc_ripsnarl);
 }

@@ -1,6 +1,5 @@
 /*
-* Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
-* Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -40,15 +39,13 @@ enum TwilightCorrupter
     YELL_TWILIGHT_CORRUPTOR_RESPAWN = 0,
     YELL_TWILIGHT_CORRUPTOR_AGGRO = 1,
     YELL_TWILIGHT_CORRUPTOR_KILL = 2,
-
     SPELL_SOUL_CORRUPTION = 25805,
     SPELL_CREATURE_OF_NIGHTMARE = 25806,
     SPELL_LEVEL_UP = 24312,
-
     EVENT_SOUL_CORRUPTION = 1,
     EVENT_CREATURE_OF_NIGHTMARE = 2,
-
-    QUEST_NIGHTMARES_CORRUPTION = 8735
+    QUEST_NIGHTMARES_CORRUPTION = 8735,
+    QUEST_CRY_FOR_THE_MOON = 26760,
 };
 
 /*######
@@ -507,7 +504,7 @@ struct npc_ebenlocke : public ScriptedAI
 
     npc_ebenlocke(Creature* creature) : ScriptedAI(creature) { }
 
-    void sQuestAccept(Player* /*player*/, Quest const* quest) override
+    void QuestAccept(Player * player, Quest const* quest) override
     {
         if (quest->GetQuestId() == QUEST_EMBALMERS_REVENGE)
         {
@@ -515,6 +512,55 @@ struct npc_ebenlocke : public ScriptedAI
             {
                 me->SummonCreature(NPC_STITCHES, -10553.90f, -1171.27f, 27.8604f, 1.48514f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 90000, true);
             });
+        }
+    }
+};
+
+//43730
+struct npc_oliver_harris : public ScriptedAI
+{
+    npc_oliver_harris(Creature* c) : ScriptedAI(c) { }
+
+    void QuestAccept(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == QUEST_CRY_FOR_THE_MOON)
+            me->SummonCreature(me->GetEntry(), TEMPSUMMON_MANUAL_DESPAWN);
+    }
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        if (!summoner->IsCreature())
+            return;
+        
+        ObjectGuid ownerGuid = summoner->GetGUID();
+        me->GetOwnerGUID();
+        me->SetWalk(true);
+        me->GetMotionMaster()->MovePoint(1, -10745.0f, 330.0f, 37.87f, true);
+    }
+
+    void MovementInform(uint32 type, uint32 point) override
+    {
+        if (type != POINT_MOTION_TYPE)
+            return;
+
+        if (point == 1)
+        {
+            me->SetFacingTo(2.949f, true);
+            me->Say("Here we go...", LANG_UNIVERSAL);
+            AddTimedDelayedOperation(3000, [this]() -> void
+            {
+                me->Say("It's working. Hold him still, Jitters.", LANG_UNIVERSAL);
+            });
+            AddTimedDelayedOperation(10000, [this]() -> void
+            {
+                me->GetMotionMaster()->MovePoint(2, -10746.0f, 331.0f, 37.88f, true);
+            });
+        }
+        if (point == 2)
+        {
+            if (Unit* owner = me->GetOwner())
+                owner->ToPlayer()->KilledMonsterCredit(43969);
+            me->DespawnOrUnsummon();
         }
     }
 };
@@ -528,4 +574,5 @@ void AddSC_duskwood()
     RegisterCreatureAI(npc_soothing_incense_cloud);
     RegisterSpellScript(spell_sacred_cleansing);
     RegisterCreatureAI(npc_ebenlocke);
+    RegisterCreatureAI(npc_oliver_harris);
 }

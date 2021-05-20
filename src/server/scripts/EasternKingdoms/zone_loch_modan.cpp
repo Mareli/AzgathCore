@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -104,7 +104,7 @@ struct npc_huldar : public ScriptedAI
 {
     npc_huldar(Creature* creature) : ScriptedAI(creature) {}
 
-    void sQuestAccept(Player* player, Quest const* quest) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
         switch (quest->GetQuestId())
         {
@@ -218,7 +218,7 @@ struct npc_ando_blastenheimer : public ScriptedAI
 {
     npc_ando_blastenheimer(Creature* creature) : ScriptedAI(creature) {}
 
-    void sQuestAccept(Player* player, Quest const* quest) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
         switch (quest->GetQuestId())
         {

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2012 Project SkyFire <http://www.projectskyfire.org/>
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+* Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -196,49 +196,7 @@ public:
     };
 };
 
-class spell_ulthok_dark_fissure : public SpellScriptLoader
-{
-    public:
-        spell_ulthok_dark_fissure() : SpellScriptLoader("spell_ulthok_dark_fissure") { }
-
-        class spell_ulthok_dark_fissureSpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_ulthok_dark_fissureSpellScript);
-
-            void FilterTargets(std::list<WorldObject*>& targetList)
-            {
-                if(Unit* caster = GetCaster())
-                {
-                    if(Aura* aura = caster->GetAura(91375))
-                    {
-                        uint8 stacks = aura->GetStackAmount();
-
-                        std::list<WorldObject*>::iterator itr = targetList.begin();
-                        while (itr != targetList.end())
-                        {
-                            if (*itr && ((*itr)->GetDistance(caster) > (int(3+ stacks * 0.35))))
-                                targetList.erase(itr++);
-                            else
-                                ++itr;
-                        }
-                    }
-                }
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulthok_dark_fissureSpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_ulthok_dark_fissureSpellScript();
-        }
-};
-
 void AddSC_boss_ulthok()
 {
     new boss_commander_ulthok();
-    new spell_ulthok_dark_fissure();
 }

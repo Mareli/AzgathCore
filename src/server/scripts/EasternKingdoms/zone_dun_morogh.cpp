@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,6 +31,7 @@
 #include "CombatAI.h"
 #include "ObjectAccessor.h"
 #include "ScriptedEscortAI.h"
+#include "AreaTriggerAI.h"
 
 enum FrozenMountaineer
 {
@@ -493,7 +493,8 @@ public:
             }
         }
 
-        void UpdateAI(uint32 diff) override
+        //Crash, need rewrite later
+        /*void UpdateAI(uint32 diff) override
         {
             Creature* agent;
             if (SummonTimer < diff)
@@ -598,7 +599,7 @@ public:
                 }
             }
             else SummonTimer -= diff;
-        }
+        }*/
 
     private:
     };
@@ -606,6 +607,28 @@ public:
     CreatureAI* GetAI(Creature* creature) const override
     {
         return new npc_sergeant_flinthammerAI(creature);
+    }
+};
+
+// Fix DailyQuest https://www.wowhead.com/quest=29356/
+struct at_i_need_to_cask_a_favor : public AreaTriggerAI
+{
+    at_i_need_to_cask_a_favor(AreaTrigger* at) : AreaTriggerAI(at) { }
+
+    void OnUnitEnter(Unit* unit) override
+    {
+        Player* player = unit->ToPlayer();
+
+        if (!player)
+            return;
+
+        if (player->GetQuestStatus(29356) == QUEST_STATUS_INCOMPLETE)
+        {
+            if (player->HasAura(99491))
+            {
+                player->ForceCompleteQuest(29356);
+            }
+        }
     }
 };
 
@@ -621,4 +644,5 @@ void AddSC_dun_morogh()
     RegisterSpellScript(spell_emote_stolen_ram);
     RegisterCreatureAI(npc_stolen_ram);
     new npc_sergeant_flinthammer();
+    RegisterAreaTriggerAI(at_i_need_to_cask_a_favor);
 }
