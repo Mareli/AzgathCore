@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,7 @@
 #include "InstanceScenario.h"
 #include "InstanceScript.h"
 #include "Log.h"
+#include "LootMgr.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -112,6 +113,7 @@ void Scenario::OnPlayerExit(Player* player)
 {
     _players.erase(player->GetGUID());
     SendBootPlayer(player);
+    player->GetPhaseShift().ClearPhases();
 }
 
 bool Scenario::IsComplete()
@@ -273,6 +275,12 @@ ScenarioStepEntry const* Scenario::GetFirstStep() const
     return firstStep;
 }
 
+void Scenario::CompleteCurrStep()
+{
+    if (ScenarioStepEntry const* step = GetStep())
+        CompleteStep(step);
+}
+
 void Scenario::SendScenarioState(Player* player)
 {
     WorldPackets::Scenario::ScenarioState scenarioState;
@@ -320,14 +328,14 @@ std::vector<WorldPackets::Achievement::CriteriaProgress> Scenario::GetCriteriasP
     return criteriasProgress;
 }
 
-CriteriaList const& Scenario::GetCriteriaByType(CriteriaTypes type, uint32 /*asset*/) const
+CriteriaList const& Scenario::GetCriteriaByType(CriteriaTypes type) const
 {
     return sCriteriaMgr->GetScenarioCriteriaByType(type);
 }
 
 void Scenario::SendBootPlayer(Player* player)
 {
-    WorldPackets::Scenario::ScenarioBoot scenarioBoot;
+    WorldPackets::Scenario::ScenarioVacate scenarioBoot;
     scenarioBoot.ScenarioID = _data->Entry->ID;
     player->SendDirectMessage(scenarioBoot.Write());
 }
@@ -335,4 +343,11 @@ void Scenario::SendBootPlayer(Player* player)
 void Scenario::SendScenarioEvent(Player* player, uint32 eventId)
 {
     UpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, 0, nullptr, player);
+}
+
+void Scenario::SendScenarioEventToPlayers(uint32 eventId)
+{
+    for (ObjectGuid guid : _players)
+        if (Player* player = ObjectAccessor::FindPlayer(guid))
+            CriteriaHandler::UpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, 0, nullptr, player);
 }

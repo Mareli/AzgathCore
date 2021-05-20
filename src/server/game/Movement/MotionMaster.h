@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -155,6 +154,8 @@ class TC_GAME_API MotionMaster
         */
         void MoveCloserAndStop(uint32 id, Unit* target, float distance);
 
+        void MoveAwayAndDespawn(float distance, uint32 msTimeToDespawn);
+
         // These two movement types should only be used with creatures having landing/takeoff animations
         void MoveLand(uint32 id, Position const& pos);
         void MoveTakeoff(uint32 id, Position const& pos);
@@ -185,6 +186,7 @@ class TC_GAME_API MotionMaster
         void MovePath(uint32 path_id, bool repeatable);
         void MoveRotate(uint32 time, RotateDirection direction);
         void MoveBackward(uint32 id, float x, float y, float z, float speed = 0.0f);
+        void MoveForward(Creature* creature, float distance);
 
     private:
         void pop();

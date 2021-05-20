@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -83,7 +82,7 @@ public:
     uint32 GetRandomRewardForQuestType(uint32 questType);
     std::vector<WorldQuestReward const*> GetRewardsForPlayerById(Player* player, uint32 rewardId);
 
-    void BuildPacket(Player* player, WorldPackets::Quest::WorldQuestUpdate& packet);
+    void BuildPacket(Player* player, WorldPackets::Quest::WorldQuestUpdateResponse& packet);
     void BuildRewardPacket(Player* player, uint32 questId, WorldPackets::Quest::QueryQuestRewardResponse& packet);
     void FillInitWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
 

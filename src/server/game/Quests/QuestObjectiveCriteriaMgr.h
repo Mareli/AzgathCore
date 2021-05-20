@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -35,13 +35,12 @@ public:
     void SaveToDB(CharacterDatabaseTransaction& trans);
 
     void ResetCriteria(CriteriaTypes type, uint64 miscValue1 = 0, uint64 miscValue2 = 0, bool evenIfCriteriaComplete = false);
-    void ResetCriteriaTree(uint32 criteriaTreeId);
+    void ResetCriteriaTree(uint32 Criteriatreeid);
 
     void SendAllData(Player const* receiver) const override;
 
     void CompletedObjective(QuestObjective const* questObjective, Player* referencePlayer);
     bool HasCompletedObjective(QuestObjective const* questObjective) const;
-    void RemoveCompletedObjective(QuestObjective const* questObjective);
 
 protected:
     void SendCriteriaUpdate(Criteria const* entry, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const override;
@@ -55,7 +54,7 @@ protected:
     void SendPacket(WorldPacket const* data) const override;
 
     std::string GetOwnerInfo() const override;
-    CriteriaList const& GetCriteriaByType(CriteriaTypes type, uint32 asset) const override;
+    CriteriaList const& GetCriteriaByType(CriteriaTypes type) const override;
 
 private:
     Player* _owner;

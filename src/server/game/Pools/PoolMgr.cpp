@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -185,7 +184,7 @@ PoolObject* PoolGroup<T>::RollOne(ActivePoolData& spawns, uint64 triggerFrom)
            return &EqualChanced[index];
     }
 
-    return NULL;
+    return nullptr;
 }
 
 // Main method to despawn a creature or gameobject in a pool
@@ -229,8 +228,8 @@ void PoolGroup<Creature>::Despawn1Object(uint64 guid)
     {
         sObjectMgr->RemoveCreatureFromGrid(guid, data);
 
-        Map* map = sMapMgr->FindMap(data->mapid, 0);
-        if (map && !map->Instanceable())
+        Map* map = sMapMgr->CreateBaseMap(data->mapid);
+        if (!map->Instanceable())
         {
             auto creatureBounds = map->GetCreatureBySpawnIdStore().equal_range(guid);
             for (auto itr = creatureBounds.first; itr != creatureBounds.second;)
@@ -251,8 +250,8 @@ void PoolGroup<GameObject>::Despawn1Object(uint64 guid)
     {
         sObjectMgr->RemoveGameobjectFromGrid(guid, data);
 
-        Map* map = sMapMgr->FindMap(data->mapid, 0);
-        if (map && !map->Instanceable())
+        Map* map = sMapMgr->CreateBaseMap(data->mapid);
+        if (!map->Instanceable())
         {
             auto gameobjectBounds = map->GetGameObjectBySpawnIdStore().equal_range(guid);
             for (auto itr = gameobjectBounds.first; itr != gameobjectBounds.second;)
@@ -386,9 +385,9 @@ void PoolGroup<Creature>::Spawn1Object(PoolObject* obj)
         sObjectMgr->AddCreatureToGrid(obj->guid, data);
 
         // Spawn if necessary (loaded grids only)
-        Map* map = sMapMgr->FindMap(data->mapid, 0);
+        Map* map = sMapMgr->CreateBaseMap(data->mapid);
         // We use spawn coords to spawn
-        if (map && !map->Instanceable() && map->IsGridLoaded(data->posX, data->posY))
+        if (!map->Instanceable() && map->IsGridLoaded(data->posX, data->posY))
             Creature::CreateCreatureFromDB(obj->guid, map);
     }
 }
@@ -402,9 +401,9 @@ void PoolGroup<GameObject>::Spawn1Object(PoolObject* obj)
         sObjectMgr->AddGameobjectToGrid(obj->guid, data);
         // Spawn if necessary (loaded grids only)
         // this base map checked as non-instanced and then only existed
-        Map* map = sMapMgr->FindMap(data->mapid, 0);
+        Map* map = sMapMgr->CreateBaseMap(data->mapid);
         // We use current coords to unspawn, not spawn coords since creature can have changed grid
-        if (map && !map->Instanceable() && map->IsGridLoaded(data->posX, data->posY))
+        if (!map->Instanceable() && map->IsGridLoaded(data->posX, data->posY))
         {
             if (GameObject* go = GameObject::CreateGameObjectFromDB(obj->guid, map, false))
             {
@@ -579,13 +578,10 @@ void PoolMgr::LoadFromDB()
             Field* fields = result->Fetch();
 
             uint32 pool_id = fields[0].GetUInt32();
-            if (pool_id >= MAX_DB_POOL_ID)
-            {
-                TC_LOG_ERROR("sql.sql", "`pool_template` has pool id (%u) superior than max db pool id (%u), skipped.", pool_id, MAX_DB_POOL_ID);
-                continue;
-            }
 
-            AddPoolTemplate(pool_id, fields[1].GetUInt32());
+            PoolTemplateData& pPoolTemplate = mPoolTemplate[pool_id];
+            pPoolTemplate.MaxLimit  = fields[1].GetUInt32();
+
             ++count;
         }
         while (result->NextRow());
@@ -704,7 +700,14 @@ void PoolMgr::LoadFromDB()
                     continue;
                 }
 
-                AddGameObjectToPool(pool_id, guid, chance);
+                PoolTemplateData* pPoolTemplate = &mPoolTemplate[pool_id];
+                PoolObject plObject = PoolObject(guid, chance);
+                PoolGroup<GameObject>& gogroup = mPoolGameobjectGroups[pool_id];
+                gogroup.SetPoolId(pool_id);
+                gogroup.AddEntry(plObject, pPoolTemplate->MaxLimit);
+                SearchPair p(guid, pool_id);
+                mGameobjectSearchMap.insert(p);
+
                 ++count;
             }
             while (result->NextRow());
@@ -939,34 +942,6 @@ void PoolMgr::LoadFromDB()
 
         }
     }
-}
-
-void PoolMgr::AddPoolTemplate(uint32 pool_id, uint32 maxLimit)
-{
-    PoolTemplateData& pPoolTemplate = mPoolTemplate[pool_id];
-    pPoolTemplate.MaxLimit = maxLimit;
-}
-
-void PoolMgr::AddGameObjectToPool(uint32 pool_id, ObjectGuid::LowType guid, uint32 chance)
-{
-    PoolTemplateData* pPoolTemplate = &mPoolTemplate[pool_id];
-    PoolObject plObject = PoolObject(guid, chance);
-    PoolGroup<GameObject>& gogroup = mPoolGameobjectGroups[pool_id];
-    gogroup.SetPoolId(pool_id);
-    gogroup.AddEntry(plObject, pPoolTemplate->MaxLimit);
-    SearchPair p(guid, pool_id);
-    mGameobjectSearchMap.insert(p);
-}
-
-void PoolMgr::AddPoolToPool(uint32 mother_pool_id, uint32 pool_id, uint32 chance)
-{
-    PoolTemplateData* pPoolTemplateMother = &mPoolTemplate[mother_pool_id];
-    PoolObject plObject = PoolObject(pool_id, chance);
-    PoolGroup<Pool>& plgroup = mPoolPoolGroups[mother_pool_id];
-    plgroup.SetPoolId(mother_pool_id);
-    plgroup.AddEntry(plObject, pPoolTemplateMother->MaxLimit);
-    SearchPair p(pool_id, mother_pool_id);
-    mPoolSearchMap.insert(p);
 }
 
 void PoolMgr::LoadQuestPools()

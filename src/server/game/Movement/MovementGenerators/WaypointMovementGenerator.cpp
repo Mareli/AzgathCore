@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -29,10 +28,13 @@
 
 void WaypointMovementGenerator<Creature>::LoadPath(Creature* creature)
 {
-    if (!path_id)
-        path_id = creature->GetWaypointPath();
+    if (loadedFromDB)
+    {
+        if (!path_id)
+            path_id = creature->GetWaypointPath();
 
-    i_path = sWaypointMgr->GetPath(path_id);
+        i_path = sWaypointMgr->GetPath(path_id);
+    }
 
     if (!i_path)
     {
@@ -75,7 +77,7 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature* creature)
     {
         TC_LOG_DEBUG("maps.script", "Creature movement start script %u at point %u for %s.", i_path->at(i_currentNode)->event_id, i_currentNode, creature->GetGUID().ToString().c_str());
         creature->ClearUnitState(UNIT_STATE_ROAMING_MOVE);
-        creature->GetMap()->ScriptsStart(sWaypointScripts, i_path->at(i_currentNode)->event_id, creature, NULL);
+        creature->GetMap()->ScriptsStart(sWaypointScripts, i_path->at(i_currentNode)->event_id, creature, nullptr);
     }
 
     // Inform script
@@ -100,7 +102,7 @@ bool WaypointMovementGenerator<Creature>::StartMove(Creature* creature)
     if (Stopped())
         return true;
 
-    bool transportPath = creature->GetTransport() != NULL;
+    bool transportPath = creature->GetTransport() != nullptr;
 
     if (m_isArrivalDone)
     {

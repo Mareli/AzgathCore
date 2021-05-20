@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,9 +16,9 @@
  */
 
 #include "ScriptMgr.h"
-#include "Area.h"
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
+#include "BattlePayMgr.h"
 #include "Chat.h"
 #include "Conversation.h"
 #include "Creature.h"
@@ -256,7 +255,7 @@ public:
     void QueueForDelayedDelete(T&& any)
     {
         _delayed_delete_queue.push_back(
-            Trinity::make_unique<
+            std::make_unique<
                 DeleteableObject<typename std::decay<T>::type>
             >(std::forward<T>(any))
         );
@@ -407,6 +406,7 @@ class CreatureGameObjectAreaTriggerScriptRegistrySwapHooks
         // Remove deletable events only,
         // otherwise it causes crashes with non-deletable spell events.
         creature->m_Events.KillAllEvents(false);
+        creature->GetScheduler().CancelAll();
 
         if (creature->IsCharmed())
             creature->RemoveCharmedBy(nullptr);
@@ -432,6 +432,7 @@ class CreatureGameObjectAreaTriggerScriptRegistrySwapHooks
     // Hook which is called before a gameobject is swapped
     static void UnloadResetScript(GameObject* gameobject)
     {
+        gameobject->GetScheduler().CancelAll();
         gameobject->AI()->Reset();
     }
 
@@ -1175,7 +1176,7 @@ ScriptMgr* ScriptMgr::instance()
 
 void ScriptMgr::Initialize()
 {
-    ASSERT(sSpellMgr->GetSpellInfo(SPELL_HOTSWAP_VISUAL_SPELL_EFFECT)
+    ASSERT(sSpellMgr->GetSpellInfo(SPELL_HOTSWAP_VISUAL_SPELL_EFFECT, DIFFICULTY_NONE)
            && "Reload hotswap spell effect for creatures isn't valid!");
 
     uint32 oldMSTime = getMSTime();
@@ -1272,8 +1273,7 @@ void ScriptMgr::Unload()
 {
     sScriptRegistryCompositum->Unload();
 
-    delete[] SpellSummary;
-    delete[] UnitAI::AISpellInfo;
+    UnitAI::AISpellInfo.clear();
 }
 
 void ScriptMgr::LoadDatabase()
@@ -1285,91 +1285,6 @@ void ScriptMgr::LoadDatabase()
 void ScriptMgr::FillSpellSummary()
 {
     UnitAI::FillAISpellInfo();
-
-    SpellSummary = new TSpellSummary[sSpellMgr->GetSpellInfoStoreSize()];
-
-    SpellInfo const* pTempSpell;
-
-    for (uint32 i = 0; i < sSpellMgr->GetSpellInfoStoreSize(); ++i)
-    {
-        SpellSummary[i].Effects = 0;
-        SpellSummary[i].Targets = 0;
-
-        pTempSpell = sSpellMgr->GetSpellInfo(i);
-        // This spell doesn't exist.
-        if (!pTempSpell)
-            continue;
-
-        for (SpellEffectInfo const* effect : pTempSpell->GetEffectsForDifficulty(DIFFICULTY_NONE))
-        {
-            if (!effect)
-                continue;
-
-            // Spell targets self.
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_SELF-1);
-
-            // Spell targets a single enemy.
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_SINGLE_ENEMY-1);
-
-            // Spell targets AoE at enemy.
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_SRC_CASTER ||
-                effect->TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_AOE_ENEMY-1);
-
-            // Spell targets an enemy.
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
-                effect->TargetA.GetTarget() == TARGET_SRC_CASTER ||
-                effect->TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_ANY_ENEMY-1);
-
-            // Spell targets a single friend (or self).
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_PARTY)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_SINGLE_FRIEND-1);
-
-            // Spell targets AoE friends.
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_PARTY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_LASTTARGET_AREA_PARTY ||
-                effect->TargetA.GetTarget() == TARGET_SRC_CASTER)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_AOE_FRIEND-1);
-
-            // Spell targets any friend (or self).
-            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_PARTY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_PARTY ||
-                effect->TargetA.GetTarget() == TARGET_UNIT_LASTTARGET_AREA_PARTY ||
-                effect->TargetA.GetTarget() == TARGET_SRC_CASTER)
-                SpellSummary[i].Targets |= 1 << (SELECT_TARGET_ANY_FRIEND-1);
-
-            // Make sure that this spell includes a damage effect.
-            if (effect->Effect == SPELL_EFFECT_SCHOOL_DAMAGE ||
-                effect->Effect == SPELL_EFFECT_INSTAKILL ||
-                effect->Effect == SPELL_EFFECT_ENVIRONMENTAL_DAMAGE ||
-                effect->Effect == SPELL_EFFECT_HEALTH_LEECH)
-                SpellSummary[i].Effects |= 1 << (SELECT_EFFECT_DAMAGE-1);
-
-            // Make sure that this spell includes a healing effect (or an apply aura with a periodic heal).
-            if (effect->Effect == SPELL_EFFECT_HEAL ||
-                effect->Effect == SPELL_EFFECT_HEAL_MAX_HEALTH ||
-                effect->Effect == SPELL_EFFECT_HEAL_MECHANICAL ||
-                (effect->Effect == SPELL_EFFECT_APPLY_AURA  && effect->ApplyAuraName == 8))
-                SpellSummary[i].Effects |= 1 << (SELECT_EFFECT_HEALING-1);
-
-            // Make sure that this spell applies an aura.
-            if (effect->Effect == SPELL_EFFECT_APPLY_AURA)
-                SpellSummary[i].Effects |= 1 << (SELECT_EFFECT_AURA-1);
-        }
-    }
 }
 
 template<typename T, typename F, typename O>
@@ -1677,8 +1592,17 @@ InstanceScript* ScriptMgr::CreateInstanceData(InstanceMap* map)
 {
     ASSERT(map);
 
-    GET_SCRIPT_RET(InstanceMapScript, map->GetScriptId(), tmpscript, NULL);
+    GET_SCRIPT_RET(InstanceMapScript, map->GetScriptId(), tmpscript, nullptr);
     return tmpscript->GetInstanceScript(map);
+}
+
+bool ScriptMgr::OnGossipSelect(Player* player, Item* item, uint32 uiSender, uint32 action)
+{
+    ASSERT(player);
+    ASSERT(item);
+
+    GET_SCRIPT_RET(ItemScript, item->GetScriptId(), tmpscript, false);
+    return tmpscript->OnGossipSelect(player, item, uiSender, action);
 }
 
 bool ScriptMgr::OnDummyEffect(Unit* caster, uint32 spellId, SpellEffIndex effIndex, Item* target)
@@ -1810,16 +1734,6 @@ bool ScriptMgr::OnQuestReward(Player* player, Creature* creature, Quest const* q
     return tmpscript->OnQuestReward(player, creature, quest, opt);
 }
 
-uint32 ScriptMgr::GetDialogStatus(Player* player, Creature* creature)
-{
-    ASSERT(player);
-    ASSERT(creature);
-
-    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, DIALOG_STATUS_SCRIPTED_NO_STATUS);
-    player->PlayerTalkClass->ClearMenus();
-    return tmpscript->GetDialogStatus(player, creature);
-}
-
 bool ScriptMgr::CanSpawn(ObjectGuid::LowType spawnId, uint32 entry, CreatureTemplate const* actTemplate, CreatureData const* cData, Map const* map)
 {
     ASSERT(actTemplate);
@@ -1938,16 +1852,6 @@ bool ScriptMgr::OnQuestReward(Player* player, GameObject* go, Quest const* quest
     return tmpscript->OnQuestReward(player, go, quest, opt);
 }
 
-uint32 ScriptMgr::GetDialogStatus(Player* player, GameObject* go)
-{
-    ASSERT(player);
-    ASSERT(go);
-
-    GET_SCRIPT_RET(GameObjectScript, go->GetScriptId(), tmpscript, DIALOG_STATUS_SCRIPTED_NO_STATUS);
-    player->PlayerTalkClass->ClearMenus();
-    return tmpscript->GetDialogStatus(player, go);
-}
-
 void ScriptMgr::OnGameObjectDestroyed(GameObject* go, Player* player)
 {
     ASSERT(go);
@@ -2010,14 +1914,14 @@ Battleground* ScriptMgr::CreateBattleground(BattlegroundTypeId /*typeId*/)
 {
     /// @todo Implement script-side battlegrounds.
     ABORT();
-    return NULL;
+    return nullptr;
 }
 
 OutdoorPvP* ScriptMgr::CreateOutdoorPvP(OutdoorPvPData const* data)
 {
     ASSERT(data);
 
-    GET_SCRIPT_RET(OutdoorPvPScript, data->ScriptId, tmpscript, NULL);
+    GET_SCRIPT_RET(OutdoorPvPScript, data->ScriptId, tmpscript, nullptr);
     return tmpscript->GetOutdoorPvP();
 }
 
@@ -2215,7 +2119,7 @@ void ScriptMgr::OnShutdown()
 bool ScriptMgr::OnCriteriaCheck(uint32 scriptId, Player* source, Unit* target)
 {
     ASSERT(source);
-    // target can be NULL.
+    // target can be nullptr.
 
     GET_SCRIPT_RET(AchievementCriteriaScript, scriptId, tmpscript, false);
     return tmpscript->OnCheck(source, target);
@@ -2377,14 +2281,19 @@ void ScriptMgr::OnPlayerBindToInstance(Player* player, Difficulty difficulty, ui
     FOREACH_SCRIPT(PlayerScript)->OnBindToInstance(player, difficulty, mapid, permanent, extendState);
 }
 
-void ScriptMgr::OnPlayerUpdateZone(Player* player, Area* newArea, Area* oldArea)
+void ScriptMgr::OnPlayerUpdateZone(Player* player, uint32 newZone, uint32 oldZone, uint32 newArea)
 {
-    FOREACH_SCRIPT(PlayerScript)->OnUpdateZone(player, newArea, oldArea);
+    FOREACH_SCRIPT(PlayerScript)->OnUpdateZone(player, newZone, oldZone, newArea);
 }
 
-void ScriptMgr::OnPlayerUpdateArea(Player* player, Area* newArea, Area* oldArea)
+void ScriptMgr::OnPlayerUpdateArea(Player* player, uint32 newArea, uint32 oldArea)
 {
     FOREACH_SCRIPT(PlayerScript)->OnUpdateArea(player, newArea, oldArea);
+}
+
+void ScriptMgr::OnPetBattleFinish(Player* player)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPetBattleFinish(player);
 }
 
 void ScriptMgr::OnQuestAccept(Player* player, const Quest* quest)
@@ -2471,6 +2380,12 @@ void ScriptMgr::OnChargeRecoveryTimeStart(Player* player, uint32 chargeCategoryI
 {
     FOREACH_SCRIPT(PlayerScript)->OnChargeRecoveryTimeStart(player, chargeCategoryId, chargeRecoveryTime);
 }
+
+void ScriptMgr::OnPlayerStartChallengeMode(Player* player, uint8 level, uint8 affix1, uint8 affix2, uint8 affix3)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnStartChallengeMode(player, level, affix1, affix2, affix3);
+}
+
 
 // Account
 void ScriptMgr::OnAccountLogin(uint32 accountId)
@@ -2790,20 +2705,10 @@ CreatureScript::CreatureScript(const char* name)
     ScriptRegistry<CreatureScript>::Instance()->AddScript(this);
 }
 
-uint32 CreatureScript::GetDialogStatus(Player* /*player*/, Creature* /*creature*/)
-{
-    return DIALOG_STATUS_SCRIPTED_NO_STATUS;
-}
-
 GameObjectScript::GameObjectScript(const char* name)
     : ScriptObject(name)
 {
     ScriptRegistry<GameObjectScript>::Instance()->AddScript(this);
-}
-
-uint32 GameObjectScript::GetDialogStatus(Player* /*player*/, GameObject* /*go*/)
-{
-    return DIALOG_STATUS_SCRIPTED_NO_STATUS;
 }
 
 AreaTriggerScript::AreaTriggerScript(const char* name)

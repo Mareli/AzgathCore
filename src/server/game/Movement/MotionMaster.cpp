@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -352,6 +351,15 @@ void MotionMaster::MoveCloserAndStop(uint32 id, Unit* target, float distance)
     }
 }
 
+void MotionMaster::MoveAwayAndDespawn(float distance, uint32 msTimeToDespawn)
+{
+    if (_owner->ToCreature())
+    {
+        MovePoint(1, _owner->ToCreature()->GetPositionWithDistInFront(distance), true);
+        _owner->ToCreature()->DespawnOrUnsummon(msTimeToDespawn);
+    }
+}
+
 void MotionMaster::MoveLand(uint32 id, Position const& pos)
 {
     float x, y, z;
@@ -437,7 +445,7 @@ void MotionMaster::MoveKnockbackFrom(float srcX, float srcY, float speedXY, floa
     float dist = 2 * moveTimeHalf * speedXY;
     float max_height = -Movement::computeFallElevation(moveTimeHalf, false, -speedZ);
 
-    _owner->GetNearPoint(_owner, x, y, z, _owner->GetCombatReach(), dist, _owner->GetAngle(srcX, srcY) + float(M_PI));
+    _owner->GetNearPoint(_owner, x, y, z, _owner->GetObjectSize(), dist, _owner->GetAngle(srcX, srcY) + float(M_PI));
 
     Movement::MoveSplineInit init(_owner);
     init.MoveTo(x, y, z);
@@ -461,7 +469,7 @@ void MotionMaster::MoveJumpTo(float angle, float speedXY, float speedZ)
 
     float moveTimeHalf = speedZ / Movement::gravity;
     float dist = 2 * moveTimeHalf * speedXY;
-    _owner->GetClosePoint(x, y, z, _owner->GetCombatReach(), dist, angle);
+    _owner->GetClosePoint(x, y, z, _owner->GetObjectSize(), dist, angle);
     MoveJump(x, y, z, 0.0f, speedXY, speedZ);
 }
 
@@ -744,6 +752,18 @@ void MotionMaster::MoveBackward(uint32 id, float x, float y, float z, float spee
     if (speed > 0.0f)
         init.SetVelocity(speed);
     Mutate(new EffectMovementGenerator(id), MOTION_SLOT_CONTROLLED);
+}
+
+void MotionMaster::MoveForward(Creature* creature, float distance)
+{
+    Position position;
+    float orientation = float(M_PI_2) + float(M_PI) + frand(0.0f, float(M_PI));
+    float x = creature->GetPositionX() + distance * cos(orientation);
+    float y = creature->GetPositionY() + distance * sin(orientation);
+    float z = creature->GetPositionZ();
+    creature->GetNearPoint2D(x, y, distance, orientation);
+    position = { x, y, z, orientation };
+    creature->GetMotionMaster()->MovePoint(0, position, false);
 }
 
 /******************** Private methods ********************/

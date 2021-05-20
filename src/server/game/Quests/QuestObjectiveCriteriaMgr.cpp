@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +19,9 @@
 #include "AchievementPackets.h"
 #include "DatabaseEnv.h"
 #include "DB2Structure.h"
+#include "Group.h"
 #include "Log.h"
+#include "Map.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 
@@ -169,7 +171,7 @@ void QuestObjectiveCriteriaMgr::ResetCriteria(CriteriaTypes type, uint64 miscVal
     if (_owner->IsGameMaster())
         return;
 
-    CriteriaList const& playerCriteriaList = GetCriteriaByType(type, uint32(miscValue1));
+    CriteriaList const& playerCriteriaList = GetCriteriaByType(type);
     for (Criteria const* playerCriteria : playerCriteriaList)
     {
         if (playerCriteria->Entry->FailEvent != miscValue1 || (playerCriteria->Entry->FailAsset && playerCriteria->Entry->FailAsset != int64(miscValue2)))
@@ -194,9 +196,9 @@ void QuestObjectiveCriteriaMgr::ResetCriteria(CriteriaTypes type, uint64 miscVal
     }
 }
 
-void QuestObjectiveCriteriaMgr::ResetCriteriaTree(uint32 criteriaTreeId)
+void QuestObjectiveCriteriaMgr::ResetCriteriaTree(uint32 Criteriatreeid)
 {
-    CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(criteriaTreeId);
+    CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(Criteriatreeid);
     if (!tree)
         return;
 
@@ -224,16 +226,12 @@ void QuestObjectiveCriteriaMgr::SendAllData(Player const* /*receiver*/) const
     }
 }
 
-void QuestObjectiveCriteriaMgr::CompletedObjective(QuestObjective const* questObjective, Player* referencePlayer)
+void QuestObjectiveCriteriaMgr::CompletedObjective(QuestObjective const* questObjective, Player* /*referencePlayer*/)
 {
-    // disable for gamemasters with GM-mode enabled
-    if (_owner->IsGameMaster())
-        return;
-
     if (HasCompletedObjective(questObjective))
         return;
 
-    referencePlayer->KillCreditCriteriaTreeObjective(*questObjective);
+    _owner->KillCreditCriteriaTreeObjective(*questObjective);
 
     TC_LOG_INFO("criteria.quest", "QuestObjectiveCriteriaMgr::CompletedObjective(%u). %s", questObjective->ID, GetOwnerInfo().c_str());
 
@@ -243,16 +241,6 @@ void QuestObjectiveCriteriaMgr::CompletedObjective(QuestObjective const* questOb
 bool QuestObjectiveCriteriaMgr::HasCompletedObjective(QuestObjective const* questObjective) const
 {
     return _completedObjectives.find(questObjective->ID) != _completedObjectives.end();
-}
-
-void QuestObjectiveCriteriaMgr::RemoveCompletedObjective(QuestObjective const* questObjective)
-{
-    if (!HasCompletedObjective(questObjective))
-        return;
-
-    TC_LOG_INFO("criteria.quest", "QuestObjectiveCriteriaMgr::RemoveCompletedObjective(%u). %s", questObjective->ID, GetOwnerInfo().c_str());
-
-    _completedObjectives.erase(questObjective->ID);
 }
 
 void QuestObjectiveCriteriaMgr::SendCriteriaUpdate(Criteria const* criteria, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const
@@ -293,6 +281,21 @@ bool QuestObjectiveCriteriaMgr::CanUpdateCriteriaTree(Criteria const* criteria, 
         return false;
     }
 
+    if (_owner->GetQuestStatus(objective->QuestID) != QUEST_STATUS_INCOMPLETE)
+    {
+        TC_LOG_TRACE("criteria.quest", "QuestObjectiveCriteriaMgr::CanUpdateCriteriaTree: (Id: %u Type %s Quest Objective %u) Not on quest",
+            criteria->ID, CriteriaMgr::GetCriteriaTypeString(criteria->Entry->Type), objective->ID);
+        return false;
+    }
+
+    Quest const* quest = ASSERT_NOTNULL(sObjectMgr->GetQuestTemplate(objective->QuestID));
+    if (_owner->GetGroup() && _owner->GetGroup()->isRaidGroup() && !quest->IsAllowedInRaid(referencePlayer->GetMap()->GetDifficultyID()))
+    {
+        TC_LOG_TRACE("criteria.quest", "QuestObjectiveCriteriaMgr::CanUpdateCriteriaTree: (Id: %u Type %s Quest Objective %u) Quest cannot be completed in raid group",
+            criteria->ID, CriteriaMgr::GetCriteriaTypeString(criteria->Entry->Type), objective->ID);
+        return false;
+    }
+
     return CriteriaHandler::CanUpdateCriteriaTree(criteria, tree, referencePlayer);
 }
 
@@ -326,7 +329,7 @@ std::string QuestObjectiveCriteriaMgr::GetOwnerInfo() const
     return Trinity::StringFormat("%s %s", _owner->GetGUID().ToString().c_str(), _owner->GetName().c_str());
 }
 
-CriteriaList const& QuestObjectiveCriteriaMgr::GetCriteriaByType(CriteriaTypes type, uint32 /*asset*/) const
+CriteriaList const& QuestObjectiveCriteriaMgr::GetCriteriaByType(CriteriaTypes type) const
 {
     return sCriteriaMgr->GetQuestObjectiveCriteriaByType(type);
 }
