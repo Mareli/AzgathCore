@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -55,14 +54,9 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
-#include <boost/algorithm/string/replace.hpp>
 #include <google/protobuf/stubs/common.h>
 #include <iostream>
 #include <csignal>
-
-#ifdef WITH_CPR
-    #include <cpr/cpr.h>
-#endif
 
 using namespace boost::program_options;
 namespace fs = boost::filesystem;
@@ -76,8 +70,8 @@ namespace fs = boost::filesystem;
 #ifdef _WIN32
 #include "ServiceWin32.h"
 char serviceName[] = "worldserver";
-char serviceLongName[] = "TrinityCore world service";
-char serviceDescription[] = "TrinityCore World of Warcraft emulator world service";
+char serviceLongName[] = "AzgathCore world service";
+char serviceDescription[] = "AzgathCore World of Warcraft emulator world service";
 /*
  * -1 - not in service mode
  *  0 - stopped
@@ -107,26 +101,6 @@ private:
     uint32 _lastChangeMsTime;
     uint32 _maxCoreStuckTimeInMs;
 };
-
-#ifdef WITH_CPR
-class WorldToDiscord
-{
-public:
-    WorldToDiscord(Trinity::Asio::IoContext& ioContext)
-        : _timer(ioContext) { }
-
-    static void Start(std::shared_ptr<WorldToDiscord> const& worldToDiscord)
-    {
-        worldToDiscord->_timer.expires_from_now(boost::posix_time::seconds(5));
-        worldToDiscord->_timer.async_wait(std::bind(&WorldToDiscord::Handler, std::weak_ptr<WorldToDiscord>(worldToDiscord), std::placeholders::_1));
-    }
-
-    static void Handler(std::weak_ptr<WorldToDiscord> worldToDiscordRed, boost::system::error_code const& error);
-
-private:
-    boost::asio::deadline_timer _timer;
-};
-#endif
 
 void SignalHandler(boost::system::error_code const& error, int signalNumber);
 AsyncAcceptor* StartRaSocketAcceptor(Trinity::Asio::IoContext& ioContext);
@@ -355,27 +329,25 @@ extern int main(int argc, char** argv)
     realm.PopulationLevel = 0.0f;
     realm.Flags = RealmFlags(realm.Flags & ~uint32(REALM_FLAG_OFFLINE));
 
-#ifdef WITH_CPR
-    std::shared_ptr<WorldToDiscord> worldToDiscord;
-    if (sConfigMgr->GetBoolDefault("WorldToDiscord.Enabled", false))
-    {
-        worldToDiscord = std::make_shared<WorldToDiscord>(*ioContext);
-        WorldToDiscord::Start(worldToDiscord);
-        TC_LOG_INFO("server.worldserver", "Starting up world to discord thread...");
-    }
-#endif
-
     // Start the freeze check callback cycle in 5 seconds (cycle itself is 1 sec)
     std::shared_ptr<FreezeDetector> freezeDetector;
+
     if (int coreStuckTime = sConfigMgr->GetIntDefault("MaxCoreStuckTime", 0))
     {
+        if (coreStuckTime < 180)
+        {
+            TC_LOG_ERROR("server.worldserver", "MaxCoreStuckTime IS %u BUT IT MUST BE OVER 180 (3 minutes) TO AVOID CRASHES ON SLOW COMPUTERS! Change \"MaxCoreStuckTime = 180\" on worldserver.conf. MaxCoreStuckTime set to 180.", coreStuckTime);
+            coreStuckTime = 180;
+        }
+
         freezeDetector = std::make_shared<FreezeDetector>(*ioContext, coreStuckTime * 1000);
         FreezeDetector::Start(freezeDetector);
         TC_LOG_INFO("server.worldserver", "Starting up anti-freeze thread (%u seconds max stuck time)...", coreStuckTime);
     }
 
+    TC_LOG_INFO("server.worldserver", "AzgathCore");
     TC_LOG_INFO("server.worldserver", "%s (worldserver-daemon) ready...", GitRevision::GetFullVersion());
-
+    
     sScriptMgr->OnStartup();
 
     WorldUpdateLoop();
@@ -529,95 +501,6 @@ void FreezeDetector::Handler(std::weak_ptr<FreezeDetector> freezeDetectorRef, bo
     }
 }
 
-#ifdef WITH_CPR
-std::string GetFormatedMessage(DiscordMessage* discordMessage)
-{
-    std::ostringstream returnString;
-    std::string blizzIcon = discordMessage->isGm ? ":blizz: " : "";
-    returnString << blizzIcon << "[" << discordMessage->characterName << "] : " << discordMessage->message;
-    return returnString.str();
-}
-
-std::string GetChannelName(DiscordMessageChannel channelType)
-{
-    switch (channelType)
-    {
-        case DISCORD_WORLD_A:   return "world_a";
-        case DISCORD_WORLD_H:   return "world_h";
-        case DISCORD_TICKET:    return "tickets";
-    }
-
-    return "";
-}
-
-bool SendToDiscord(std::string channel, std::string text)
-{
-    std::string nodeServerRelayURL = sConfigMgr->GetStringDefault("WorldToDiscord.RelayURL", "http://127.0.0.1:8083");
-    boost::replace_all(text, "\"", "\\\"");
-
-    std::ostringstream payload;
-    payload << "{ \"channel\": \"" << channel << "\", \"text\": \"" << text << "\"}";
-
-    cpr::Response r = cpr::Post(cpr::Url{ nodeServerRelayURL }, cpr::Body{ payload.str() });
-    return r.status_code == 200;
-}
-
-void WorldToDiscord::Handler(std::weak_ptr<WorldToDiscord> worldToDiscordRef, boost::system::error_code const& error)
-{
-    if (!error)
-    {
-        if (std::shared_ptr<WorldToDiscord> worldToDiscord = worldToDiscordRef.lock())
-        {
-            std::map<DiscordMessageChannel, std::list<std::string>> messagesByChannel;
-
-            if (!DiscordMessageQueue.empty())
-            {
-                DiscordMessage* discordMessage;
-
-                while (!DiscordMessageQueue.empty())
-                {
-                    DiscordMessageQueue.next(discordMessage);
-
-                    std::string formatedMessage;
-
-                    switch (discordMessage->channel)
-                    {
-                        case DISCORD_WORLD_A:
-                        case DISCORD_WORLD_H:
-                        {
-                            formatedMessage = GetFormatedMessage(discordMessage);
-                            break;
-                        }
-                        default:
-                        {
-                            formatedMessage = discordMessage->message;
-                            break;
-                        }
-                    }
-
-                    messagesByChannel[discordMessage->channel].push_back(formatedMessage);
-
-                    delete discordMessage;
-                }
-
-                for (auto messageList : messagesByChannel)
-                {
-                    const char* const delim = "\\n";
-
-                    std::ostringstream imploded;
-                    std::copy(messageList.second.begin(), messageList.second.end(), std::ostream_iterator<std::string>(imploded, delim));
-
-                    SendToDiscord(GetChannelName(messageList.first), imploded.str());
-                }
-            }
-
-            worldToDiscord->_timer.expires_from_now(boost::posix_time::seconds(2));
-            worldToDiscord->_timer.async_wait(std::bind(&WorldToDiscord::Handler, worldToDiscordRef, std::placeholders::_1));
-        }
-    }
-}
-#endif
-
 AsyncAcceptor* StartRaSocketAcceptor(Trinity::Asio::IoContext& ioContext)
 {
     uint16 raPort = uint16(sConfigMgr->GetIntDefault("Ra.Port", 3443));
@@ -641,9 +524,9 @@ bool LoadRealmInfo()
     {
         realm.Id = realmListRealm->Id;
         realm.Build = realmListRealm->Build;
-        realm.ExternalAddress = Trinity::make_unique<boost::asio::ip::address>(*realmListRealm->ExternalAddress);
-        realm.LocalAddress = Trinity::make_unique<boost::asio::ip::address>(*realmListRealm->LocalAddress);
-        realm.LocalSubnetMask = Trinity::make_unique<boost::asio::ip::address>(*realmListRealm->LocalSubnetMask);
+        realm.ExternalAddress = std::make_unique<boost::asio::ip::address>(*realmListRealm->ExternalAddress);
+        realm.LocalAddress = std::make_unique<boost::asio::ip::address>(*realmListRealm->LocalAddress);
+        realm.LocalSubnetMask = std::make_unique<boost::asio::ip::address>(*realmListRealm->LocalSubnetMask);
         realm.Port = realmListRealm->Port;
         realm.Name = realmListRealm->Name;
         realm.NormalizedName = realmListRealm->NormalizedName;
@@ -669,8 +552,7 @@ bool StartDB()
         .AddDatabase(LoginDatabase, "Login")
         .AddDatabase(CharacterDatabase, "Character")
         .AddDatabase(WorldDatabase, "World")
-        .AddDatabase(HotfixDatabase, "Hotfix")
-        .AddDatabase(ShopDatabase, "Shop");
+        .AddDatabase(HotfixDatabase, "Hotfix");
 
     if (!loader.Load())
         return false;
