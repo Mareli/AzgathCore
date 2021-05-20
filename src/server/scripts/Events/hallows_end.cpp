@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -84,9 +83,9 @@ class spell_trick: public SpellScriptLoader
             PrepareSpellScript(spell_trick_SpellScript);
             bool Validate(SpellInfo const* /*spellEntry*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_PIRATE_COSTUME_MALE) || !sSpellMgr->GetSpellInfo(SPELL_PIRATE_COSTUME_FEMALE) || !sSpellMgr->GetSpellInfo(SPELL_NINJA_COSTUME_MALE)
-                    || !sSpellMgr->GetSpellInfo(SPELL_NINJA_COSTUME_FEMALE) || !sSpellMgr->GetSpellInfo(SPELL_LEPER_GNOME_COSTUME_MALE) || !sSpellMgr->GetSpellInfo(SPELL_LEPER_GNOME_COSTUME_FEMALE)
-                    || !sSpellMgr->GetSpellInfo(SPELL_SKELETON_COSTUME) || !sSpellMgr->GetSpellInfo(SPELL_GHOST_COSTUME_MALE) || !sSpellMgr->GetSpellInfo(SPELL_GHOST_COSTUME_FEMALE) || !sSpellMgr->GetSpellInfo(SPELL_TRICK_BUFF))
+                if (!sSpellMgr->GetSpellInfo(SPELL_PIRATE_COSTUME_MALE, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_PIRATE_COSTUME_FEMALE, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_NINJA_COSTUME_MALE, DIFFICULTY_NONE)
+                    || !sSpellMgr->GetSpellInfo(SPELL_NINJA_COSTUME_FEMALE, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_LEPER_GNOME_COSTUME_MALE, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_LEPER_GNOME_COSTUME_FEMALE, DIFFICULTY_NONE)
+                    || !sSpellMgr->GetSpellInfo(SPELL_SKELETON_COSTUME, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_GHOST_COSTUME_MALE, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_GHOST_COSTUME_FEMALE, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_TRICK_BUFF, DIFFICULTY_NONE))
                     return false;
                 return true;
             }
@@ -157,7 +156,7 @@ class spell_trick_or_treat: public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellEntry*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_TRICK) || !sSpellMgr->GetSpellInfo(SPELL_TREAT) || !sSpellMgr->GetSpellInfo(SPELL_TRICKED_OR_TREATED))
+                if (!sSpellMgr->GetSpellInfo(SPELL_TRICK, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_TREAT, DIFFICULTY_NONE) || !sSpellMgr->GetSpellInfo(SPELL_TRICKED_OR_TREATED, DIFFICULTY_NONE))
                     return false;
                 return true;
             }
@@ -195,11 +194,11 @@ class spell_tricky_treat: public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellEntry*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_TRICKY_TREAT_SPEED))
+                if (!sSpellMgr->GetSpellInfo(SPELL_TRICKY_TREAT_SPEED, DIFFICULTY_NONE))
                     return false;
-                if (!sSpellMgr->GetSpellInfo(SPELL_TRICKY_TREAT_TRIGGER))
+                if (!sSpellMgr->GetSpellInfo(SPELL_TRICKY_TREAT_TRIGGER, DIFFICULTY_NONE))
                     return false;
-                if (!sSpellMgr->GetSpellInfo(SPELL_UPSET_TUMMY))
+                if (!sSpellMgr->GetSpellInfo(SPELL_UPSET_TUMMY, DIFFICULTY_NONE))
                     return false;
                 return true;
             }

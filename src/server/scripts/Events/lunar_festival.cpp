@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,35 +23,25 @@
 #include "SpellMgr.h"
 #include "Unit.h"
 
-class spell_lunar_festival_invitation : public SpellScriptLoader
+//26375
+class spell_lunar_festival_invitation : public SpellScript
 {
-public:
-    spell_lunar_festival_invitation() : SpellScriptLoader("spell_lunar_festival_invitation") { }
+    PrepareSpellScript(spell_lunar_festival_invitation);
 
-    class spell_lunar_festival_invitation_SpellScript : public SpellScript
+    void HandleDummy(SpellEffIndex /*effIndex*/)
     {
-        PrepareSpellScript(spell_lunar_festival_invitation_SpellScript);
+        if (Unit* caster = GetCaster())
+            if (Player* player = caster->ToPlayer())
+                player->TeleportTo(1, 7585.24f, -2214.63f, 472.17f, 5.54f);
+    }
 
-        void HandleDummy(SpellEffIndex /*effIndex*/)
-        {
-            if (Unit* caster = GetCaster())
-                if (Player* player = caster->ToPlayer())
-                    player->TeleportTo(1, 7585.24f, -2214.63f, 472.17f, 5.54f);
-        }
-
-        void Register() override
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_lunar_festival_invitation_SpellScript::HandleDummy, EFFECT_1, SPELL_EFFECT_DUMMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
+    void Register() override
     {
-        return new spell_lunar_festival_invitation_SpellScript();
+        OnEffectHitTarget += SpellEffectFn(spell_lunar_festival_invitation::HandleDummy, EFFECT_0, SPELL_EFFECT_CREATE_ITEM);
     }
 };
 
 void AddSC_event_lunar_festival()
 {
-    new spell_lunar_festival_invitation();
+    RegisterSpellScript(spell_lunar_festival_invitation);
 };

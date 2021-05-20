@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -84,7 +83,7 @@ public:
             if (_StinkerBrokenHeartTimer <= diff)
             {
                 DoCast(SPELL_STINKER_BROKEN_HEART);
-                me->setFaction(31);
+                me->SetFaction(31);
             }
             _StinkerBrokenHeartTimer -= diff;
         }

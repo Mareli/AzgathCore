@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -142,7 +141,7 @@ public:
 
         void Reset() override
         {
-            me->setFaction(35);
+            me->SetFaction(35);
             me->SetReactState(REACT_AGGRESSIVE);
             me->SetVisible(false);
         }
@@ -184,7 +183,7 @@ public:
 
         void Reset() override
         {
-            me->setFaction(35);
+            me->SetFaction(35);
             me->SetReactState(REACT_AGGRESSIVE);
             me->SetVisible(false);
         }
@@ -606,7 +605,7 @@ class spell_hol_launch_beer : public SpellScriptLoader
                 return SPELL_CAST_OK;
             }
 
-            void HandleScript(SpellEffIndex /*effIndex*/)
+            void HandleScript()
             {
                 Unit* caster = GetCaster();
                 Unit* cervoise = GetExplTargetUnit();
@@ -622,7 +621,7 @@ class spell_hol_launch_beer : public SpellScriptLoader
 
             void Register() override
             {
-                OnEffectHit += SpellEffectFn(spell_hol_launch_beer_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+                OnHit += SpellHitFn(spell_hol_launch_beer_SpellScript::HandleScript);
                 OnCheckCast += SpellCheckCastFn(spell_hol_launch_beer_SpellScript::CheckCast);
             }
         };
@@ -665,7 +664,7 @@ class spell_hol_wolpertinger_net : public SpellScriptLoader
                 return SPELL_CAST_OK;
             }
 
-            void HandleScript(SpellEffIndex /*effIndex*/)
+            void HandleScript()
             {
                 Unit* caster = GetCaster();
 
@@ -684,7 +683,7 @@ class spell_hol_wolpertinger_net : public SpellScriptLoader
 
             void Register() override
             {
-                OnEffectHit += SpellEffectFn(spell_hol_wolpertinger_net_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+                OnHit += SpellHitFn(spell_hol_wolpertinger_net_SpellScript::HandleScript);
                 OnCheckCast += SpellCheckCastFn(spell_hol_wolpertinger_net_SpellScript::CheckCast);
             }
         };

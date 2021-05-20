@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -111,6 +109,7 @@ class npc_racer_slam_bunny : public CreatureScript
         }
 };
 
+//54499
 class npc_abominable_grinch : public CreatureScript
 {
 public:
@@ -150,15 +149,17 @@ public:
         void Reset() override
         {
             winterVeilTreeGuid = ObjectGuid::Empty;
-
-            events.Reset();
-            events.ScheduleEvent(EVENT_CLEAVE,          urand(1000,  3000));
-            events.ScheduleEvent(EVENT_THROW_TREE,      urand(5000,  10000));
-            events.ScheduleEvent(SPELL_THROW_SNOWMAN,   urand(5000,  10000));
-            events.ScheduleEvent(EVENT_SHRINK_HEART,    urand(10000, 20000));
-
+            ScriptedAI::Reset();
             //me->GetVehicleKit()->AddPassenger(NPC_WICKED_LITTLE_HELPER, 0);
             //me->GetVehicleKit()->AddPassenger(NPC_WICKED_LITTLE_HELPER, 1);
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+        {
+            events.ScheduleEvent(EVENT_CLEAVE, urand(1000, 3000));
+            events.ScheduleEvent(EVENT_THROW_TREE, urand(5000, 10000));
+            events.ScheduleEvent(SPELL_THROW_SNOWMAN, urand(5000, 10000));
+            events.ScheduleEvent(EVENT_SHRINK_HEART, urand(10000, 20000));
         }
 
         void JustSummoned(Creature* summon) override
@@ -456,9 +457,9 @@ class spell_winter_veil_mistletoe: public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spell*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_CREATE_MISTLETOE) ||
-                    !sSpellMgr->GetSpellInfo(SPELL_CREATE_HOLLY) ||
-                    !sSpellMgr->GetSpellInfo(SPELL_CREATE_SNOWFLAKES))
+                if (!sSpellMgr->GetSpellInfo(SPELL_CREATE_MISTLETOE, DIFFICULTY_NONE) ||
+                    !sSpellMgr->GetSpellInfo(SPELL_CREATE_HOLLY, DIFFICULTY_NONE) ||
+                    !sSpellMgr->GetSpellInfo(SPELL_CREATE_SNOWFLAKES, DIFFICULTY_NONE))
                     return false;
                 return true;
             }
