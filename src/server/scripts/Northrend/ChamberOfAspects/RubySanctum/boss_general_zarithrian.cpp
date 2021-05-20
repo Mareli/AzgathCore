@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -156,7 +156,6 @@ class boss_general_zarithrian : public CreatureScript
                     switch (eventId)
                     {
                         case EVENT_SUMMON_ADDS:
-                            /* fallthrough */
                         {
                             if (Creature* stalker1 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ZARITHRIAN_SPAWN_STALKER_1)))
                                 stalker1->CastSpell(stalker1, SPELL_SUMMON_FLAMECALLER, false);
@@ -198,12 +197,12 @@ class npc_onyx_flamecaller : public CreatureScript
     public:
         npc_onyx_flamecaller() : CreatureScript("npc_onyx_flamecaller") { }
 
-        struct npc_onyx_flamecallerAI : public npc_escortAI
+        struct npc_onyx_flamecallerAI : public EscortAI
         {
-            npc_onyx_flamecallerAI(Creature* creature) : npc_escortAI(creature), _instance(creature->GetInstanceScript())
+            npc_onyx_flamecallerAI(Creature* creature) : EscortAI(creature), _instance(creature->GetInstanceScript())
             {
                 Initialize();
-                npc_escortAI::SetDespawnAtEnd(false);
+                EscortAI::SetDespawnAtEnd(false);
             }
 
             void Initialize()

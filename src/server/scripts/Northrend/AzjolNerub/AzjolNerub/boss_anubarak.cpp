@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,7 +46,6 @@ enum Spells
     SPELL_SUMMON_GUARDIAN       = 53614,
     SPELL_SUMMON_VENOMANCER     = 53615,
 
-    SPELL_DART                  = 59349,
     SPELL_BACKSTAB              = 52540,
     SPELL_ASSASSIN_VISUAL       = 53611,
     SPELL_SUNDER_ARMOR          = 53618,
@@ -464,7 +463,6 @@ class npc_anubarak_anub_ar_darter : public CreatureScript
             void InitializeAI() override
             {
                 npc_anubarak_pet_template::InitializeAI();
-                DoCastAOE(SPELL_DART);
             }
         };
 

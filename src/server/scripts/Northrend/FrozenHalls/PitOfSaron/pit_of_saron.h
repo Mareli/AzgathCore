@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,7 +41,9 @@ enum POSDataTypes
     DATA_TYRANNUS_EVENT     = 7,
     DATA_TEAM_IN_INSTANCE   = 8,
     DATA_ICE_SHARDS_HIT     = 9,
-    DATA_CAVERN_ACTIVE      = 10
+    DATA_CAVERN_ACTIVE      = 10,
+    DATA_SINDRA,
+    DATA_GAUNTLET,
 };
 
 enum POSCreatureIds

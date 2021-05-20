@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -275,6 +275,7 @@ class ValithriaDespawner : public BasicEvent
         Creature* _creature;
 };
 
+// @TODO Rewrite levels
 class boss_valithria_dreamwalker : public CreatureScript
 {
     public:
@@ -341,8 +342,8 @@ class boss_valithria_dreamwalker : public CreatureScript
 
             void HealReceived(Unit* healer, uint32& heal) override
             {
-                if (!me->HasLootRecipients())
-                    me->AddLootRecipient(healer);
+                if (!me->hasLootRecipient())
+                    me->SetLootRecipient(healer);
 
                 me->LowerPlayerDamageReq(heal);
 
@@ -1476,7 +1477,7 @@ class spell_dreamwalker_twisted_nightmares : public SpellScriptLoader
                 //    return;
 
                 if (InstanceScript* instance = GetHitUnit()->GetInstanceScript())
-                    GetHitUnit()->CastSpell((Unit*)nullptr, GetSpellInfo()->GetEffect(effIndex)->TriggerSpell, true, nullptr, nullptr, instance->GetGuidData(DATA_VALITHRIA_DREAMWALKER));
+                    GetHitUnit()->CastSpell(nullptr, GetSpellInfo()->GetEffect(effIndex)->TriggerSpell, true, nullptr, nullptr, instance->GetGuidData(DATA_VALITHRIA_DREAMWALKER));
             }
 
             void Register() override

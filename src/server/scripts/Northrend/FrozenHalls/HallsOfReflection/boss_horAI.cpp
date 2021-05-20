@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,7 +30,7 @@ void boss_horAI::Reset()
     me->AddUnitFlag(UnitFlags(UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC));
     me->SetReactState(REACT_PASSIVE);
     if (instance->GetData(DATA_WAVE_COUNT) != NOT_STARTED)
-        instance->ProcessEvent(NULL, EVENT_DO_WIPE);
+        instance->ProcessEvent(nullptr, EVENT_DO_WIPE);
 }
 
 void boss_horAI::DoAction(int32 actionId)

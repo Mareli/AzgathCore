@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -323,6 +323,7 @@ enum ICCreaturesIds
     NPC_FROSTMOURNE_TRIGGER                     = 38584,
     NPC_SHADOW_TRAP                             = 39137,
 
+
     // Generic
     NPC_INVISIBLE_STALKER                       = 30298
 };
@@ -528,7 +529,7 @@ enum ICWorldStatesICC
 
 enum ICAreaIds
 {
-    AREA_ICECROWN_CITADEL = 4812
+    AREA_ICECROWN_CITADEL   = 4812,
 };
 
 class spell_trigger_spell_from_caster : public SpellScriptLoader

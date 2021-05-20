@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -163,7 +163,7 @@ class instance_halls_of_reflection : public InstanceMapScript
                     case NPC_WORLD_TRIGGER:
                         if (!creature->GetTransport())
                             break;
-                        /* fallthrough */
+                        // no break
                     case NPC_GUNSHIP_CANNON_HORDE:
                         GunshipCannonGUIDs.insert(creature->GetGUID());
                         break;
@@ -352,7 +352,7 @@ class instance_halls_of_reflection : public InstanceMapScript
 
                                 if (Creature* lichking = instance->GetCreature(TheLichKingEscapeGUID))
                                 {
-                                    lichking->CastSpell((Unit*)NULL, SPELL_ACHIEV_CHECK, true);
+                                    lichking->CastSpell(nullptr, SPELL_ACHIEV_CHECK, true);
                                     lichking->DespawnOrUnsummon(1);
                                 }
                                 break;
@@ -446,7 +446,7 @@ class instance_halls_of_reflection : public InstanceMapScript
                         break;
                     case DATA_WAVE_COUNT:
                         if (_waveCount && data == NOT_STARTED)
-                            ProcessEvent(NULL, EVENT_DO_WIPE);
+                            ProcessEvent(nullptr, EVENT_DO_WIPE);
                         break;
                     case DATA_FROSTSWORN_GENERAL:
                         if (data == DONE)
@@ -459,7 +459,7 @@ class instance_halls_of_reflection : public InstanceMapScript
                             if (_quelDelarState == NOT_STARTED)
                             {
                                 if (Creature* bunny = instance->GetCreature(FrostmourneAltarBunnyGUID))
-                                    bunny->CastSpell((Unit*)NULL, SPELL_ESSENCE_OF_CAPTURED);
+                                    bunny->CastSpell(nullptr, SPELL_ESSENCE_OF_CAPTURED);
                                 events.ScheduleEvent(EVENT_QUEL_DELAR_SUMMON_UTHER, 2000);
                             }
                         }
@@ -524,7 +524,7 @@ class instance_halls_of_reflection : public InstanceMapScript
                 switch (events.ExecuteEvent())
                 {
                     case EVENT_NEXT_WAVE:
-                        ProcessEvent(NULL, EVENT_ADD_WAVE);
+                        ProcessEvent(nullptr, EVENT_ADD_WAVE);
                         break;
                     case EVENT_SPAWN_ESCAPE_EVENT:
                         SpawnEscapeEvent();

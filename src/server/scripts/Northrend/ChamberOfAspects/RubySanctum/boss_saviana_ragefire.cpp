@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -232,8 +232,8 @@ class spell_saviana_conflagration_init : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spell*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_FLAME_BEACON)
-                    || !sSpellMgr->GetSpellInfo(SPELL_CONFLAGRATION_2))
+                if (!sSpellMgr->GetSpellInfo(SPELL_FLAME_BEACON, DIFFICULTY_NONE)
+                    || !sSpellMgr->GetSpellInfo(SPELL_CONFLAGRATION_2, DIFFICULTY_NONE))
                     return false;
                 return true;
             }
