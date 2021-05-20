@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -176,7 +176,7 @@ class npc_minigob_manabonk : public CreatureScript
                             PlayerInDalaranList.push_back(player);
 
                 if (PlayerInDalaranList.empty())
-                    return NULL;
+                    return nullptr;
                 return Trinity::Containers::SelectRandomContainerElement(PlayerInDalaranList);
             }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -48,9 +48,9 @@ class npc_injured_goblin : public CreatureScript
 public:
     npc_injured_goblin() : CreatureScript("npc_injured_goblin") { }
 
-    struct npc_injured_goblinAI : public npc_escortAI
+    struct npc_injured_goblinAI : public EscortAI
     {
-        npc_injured_goblinAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_injured_goblinAI(Creature* creature) : EscortAI(creature) { }
 
         void WaypointReached(uint32 waypointId) override
         {
@@ -82,20 +82,22 @@ public:
 
        void UpdateAI(uint32 uiDiff) override
         {
-            npc_escortAI::UpdateAI(uiDiff);
+            EscortAI::UpdateAI(uiDiff);
             if (!UpdateVictim())
                 return;
             DoMeleeAttackIfReady();
         }
 
-       void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
+       bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
         {
             if (menuId == GOSSIP_ID && gossipListId == GOSSIP_OPTION_ID)
             {
                 CloseGossipMenuFor(player);
-                me->setFaction(113);
+                me->SetFaction(113);
                 Start(true, true, player->GetGUID());
             }
+
+            return true;
         }
     };
 
@@ -335,9 +337,9 @@ class npc_icefang : public CreatureScript
 public:
     npc_icefang() : CreatureScript("npc_icefang") { }
 
-    struct npc_icefangAI : public npc_escortAI
+    struct npc_icefangAI : public EscortAI
     {
-        npc_icefangAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_icefangAI(Creature* creature) : EscortAI(creature) { }
 
         void AttackStart(Unit* /*who*/) override { }
         void EnterCombat(Unit* /*who*/) override { }
@@ -358,7 +360,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!UpdateVictim())
                 return;
@@ -479,11 +481,13 @@ public:
             objectCounter = 0;
         }
 
-        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             CloseGossipMenuFor(player);
             playerGUID = player->GetGUID();
             events.ScheduleEvent(EVENT_SCRIPT_1, 100);
+
+            return true;
         }
 
         void UpdateAI(uint32 diff) override
@@ -1131,7 +1135,7 @@ class spell_close_rift : public SpellScriptLoader
             void HandlePeriodic(AuraEffect const* /* aurEff */)
             {
                 if (++_counter == 5)
-                    GetTarget()->CastSpell((Unit*)NULL, SPELL_DESPAWN_RIFT, true);
+                    GetTarget()->CastSpell(nullptr, SPELL_DESPAWN_RIFT, true);
             }
 
             void Register() override
@@ -1322,14 +1326,14 @@ public:
 
         bool Validate(SpellInfo const* spellInfo) override
         {
-            if (!sSpellMgr->GetSpellInfo(spellInfo->GetEffect(EFFECT_0)->CalcValue()))
+            if (!sSpellMgr->GetSpellInfo(spellInfo->GetEffect(EFFECT_0)->CalcValue(), DIFFICULTY_NONE))
                 return false;
             return true;
         }
 
         void HandleScript(SpellEffIndex /*effIndex*/)
         {
-            GetHitUnit()->CastSpell((Unit*)nullptr, GetEffectValue(), true);
+            GetHitUnit()->CastSpell(nullptr, GetEffectValue(), true);
         }
 
         void Register() override
@@ -1400,7 +1404,7 @@ public: spell_claw_swipe_check() : SpellScriptLoader("spell_claw_swipe_check") {
                     }
                 }
 
-                GetTarget()->CastSpell((Unit*)nullptr, aurEff->GetAmount(), false);
+                GetTarget()->CastSpell(nullptr, aurEff->GetAmount(), false);
             }
 
             void Register() override
@@ -1428,7 +1432,7 @@ public:
 
         bool Validate(SpellInfo const* /*spellInfo*/) override
         {
-            if (!sSpellMgr->GetSpellInfo(SPELL_FATAL_STRIKE_DAMAGE))
+            if (!sSpellMgr->GetSpellInfo(SPELL_FATAL_STRIKE_DAMAGE, DIFFICULTY_NONE))
                 return false;
             return true;
         }
@@ -1445,7 +1449,7 @@ public:
                 return;
             }
 
-            GetCaster()->CastSpell((Unit*)nullptr, SPELL_FATAL_STRIKE_DAMAGE, true);
+            GetCaster()->CastSpell(nullptr, SPELL_FATAL_STRIKE_DAMAGE, true);
         }
 
         void Register() override
@@ -1507,14 +1511,14 @@ public:
 
         bool Validate(SpellInfo const* /*spellInfo*/) override
         {
-            if (!sSpellMgr->GetSpellInfo(SPELL_FIGHT_WYRM))
+            if (!sSpellMgr->GetSpellInfo(SPELL_FIGHT_WYRM, DIFFICULTY_NONE))
                 return false;
             return true;
         }
 
         void HandleDummy(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
         {
-            GetTarget()->CastSpell((Unit*)nullptr, SPELL_FIGHT_WYRM, true);
+            GetTarget()->CastSpell(nullptr, SPELL_FIGHT_WYRM, true);
         }
 
         void Register() override

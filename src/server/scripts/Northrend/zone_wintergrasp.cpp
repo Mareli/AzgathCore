@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -302,7 +302,7 @@ class npc_wg_queue : public CreatureScript
             else
             {
                 uint32 timer = wintergrasp->GetTimer() / 1000;
-                player->SendUpdateWorldState(4354, time(NULL) + timer);
+                player->SendUpdateWorldState(4354, time(nullptr) + timer);
                 if (timer < 15 * MINUTE)
                 {
                     AddGossipItemFor(player, GOSSIP_ICON_CHAT, player->GetSession()->GetTrinityString(WG_NPCQUEUE_TEXTOPTION_JOIN), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
@@ -345,8 +345,8 @@ class go_wg_vehicle_teleporter : public GameObjectScript
 
             bool IsFriendly(Unit* passenger)
             {
-                return ((go->GetFaction() == WintergraspFaction[TEAM_HORDE] && passenger->getFaction() == HORDE) ||
-                        (go->GetFaction() == WintergraspFaction[TEAM_ALLIANCE] && passenger->getFaction() == ALLIANCE));
+                return ((go->GetFaction() == WintergraspFaction[TEAM_HORDE] && passenger->GetFaction() == HORDE) ||
+                        (go->GetFaction() == WintergraspFaction[TEAM_ALLIANCE] && passenger->GetFaction() == ALLIANCE));
             }
 
             Creature* GetValidVehicle(Creature* cVeh)

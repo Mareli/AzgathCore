@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -498,7 +497,7 @@ public:
                         break;
                     case 7:
                     {
-                        GameObject* go_caribou = NULL;
+                        GameObject* go_caribou = nullptr;
                         for (uint8 i = 0; i < CaribouTrapsNum; ++i)
                         {
                             go_caribou = me->FindNearestGameObject(CaribouTraps[i], 5.0f);
@@ -552,9 +551,9 @@ class npc_lurgglbr : public CreatureScript
 public:
     npc_lurgglbr() : CreatureScript("npc_lurgglbr") { }
 
-    struct npc_lurgglbrAI : public npc_escortAI
+    struct npc_lurgglbrAI : public EscortAI
     {
-        npc_lurgglbrAI(Creature* creature) : npc_escortAI(creature)
+        npc_lurgglbrAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -640,7 +639,7 @@ public:
                     }
                 } else IntroTimer -= diff;
             }
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!UpdateVictim())
                 return;
@@ -663,17 +662,17 @@ public:
                 go->UseDoorOrButton(20);
             }
 
-            if (npc_escortAI* pEscortAI = CAST_AI(npc_lurgglbr::npc_lurgglbrAI, creature->AI()))
+            if (EscortAI* pEscortAI = CAST_AI(npc_lurgglbr::npc_lurgglbrAI, creature->AI()))
                 pEscortAI->Start(true, false, player->GetGUID());
 
             switch (player->GetTeam())
             {
                 case ALLIANCE:
-                    creature->setFaction(FACTION_ESCORTEE_A);
+                    creature->SetFaction(FACTION_ESCORTEE_A);
                     break;
                 default:
                 case HORDE:
-                    creature->setFaction(FACTION_ESCORTEE_H);
+                    creature->SetFaction(FACTION_ESCORTEE_H);
                     break;
             }
 
@@ -686,7 +685,7 @@ public:
 enum red_dragonblood
 {
     SPELL_DRAKE_HATCHLING_SUBDUED = 46691,
-    SPELL_SUBDUED = 46675
+    SPELL_SUBDUED                 = 46675
 };
 
 class spell_red_dragonblood : public SpellScriptLoader
@@ -711,7 +710,7 @@ public:
             owner->GetMotionMaster()->MoveFollow(GetCaster(), 4.0f, 0.0f);
             owner->CastSpell(owner, SPELL_SUBDUED, true);
             GetCaster()->CastSpell(GetCaster(), SPELL_DRAKE_HATCHLING_SUBDUED, true);
-            owner->setFaction(35);
+            owner->SetFaction(35);
             owner->AddUnitFlag(UnitFlags(UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC));
             owner->DespawnOrUnsummon(3 * MINUTE*IN_MILLISECONDS);
         }
@@ -779,9 +778,9 @@ class npc_thassarian : public CreatureScript
 public:
     npc_thassarian() : CreatureScript("npc_thassarian") { }
 
-    struct npc_thassarianAI : public npc_escortAI
+    struct npc_thassarianAI : public EscortAI
     {
-        npc_thassarianAI(Creature* creature) : npc_escortAI(creature)
+        npc_thassarianAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -858,7 +857,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (arthasInPosition && talbotInPosition)
             {
@@ -892,7 +891,7 @@ public:
                         if (talbot)
                         {
                             talbot->UpdateEntry(NPC_PRINCE_VALANAR);
-                            talbot->setFaction(14);
+                            talbot->SetFaction(14);
                             talbot->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                             talbot->SetReactState(REACT_PASSIVE);
                         }
@@ -1069,8 +1068,8 @@ public:
         switch (action)
         {
             case GOSSIP_ACTION_INFO_DEF+1:
-                ENSURE_AI(npc_escortAI, (creature->AI()))->Start(true, false, player->GetGUID());
-                ENSURE_AI(npc_escortAI, (creature->AI()))->SetMaxPlayerDistance(200.0f);
+                ENSURE_AI(EscortAI, (creature->AI()))->Start(true, false, player->GetGUID());
+                ENSURE_AI(EscortAI, (creature->AI()))->SetMaxPlayerDistance(200.0f);
                 break;
         }
         return true;
@@ -1262,7 +1261,7 @@ public:
             leryssa->GetMotionMaster()->MovePoint(0, 3722.114502f, 3564.201660f, 477.441437f);
 
             if (Player* player = killer->ToPlayer())
-                player->RewardPlayerAndGroupAtEvent(NPC_PRINCE_VALANAR, 0);
+                player->RewardPlayerAndGroupAtEvent(NPC_PRINCE_VALANAR, nullptr);
         }
     };
 
@@ -1630,22 +1629,22 @@ public:
             switch (player->GetTeam())
             {
             case ALLIANCE:
-                creature->setFaction(FACTION_ESCORTEE_A);
+                creature->SetFaction(FACTION_ESCORTEE_A);
                 break;
             case HORDE:
-                creature->setFaction(FACTION_ESCORTEE_H);
+                creature->SetFaction(FACTION_ESCORTEE_H);
                 break;
             }
             creature->SetStandState(UNIT_STAND_STATE_STAND);
             creature->AI()->Talk(SAY_1, player);
-            ENSURE_AI(npc_escortAI, (creature->AI()))->Start(true, false, player->GetGUID());
+            ENSURE_AI(EscortAI, (creature->AI()))->Start(true, false, player->GetGUID());
         }
         return true;
     }
 
-    struct npc_mootoo_the_youngerAI : public npc_escortAI
+    struct npc_mootoo_the_youngerAI : public EscortAI
     {
-        npc_mootoo_the_youngerAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_mootoo_the_youngerAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override
         {
@@ -1719,14 +1718,14 @@ public:
         {
             creature->SetStandState(UNIT_STAND_STATE_STAND);
             creature->AI()->Talk(SAY_BONKER_2, player);
-            ENSURE_AI(npc_escortAI, (creature->AI()))->Start(true, true, player->GetGUID());
+            ENSURE_AI(EscortAI, (creature->AI()))->Start(true, true, player->GetGUID());
         }
         return true;
     }
 
-    struct npc_bonker_togglevoltAI : public npc_escortAI
+    struct npc_bonker_togglevoltAI : public EscortAI
     {
-        npc_bonker_togglevoltAI(Creature* creature) : npc_escortAI(creature)
+        npc_bonker_togglevoltAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -1851,7 +1850,7 @@ public:
         {
             Initialize();
 
-            GameObject* pTrap = NULL;
+            GameObject* pTrap = nullptr;
             for (uint8 i = 0; i < MammothTrapsNum; ++i)
             {
                 pTrap = me->FindNearestGameObject(MammothTraps[i], 11.0f);
@@ -1890,7 +1889,7 @@ public:
 
             me->DisappearAndDie();
 
-            GameObject* pTrap = NULL;
+            GameObject* pTrap = nullptr;
             for (uint8 i = 0; i < MammothTrapsNum; ++i)
             {
                 pTrap = me->FindNearestGameObject(MammothTraps[i], 11.0f);
@@ -2218,7 +2217,7 @@ public:
 
         void AttackPlayer()
         {
-            me->setFaction(14);
+            me->SetFaction(14);
             if (Player* player = ObjectAccessor::GetPlayer(*me, uiPlayerGUID))
                 AttackStart(player);
         }
@@ -2376,6 +2375,122 @@ public:
     }
 };
 
+/*######
+## npc_nexus_drake_hatchling
+######*/
+
+enum NexusDrakeHatchling
+{
+    SPELL_DRAKE_HARPOON   = 46607,
+    SPELL_RED_DRAGONBLOOD = 46620,
+
+    NPC_RAELORASZ         = 26117,
+
+    QUEST_DRAKE_HUNT      = 11919,
+    QUEST_DRAKE_HUNT_D    = 11940
+};
+
+class npc_nexus_drake_hatchling : public CreatureScript
+{
+public:
+    npc_nexus_drake_hatchling() : CreatureScript("npc_nexus_drake_hatchling") { }
+
+    struct npc_nexus_drake_hatchlingAI : public FollowerAI //The spell who makes the npc follow the player is missing, also we can use FollowerAI!
+    {
+        npc_nexus_drake_hatchlingAI(Creature* creature) : FollowerAI(creature)
+        {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            WithRedDragonBlood = false;
+        }
+
+        ObjectGuid HarpoonerGUID;
+        bool WithRedDragonBlood;
+
+        void Reset() override
+        {
+            Initialize();
+        }
+
+        void EnterCombat(Unit* who) override
+        {
+            if (me->IsValidAttackTarget(who))
+                AttackStart(who);
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_DRAKE_HARPOON && caster->GetTypeId() == TYPEID_PLAYER)
+            {
+                HarpoonerGUID = caster->GetGUID();
+                DoCast(me, SPELL_RED_DRAGONBLOOD, true);
+            }
+            WithRedDragonBlood = true;
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+
+        {
+            FollowerAI::MoveInLineOfSight(who);
+
+            if (!HarpoonerGUID)
+                return;
+
+            if (me->HasAura(SPELL_SUBDUED) && who->GetEntry() == NPC_RAELORASZ)
+            {
+                if (me->IsWithinDistInMap(who, INTERACTION_DISTANCE))
+                {
+                    if (Player* pHarpooner = ObjectAccessor::GetPlayer(*me, HarpoonerGUID))
+                    {
+                        pHarpooner->KilledMonsterCredit(26175);
+                        pHarpooner->RemoveAura(SPELL_DRAKE_HATCHLING_SUBDUED);
+                        SetFollowComplete();
+                        HarpoonerGUID.Clear();
+                        me->DisappearAndDie();
+                    }
+                }
+            }
+        }
+
+        void UpdateAI(uint32 /*diff*/) override
+        {
+            if (WithRedDragonBlood && !HarpoonerGUID.IsEmpty() && !me->HasAura(SPELL_RED_DRAGONBLOOD))
+            {
+                if (Player* pHarpooner = ObjectAccessor::GetPlayer(*me, HarpoonerGUID))
+                {
+                    EnterEvadeMode();
+                    StartFollow(pHarpooner, 35, NULL);
+
+                    DoCast(me, SPELL_SUBDUED, true);
+                    pHarpooner->CastSpell(pHarpooner, SPELL_DRAKE_HATCHLING_SUBDUED, true);
+
+                    me->AttackStop();
+                    WithRedDragonBlood = false;
+                }
+            }
+
+            if ((me->GetFaction() == 35) && (!me->HasAura(SPELL_SUBDUED)))
+            {
+                HarpoonerGUID.Clear();
+                me->DisappearAndDie();
+            }
+
+            if (!UpdateVictim())
+                return;
+
+            DoMeleeAttackIfReady();
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_nexus_drake_hatchlingAI(creature);
+    }
+};
+
 void AddSC_borean_tundra()
 {
     new npc_sinkhole_kill_credit();
@@ -2401,4 +2516,5 @@ void AddSC_borean_tundra()
     new npc_warmage_coldarra();
     new npc_hidden_cultist();
     new spell_windsoul_totem_aura();
+    new npc_nexus_drake_hatchling();
 }
