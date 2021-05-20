@@ -15,19 +15,59 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-void AddSC_stormwind_extraction();
-void AddSC_scenario_stormwind_extraction();
-void AddSC_uncharted_island_tutorial();
-void AddSC_scenario_uncharted_island_tutorial();
-void AddSC_scenario_whispering_reef_island();
-void AddSC_scenario_pursuing_the_black_harvest();
+#include "GameObject.h"
 
-void AddScenariosScripts()
+#ifndef DEF_PURSUING_THE_BLACK_HARVEST_H
+#define DEF_PURSUING_THE_BLACK_HARVEST_H
+
+enum Data
 {
-    AddSC_stormwind_extraction();
-    AddSC_scenario_stormwind_extraction();
-    AddSC_uncharted_island_tutorial();
-    AddSC_scenario_uncharted_island_tutorial();
-	AddSC_scenario_whispering_reef_island();
-	AddSC_scenario_pursuing_the_black_harvest();
-}
+
+};
+
+enum Npcs
+{
+
+};
+
+enum ScenarioSteps
+{
+
+};
+
+enum ScenarioEvents
+{
+
+};
+
+enum Spells
+{
+
+};
+
+enum GameObjects
+{
+
+};
+
+enum Events
+{
+
+};
+
+enum CriteriaTrees
+{
+
+};
+
+enum SummonGroups
+{
+
+};
+
+enum Conversations
+{
+
+};
+
+#endif

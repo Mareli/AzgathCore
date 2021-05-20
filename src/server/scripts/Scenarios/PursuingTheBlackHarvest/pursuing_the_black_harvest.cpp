@@ -15,19 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-void AddSC_stormwind_extraction();
-void AddSC_scenario_stormwind_extraction();
-void AddSC_uncharted_island_tutorial();
-void AddSC_scenario_uncharted_island_tutorial();
-void AddSC_scenario_whispering_reef_island();
-void AddSC_scenario_pursuing_the_black_harvest();
+#include "AreaTrigger.h"
+#include "AreaTriggerAI.h"
+#include "CombatAI.h"
+#include "GameObjectAI.h"
+#include "Scenario.h"
+#include "ScriptMgr.h"
+#include "pursuing_the_black_harvest.h"
+#include "LFGMgr.h"
+#include "WorldSession.h"
+#include "World.h"
+#include "AzeriteItem.h"
+#include "Object.h"
 
-void AddScenariosScripts()
-{
-    AddSC_stormwind_extraction();
-    AddSC_scenario_stormwind_extraction();
-    AddSC_uncharted_island_tutorial();
-    AddSC_scenario_uncharted_island_tutorial();
-	AddSC_scenario_whispering_reef_island();
-	AddSC_scenario_pursuing_the_black_harvest();
-}
