@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -245,6 +244,7 @@ int32 DoHighUnlearnCost(Player* /*player*/)                //tailor, alchemy
     return 1500000;
 }
 
+// @TODO Rewrite levels
 int32 DoMedUnlearnCost(Player* player)                     //blacksmith, leatherwork
 {
     uint8 level = player->getLevel();
@@ -283,11 +283,11 @@ void ProcessCastaction(Player* player, Creature* creature, uint32 spellId, uint3
 
 bool EquippedOk(Player* player, uint32 spellId)
 {
-    SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId);
+    SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId, DIFFICULTY_NONE);
     if (!spell)
         return false;
 
-    for (SpellEffectInfo const* effect : spell->GetEffectsForDifficulty(DIFFICULTY_NONE))
+    for (SpellEffectInfo const* effect : spell->GetEffects())
     {
         if (!effect)
             continue;
@@ -296,7 +296,7 @@ bool EquippedOk(Player* player, uint32 spellId)
         if (!reqSpell)
             continue;
 
-        Item* item = NULL;
+        Item* item = nullptr;
         for (uint8 j = EQUIPMENT_SLOT_START; j < EQUIPMENT_SLOT_END; ++j)
         {
             item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, j);
@@ -420,7 +420,7 @@ void ProcessUnlearnAction(Player* player, Creature* creature, uint32 spellId, ui
             player->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, creature, 0, 0);
     }
     else
-        player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, NULL, NULL);
+        player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, nullptr, nullptr);
     CloseGossipMenuFor(player);
 }
 

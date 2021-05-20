@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +23,6 @@ go_ethereum_stasis
 go_sacred_fire_of_life
 go_shrine_of_the_birds
 go_southfury_moonstone
-go_orb_of_command
 go_resonite_cask
 go_tablet_of_madness
 go_tablet_of_the_seven
@@ -37,7 +35,6 @@ go_soulwell
 go_bashir_crystalforge
 go_soulwell
 go_dragonflayer_cage
-go_tadpole_cage
 go_amberpine_outhouse
 go_hive_pod
 go_veil_skith_cage
@@ -50,7 +47,7 @@ EndContentData */
 #include "GameObjectAI.h"
 #include "Log.h"
 #include "Map.h"
-#include "MiscPackets.h"
+#include "NPCPackets.h"
 #include "MotionMaster.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
@@ -127,23 +124,6 @@ public:
     }
 };
 
-/*######
-## go_orb_of_command
-######*/
-
-class go_orb_of_command : public GameObjectScript
-{
-public:
-    go_orb_of_command() : GameObjectScript("go_orb_of_command") { }
-
-    bool OnGossipHello(Player* player, GameObject* /*go*/) override
-    {
-        if (player->GetQuestRewardStatus(7761))
-            player->CastSpell(player, 23460, true);
-
-        return true;
-    }
-};
 
 /*######
 ## go_tablet_of_madness
@@ -172,7 +152,7 @@ class go_tablet_of_the_seven : public GameObjectScript
 public:
     go_tablet_of_the_seven() : GameObjectScript("go_tablet_of_the_seven") { }
 
-    /// @todo use gossip option ("Transcript the Tablet") instead, if Trinity adds support.
+    /// @todo use gossip option ("Transcript the Tablet") instead.
     bool OnGossipHello(Player* player, GameObject* go) override
     {
         if (go->GetGoType() != GAMEOBJECT_TYPE_QUESTGIVER)
@@ -255,7 +235,7 @@ public:
                     if (Spell)
                         creature->CastSpell(player, Spell, false);
                     else
-                        TC_LOG_ERROR("scripts", "go_ethereum_prison summoned Creature (entry %u) but faction (%u) are not expected by script.", creature->GetEntry(), creature->getFaction());
+                        TC_LOG_ERROR("scripts", "go_ethereum_prison summoned Creature (entry %u) but faction (%u) are not expected by script.", creature->GetEntry(), creature->GetFaction());
                 }
             }
         }
@@ -360,7 +340,7 @@ public:
         uint32 BirdEntry = 0;
 
         float fX, fY, fZ;
-        go->GetClosePoint(fX, fY, fZ, go->GetCombatReach(), INTERACTION_DISTANCE);
+        go->GetClosePoint(fX, fY, fZ, go->GetObjectSize(), INTERACTION_DISTANCE);
 
         switch (go->GetEntry())
         {
@@ -841,11 +821,8 @@ class go_soulwell : public GameObjectScript
             {
             }
 
-            bool GossipHello(Player* player, bool isUse) override
+            bool GossipHello(Player* player) override
             {
-                if (!isUse)
-                    return true;
-
                 Unit* owner = go->GetOwner();
                 if (!owner || owner->GetTypeId() != TYPEID_PLAYER || !player->IsInSameRaidWith(owner->ToPlayer()))
                     return true;
@@ -903,39 +880,6 @@ public:
         /// @todo prisoner should help player for a short period of time
         player->KilledMonsterCredit(NPC_CAPTURED_VALGARDE_PRISONER_PROXY);
         pPrisoner->DespawnOrUnsummon();
-        return true;
-    }
-};
-
-/*######
-## Quest 11560: Oh Noes, the Tadpoles!
-## go_tadpole_cage
-######*/
-
-enum Tadpoles
-{
-    QUEST_OH_NOES_THE_TADPOLES                    = 11560,
-    NPC_WINTERFIN_TADPOLE                         = 25201
-};
-
-class go_tadpole_cage : public GameObjectScript
-{
-public:
-    go_tadpole_cage() : GameObjectScript("go_tadpole_cage") { }
-
-    bool OnGossipHello(Player* player, GameObject* go) override
-    {
-        go->UseDoorOrButton();
-        if (player->GetQuestStatus(QUEST_OH_NOES_THE_TADPOLES) == QUEST_STATUS_INCOMPLETE)
-        {
-            Creature* pTadpole = go->FindNearestCreature(NPC_WINTERFIN_TADPOLE, 1.0f);
-            if (pTadpole)
-            {
-                pTadpole->DisappearAndDie();
-                player->KilledMonsterCredit(NPC_WINTERFIN_TADPOLE);
-                //FIX: Summon minion tadpole
-            }
-        }
         return true;
     }
 };
@@ -1357,7 +1301,7 @@ public:
                 {
                     case EVENT_MM_START_MUSIC:
                     {
-                        if (!IsHolidayActive(HOLIDAY_FIRE_FESTIVAL))
+                        if (!IsHolidayActive(HOLIDAY_MIDSUMMER_FIRE_FESTIVAL))
                             break;
 
                         std::vector<Player*> playersNearby;
@@ -1502,10 +1446,10 @@ public:
 
     bool OnGossipHello(Player* player, GameObject* go) override
     {
-        WorldPackets::Misc::OpenAlliedRaceDetailsGiver openAlliedRaceDetailsGiver;
-        openAlliedRaceDetailsGiver.Guid = go->GetGUID();
-        openAlliedRaceDetailsGiver.RaceId = _raceId;
-        player->SendDirectMessage(openAlliedRaceDetailsGiver.Write());
+        WorldPackets::NPC::OpenAlliedRaceDetails openAlliedRaceDetails;
+        openAlliedRaceDetails.Guid = go->GetGUID();
+        openAlliedRaceDetails.RaceId = _raceId;
+        player->SendDirectMessage(openAlliedRaceDetails.Write());
         return false;
     }
 
@@ -1517,7 +1461,6 @@ void AddSC_go_scripts()
     new go_cat_figurine();
     new go_barov_journal();
     new go_gilded_brazier();
-    new go_orb_of_command();
     new go_shrine_of_the_birds();
     new go_southfury_moonstone();
     new go_tablet_of_madness();
@@ -1539,7 +1482,6 @@ void AddSC_go_scripts()
     new go_table_theka();
     new go_inconspicuous_landmark();
     new go_soulwell();
-    new go_tadpole_cage();
     new go_dragonflayer_cage();
     new go_amberpine_outhouse();
     new go_hive_pod();
@@ -1553,8 +1495,15 @@ void AddSC_go_scripts()
     new go_midsummer_music();
     new go_darkmoon_faire_music();
     new go_pirate_day_music();
-    new go_allied_race_infos("go_allied_race_infos_nightborne", 27);
-    new go_allied_race_infos("go_allied_race_infos_tauren",     28);
-    new go_allied_race_infos("go_allied_race_infos_voidelf",    29);
-    new go_allied_race_infos("go_allied_race_infos_draenei",    30);
+    new go_allied_race_infos("go_allied_race_infos_nightborne",         27);
+    new go_allied_race_infos("go_allied_race_infos_highmountaintauren", 28);
+    new go_allied_race_infos("go_allied_race_infos_voidelf",            29);
+    new go_allied_race_infos("go_allied_race_infos_lightforgeddraenei", 30);
+    new go_allied_race_infos("go_allied_race_infos_zandalaritroll",     31);
+    new go_allied_race_infos("go_allied_race_infos_kultiran",           32);
+    new go_allied_race_infos("go_allied_race_infos_human",              33); // NYU
+    new go_allied_race_infos("go_allied_race_infos_darkirondwarf",      34);
+    new go_allied_race_infos("go_allied_race_infos_vulpera",            35);
+    new go_allied_race_infos("go_allied_race_infos_magharorc",          36);
+    new go_allied_race_infos("go_allied_race_infos_mechagnome",         37);
 }

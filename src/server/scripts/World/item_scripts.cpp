@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -70,8 +69,8 @@ public:
                     disabled = true;
                 break;
             case 34475:
-                if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_ARCANE_CHARGES))
-                    Spell::SendCastResult(player, spellInfo, 0, castId, SPELL_FAILED_NOT_ON_GROUND);
+                if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_ARCANE_CHARGES, DIFFICULTY_NONE))
+                    Spell::SendCastResult(player, spellInfo, {}, castId, SPELL_FAILED_NOT_ON_GROUND);
                 break;
         }
 
@@ -80,7 +79,7 @@ public:
             return false;
 
         // error
-        player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+        player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
         return true;
     }
 };
@@ -123,7 +122,7 @@ public:
             targets.GetUnitTarget()->GetEntry() == 20748 && !targets.GetUnitTarget()->HasAura(32578))
             return false;
 
-        player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+        player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
         return true;
     }
 };
@@ -143,7 +142,7 @@ public:
             return false;
         else
         {
-            player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, NULL);
+            player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, nullptr);
             return true;
         }
     }
@@ -229,7 +228,7 @@ public:
 
     bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
     {
-        GameObject* go = NULL;
+        GameObject* go = nullptr;
         for (uint8 i = 0; i < CaribouTrapsNum; ++i)
         {
             go = player->FindNearestGameObject(CaribouTraps[i], 5.0f);
@@ -244,7 +243,7 @@ public:
             return true;
 
         float x, y, z;
-        go->GetClosePoint(x, y, z, go->GetCombatReach() / 3, 7.0f);
+        go->GetClosePoint(x, y, z, go->GetObjectSize() / 3, 7.0f);
         go->SummonGameObject(GO_HIGH_QUALITY_FUR, *go, QuaternionData(), 1);
         if (TempSummon* summon = player->SummonCreature(NPC_NESINGWARY_TRAPPER, x, y, z, go->GetOrientation(), TEMPSUMMON_DEAD_DESPAWN, 1000))
         {
@@ -277,8 +276,8 @@ public:
 
         if (!player->GetTransport() || player->GetAreaId() != AREA_HOWLING_FJORD_SHATTERED_STRAITS)
         {
-            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_PETROV_BOMB))
-                Spell::SendCastResult(player, spellInfo, 0, castId, SPELL_FAILED_NOT_HERE);
+            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_PETROV_BOMB, DIFFICULTY_NONE))
+                Spell::SendCastResult(player, spellInfo, {}, castId, SPELL_FAILED_NOT_HERE);
 
             return true;
         }
@@ -343,7 +342,7 @@ public:
         if (!pMammoth)
             return false;
 
-        GameObject* pTrap = NULL;
+        GameObject* pTrap = nullptr;
         for (uint8 i = 0; i < MammothTrapsNum; ++i)
         {
             pTrap = player->FindNearestGameObject(MammothTraps[i], 11.0f);
@@ -379,9 +378,9 @@ public:
                 pLeviroth->AI()->AttackStart(player);
                 return false;
             } else
-                player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, NULL);
+                player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, nullptr);
         } else
-            player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+            player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
         return true;
     }
 };
@@ -404,10 +403,10 @@ public:
             if (player->FindNearestCreature(NPC_VANIRAS_SENTRY_TOTEM, 10.0f))
                 return false;
             else
-                player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, NULL);
+                player->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, item, nullptr);
         }
         else
-            player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+            player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, nullptr);
         return true;
     }
 };
@@ -452,6 +451,220 @@ public:
     }
 };
 
+class item_titanium_seal_of_dalaran : public ItemScript
+{
+public:
+    item_titanium_seal_of_dalaran() : ItemScript("item_titanium_seal_of_dalaran") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        uint8 luky = urand(0, 1);
+
+        if (pPlayer)
+        {
+            pPlayer->CastSpell(pPlayer, 60458, true);
+            pPlayer->TextEmote("casually flips his Titanium Seal of Dalaran");
+
+            if (luky)
+                pPlayer->TextEmote("caches the coin heads up!");
+            else
+                pPlayer->TextEmote("finds the coin face down for tails!");
+        }
+        return false;
+    }
+};
+
+enum eBrewfestSampler
+{
+    QUEST_CHUG_AND_CHUCK_A = 12022,
+    QUEST_CHUG_AND_CHUCK_H = 12191,
+    NPC_BREWFEST_STOUT = 24108
+};
+class item_brewfest_sampler : public ItemScript
+{
+public:
+    item_brewfest_sampler() : ItemScript("item_brewfest_sampler") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (pPlayer->GetQuestStatus(QUEST_CHUG_AND_CHUCK_A) == QUEST_STATUS_INCOMPLETE
+            || pPlayer->GetQuestStatus(QUEST_CHUG_AND_CHUCK_H) == QUEST_STATUS_INCOMPLETE)
+        {
+            if (Creature* pStout = pPlayer->FindNearestCreature(NPC_BREWFEST_STOUT, 10.0f)) // spell range
+            {
+                return false;
+            }
+            else
+                pPlayer->SendEquipError(EQUIP_ERR_OUT_OF_RANGE, pItem, NULL);
+        }
+        else
+            pPlayer->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, pItem, NULL);
+        return true;
+    }
+};
+
+enum eBrewfestRamReins
+{
+    SPELL_BREWFEST_RAM = 43880,
+    SPELL_RAM_FATIGUE = 43052,
+    SPELL_SPEED_RAM_GALLOP = 42994,
+    SPELL_SPEED_RAM_CANTER = 42993,
+    SPELL_SPEED_RAM_TROT = 42992,
+    SPELL_SPEED_RAM_NORMAL = 43310,
+    SPELL_SPEED_RAM_EXHAUSED = 43332
+};
+
+class item_brewfest_ram_reins : public ItemScript
+{
+public:
+    item_brewfest_ram_reins() : ItemScript("item_brewfest_ram_reins") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (pPlayer->HasAura(SPELL_BREWFEST_RAM) && !pPlayer->HasAura(SPELL_SPEED_RAM_EXHAUSED))
+        {
+            if (pPlayer->HasAura(SPELL_SPEED_RAM_NORMAL))
+                pPlayer->CastSpell(pPlayer, SPELL_SPEED_RAM_TROT, false);
+            else if (pPlayer->HasAura(SPELL_SPEED_RAM_TROT))
+            {
+               // if (pPlayer->GetAura(SPELL_SPEED_RAM_TROT)->GetDuration() < 3000)
+               //     pPlayer->GetAura(SPELL_SPEED_RAM_TROT)->SetDuration(4000);
+              //  else
+                    pPlayer->CastSpell(pPlayer, SPELL_SPEED_RAM_CANTER, false);
+            }
+            else if (pPlayer->HasAura(SPELL_SPEED_RAM_CANTER))
+            {
+               // if (pPlayer->GetAura(SPELL_SPEED_RAM_CANTER)->GetDuration() < 3000)
+                //    pPlayer->GetAura(SPELL_SPEED_RAM_CANTER)->SetDuration(4000);
+               // else
+                    pPlayer->CastSpell(pPlayer, SPELL_SPEED_RAM_GALLOP, false);
+            }
+           // else if (pPlayer->HasAura(SPELL_SPEED_RAM_GALLOP))
+              //  pPlayer->GetAura(SPELL_SPEED_RAM_GALLOP)->SetDuration(4000);
+        }
+        else
+            pPlayer->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, pItem, NULL);
+        return true;
+    }
+};
+
+// Leyara's Locket item=71259
+class item_leyara_locket : public ItemScript
+{
+public:
+    item_leyara_locket() : ItemScript("item_leyara_locket") { }
+
+    bool OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/, ObjectGuid /*castId*/) override
+    {
+        if (pPlayer->getGender() == GENDER_MALE)
+            pPlayer->CastSpell(pPlayer, 101185); // model male
+        else
+            pPlayer->CastSpell(pPlayer, 101186); // female
+
+        return false;
+    }
+};
+
+//153190
+class item_fel_spotted_egg : public ItemScript
+{
+public:
+    item_fel_spotted_egg() : ItemScript("item_fel_spotted_egg") { }
+
+    bool OnExpire(Player* player, ItemTemplate const* /*pItemProto*/) override
+    {
+        ItemPosCountVec dest;
+        uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 153191, 1);
+        if (msg == EQUIP_ERR_OK)
+            player->StoreNewItem(dest, 153191, true, GenerateItemRandomBonusListId(153191));
+
+        return true;
+    }
+};
+
+//500500
+class item_level_boost_50 : public ItemScript
+{
+public:
+    item_level_boost_50() : ItemScript("item_level_boost_50") { }
+
+    bool OnRemove(Player* player, Item* /*item*/) override
+    {
+        if (player->getLevel() < 50)
+        {
+            player->SetLevel(50);
+            player->SetFullHealth();
+            player->SetFullPower(player->GetPowerType());
+            player->AddItem(182716, 4);
+            player->ModifyMoney(25000000, false);
+            switch (player->getClass())
+            {
+            case CLASS_WARRIOR:
+            case CLASS_PALADIN:
+            case CLASS_DEATH_KNIGHT:
+                player->AddItem(164438, 1);
+                player->AddItem(164440, 1);
+                player->AddItem(164435, 1);
+                player->AddItem(164437, 1);
+                player->AddItem(164439, 1);
+                player->AddItem(164441, 1);
+                player->AddItem(164442, 1);
+                player->AddItem(164436, 1);
+                break;
+            case CLASS_HUNTER:
+            case CLASS_SHAMAN:
+                player->AddItem(164399, 1);
+                player->AddItem(164401, 1);
+                player->AddItem(164402, 1);
+                player->AddItem(164395, 1);
+                player->AddItem(164400, 1);
+                player->AddItem(164398, 1);
+                player->AddItem(164396, 1);
+                player->AddItem(164397, 1);
+                break;
+            case CLASS_MAGE:
+            case CLASS_WARLOCK:
+                player->AddItem(146786, 1);
+                player->AddItem(146791, 1);
+                player->AddItem(146789, 1);
+                player->AddItem(146785, 1);
+                player->AddItem(146788, 1);
+                player->AddItem(146790, 1);
+                player->AddItem(146792, 1);
+                player->AddItem(146787, 1);
+                break;
+            case CLASS_PRIEST:
+                break;
+            case CLASS_ROGUE:
+            case CLASS_DEMON_HUNTER:
+            case CLASS_MONK:
+                player->AddItem(160166, 1);
+                player->AddItem(160168, 1);
+                player->AddItem(160167, 1);
+                player->AddItem(160169, 1);
+                player->AddItem(160164, 1);
+                player->AddItem(160163, 1);
+                player->AddItem(160162, 1);
+                player->AddItem(160165, 1);
+                break;
+            case CLASS_DRUID:
+                player->AddItem(164559, 1);
+                player->AddItem(164561, 1);
+                player->AddItem(164560, 1);
+                player->AddItem(164562, 1);
+                player->AddItem(164557, 1);
+                player->AddItem(164556, 1);
+                player->AddItem(164555, 1);
+                player->AddItem(164558, 1);
+                break;
+            }
+            player->SaveToDB();
+        }
+
+        return true;
+    }
+};
+
 void AddSC_item_scripts()
 {
     new item_only_for_flight();
@@ -467,4 +680,10 @@ void AddSC_item_scripts()
     new item_captured_frog();
     new item_primal_egg();
     new item_pulsating_sac();
+    new item_titanium_seal_of_dalaran();
+    new item_brewfest_sampler;
+    new item_brewfest_ram_reins;
+    new item_leyara_locket();
+    new item_fel_spotted_egg();
+    RegisterItemScript(item_level_boost_50);
 }

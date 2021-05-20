@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -104,7 +104,7 @@ class spell_item_aegis_of_preservation : public SpellScriptLoader
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& /*eventInfo*/)
             {
                 PreventDefaultAction();
-                GetTarget()->CastSpell(GetTarget(), SPELL_AEGIS_HEAL, true, NULL, aurEff);
+                GetTarget()->CastSpell(GetTarget(), SPELL_AEGIS_HEAL, true, nullptr, aurEff);
             }
 
             void Register() override
@@ -161,9 +161,9 @@ class spell_item_alchemist_stone : public SpellScriptLoader
                 uint32 spellId = 0;
                 int32 amount = int32(eventInfo.GetDamageInfo()->GetDamage() * 0.4f);
 
-                if (eventInfo.GetDamageInfo()->GetSpellInfo()->HasEffect(DIFFICULTY_NONE, SPELL_EFFECT_HEAL))
+                if (eventInfo.GetDamageInfo()->GetSpellInfo()->HasEffect(SPELL_EFFECT_HEAL))
                     spellId = SPELL_ALCHEMIST_STONE_EXTRA_HEAL;
-                else if (eventInfo.GetDamageInfo()->GetSpellInfo()->HasEffect(DIFFICULTY_NONE, SPELL_EFFECT_ENERGIZE))
+                else if (eventInfo.GetDamageInfo()->GetSpellInfo()->HasEffect(SPELL_EFFECT_ENERGIZE))
                     spellId = SPELL_ALCHEMIST_STONE_EXTRA_MANA;
 
                 if (!spellId)
@@ -517,7 +517,7 @@ class spell_item_deadly_precision_dummy : public SpellScriptLoader
 
             void HandleDummy(SpellEffIndex /*effIndex*/)
             {
-                SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(SPELL_DEADLY_PRECISION);
+                SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(SPELL_DEADLY_PRECISION, DIFFICULTY_NONE);
                 GetCaster()->CastCustomSpell(spellInfo->Id, SPELLVALUE_AURA_STACK, spellInfo->StackAmount, GetCaster(), true);
             }
 
@@ -756,7 +756,7 @@ class spell_item_desperate_defense : public SpellScriptLoader
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& /*eventInfo*/)
             {
                 PreventDefaultAction();
-                GetTarget()->CastSpell(GetTarget(), SPELL_DESPERATE_RAGE, true, NULL, aurEff);
+                GetTarget()->CastSpell(GetTarget(), SPELL_DESPERATE_RAGE, true, nullptr, aurEff);
             }
 
             void Register() override
@@ -805,7 +805,7 @@ class spell_item_deviate_fish : public SpellScriptLoader
             {
                 Unit* caster = GetCaster();
                 uint32 spellId = urand(SPELL_SLEEPY, SPELL_HEALTHY_SPIRIT);
-                caster->CastSpell(caster, spellId, true, NULL);
+                caster->CastSpell(caster, spellId, true, nullptr);
             }
 
             void Register() override
@@ -1100,46 +1100,6 @@ class spell_item_gnomish_death_ray : public SpellScriptLoader
         }
 };
 
-// Item 10721: Gnomish Harm Prevention Belt 
-// 13234 - Harm Prevention Belt
-enum HarmPreventionBelt
-{
-    SPELL_FORCEFIELD_COLLAPSE = 13235
-};
-
-class spell_item_harm_prevention_belt : public SpellScriptLoader
-{
-public:
-    spell_item_harm_prevention_belt() : SpellScriptLoader("spell_item_harm_prevention_belt") { }
-
-    class spell_item_harm_prevention_belt_AuraScript : public AuraScript
-    {
-        PrepareAuraScript(spell_item_harm_prevention_belt_AuraScript);
-
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            if (!sSpellMgr->GetSpellInfo(SPELL_FORCEFIELD_COLLAPSE))
-                return false;
-            return true;
-        }
-
-        void HandleProc(ProcEventInfo& /*eventInfo*/)
-        {
-            GetTarget()->CastSpell((Unit*)nullptr, SPELL_FORCEFIELD_COLLAPSE, true);
-        }
-
-        void Register() override
-        {
-            OnProc += AuraProcFn(spell_item_harm_prevention_belt_AuraScript::HandleProc);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_item_harm_prevention_belt_AuraScript();
-    }
-};
-
 enum Heartpierce
 {
     SPELL_INVIGORATION_MANA         = 71881,
@@ -1306,7 +1266,7 @@ class spell_item_make_a_wish : public SpellScriptLoader
                     case 3: spellId = SPELL_SUMMON_FURIOUS_MR_PINCHY; break;
                     case 4: spellId = SPELL_TINY_MAGICAL_CRAWDAD; break;
                 }
-                caster->CastSpell(caster, spellId, true, NULL);
+                caster->CastSpell(caster, spellId, true, nullptr);
             }
 
             void Register() override
@@ -1786,7 +1746,7 @@ class spell_item_savory_deviate_delight : public SpellScriptLoader
                     // Yaaarrrr - pirate
                     case 2: spellId = (caster->getGender() == GENDER_MALE ? SPELL_YAAARRRR_MALE : SPELL_YAAARRRR_FEMALE); break;
                 }
-                caster->CastSpell(caster, spellId, true, NULL);
+                caster->CastSpell(caster, spellId, true, nullptr);
             }
 
             void Register() override
@@ -1987,14 +1947,14 @@ class spell_item_shadowmourne : public SpellScriptLoader
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
-                GetTarget()->CastSpell(GetTarget(), SPELL_SHADOWMOURNE_SOUL_FRAGMENT, true, NULL, aurEff);
+                GetTarget()->CastSpell(GetTarget(), SPELL_SHADOWMOURNE_SOUL_FRAGMENT, true, nullptr, aurEff);
 
                 // this can't be handled in AuraScript of SoulFragments because we need to know victim
                 if (Aura* soulFragments = GetTarget()->GetAura(SPELL_SHADOWMOURNE_SOUL_FRAGMENT))
                 {
                     if (soulFragments->GetStackAmount() >= 10)
                     {
-                        GetTarget()->CastSpell(eventInfo.GetProcTarget(), SPELL_SHADOWMOURNE_CHAOS_BANE_DAMAGE, true, NULL, aurEff);
+                        GetTarget()->CastSpell(eventInfo.GetProcTarget(), SPELL_SHADOWMOURNE_CHAOS_BANE_DAMAGE, true, nullptr, aurEff);
                         soulFragments->Remove();
                     }
                 }
@@ -2262,7 +2222,7 @@ class spell_item_underbelly_elixir : public SpellScriptLoader
                     case 1: spellId = SPELL_UNDERBELLY_ELIXIR_TRIGGERED1; break;
                     case 2: spellId = SPELL_UNDERBELLY_ELIXIR_TRIGGERED2; break;
                 }
-                caster->CastSpell(caster, spellId, true, NULL);
+                caster->CastSpell(caster, spellId, true, nullptr);
             }
 
             void Register() override
@@ -2825,7 +2785,7 @@ class spell_item_purify_helboar_meat : public SpellScriptLoader
             void HandleDummy(SpellEffIndex /* effIndex */)
             {
                 Unit* caster = GetCaster();
-                caster->CastSpell(caster, roll_chance_i(50) ? SPELL_SUMMON_PURIFIED_HELBOAR_MEAT : SPELL_SUMMON_TOXIC_HELBOAR_MEAT, true, NULL);
+                caster->CastSpell(caster, roll_chance_i(50) ? SPELL_SUMMON_PURIFIED_HELBOAR_MEAT : SPELL_SUMMON_TOXIC_HELBOAR_MEAT, true, nullptr);
             }
 
             void Register() override
@@ -2866,7 +2826,7 @@ class spell_item_crystal_prison_dummy_dnd : public SpellScriptLoader
                 if (Creature* target = GetHitCreature())
                     if (target->isDead() && !target->IsPet())
                     {
-                        GetCaster()->SummonGameObject(OBJECT_IMPRISONED_DOOMGUARD, *target, QuaternionData(), uint32(target->GetRespawnTime()-time(NULL)));
+                        GetCaster()->SummonGameObject(OBJECT_IMPRISONED_DOOMGUARD, *target, QuaternionData(), uint32(target->GetRespawnTime()-time(nullptr)));
                         target->DespawnOrUnsummon();
                     }
             }
@@ -3176,7 +3136,7 @@ class spell_item_complete_raptor_capture : public SpellScriptLoader
                     GetHitCreature()->DespawnOrUnsummon();
 
                     //cast spell Raptor Capture Credit
-                    caster->CastSpell(caster, SPELL_RAPTOR_CAPTURE_CREDIT, true, NULL);
+                    caster->CastSpell(caster, SPELL_RAPTOR_CAPTURE_CREDIT, true, nullptr);
                 }
             }
 
@@ -3418,7 +3378,7 @@ class spell_item_rocket_boots : public SpellScriptLoader
                     bg->EventPlayerDroppedFlag(caster);
 
                 caster->GetSpellHistory()->ResetCooldown(SPELL_ROCKET_BOOTS_PROC);
-                caster->CastSpell(caster, SPELL_ROCKET_BOOTS_PROC, true, NULL);
+                caster->CastSpell(caster, SPELL_ROCKET_BOOTS_PROC, true, nullptr);
             }
 
             SpellCastResult CheckCast()
@@ -3864,7 +3824,7 @@ public:
         void Register() override
         {
             OnEffectHitTarget += SpellEffectFn(spell_item_toy_train_set_pulse_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_item_toy_train_set_pulse_SpellScript::HandleTargets, EFFECT_ALL, TARGET_UNIT_SRC_AREA_ALLY);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_item_toy_train_set_pulse_SpellScript::HandleTargets, uint8(EFFECT_ALL), TARGET_UNIT_SRC_AREA_ALLY);
         }
     };
 
@@ -4601,47 +4561,38 @@ class spell_item_world_queller_focus : public SpellScriptLoader
         }
 };
 
+//the mount doesnt walk in water more since 8.2 its a normal mount
 // 118089 - Azure Water Strider
 // 127271 - Crimson Water Strider
 // 127272 - Orange Water Strider
 // 127274 - Jade Water Strider
 // 127278 - Golden Water Strider
-class spell_item_water_strider : public SpellScriptLoader
+class spell_item_water_strider : public AuraScript
 {
-    public:
-        spell_item_water_strider() : SpellScriptLoader("spell_item_water_strider") { }
+    PrepareAuraScript(spell_item_water_strider);
 
-        class spell_item_water_strider_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_item_water_strider_AuraScript);
-
-            bool Validate(SpellInfo const* /*spell*/) override
+    bool Validate(SpellInfo const* /*spell*/) override
+    {
+        return ValidateSpellInfo(
             {
-                return ValidateSpellInfo(
-                {
-                    SPELL_AZURE_WATER_STRIDER,
-                    SPELL_CRIMSON_WATER_STRIDER,
-                    SPELL_ORANGE_WATER_STRIDER,
-                    SPELL_JADE_WATER_STRIDER,
-                    SPELL_GOLDEN_WATER_STRIDER
-                });
-            }
+                SPELL_AZURE_WATER_STRIDER,
+                SPELL_CRIMSON_WATER_STRIDER,
+                SPELL_ORANGE_WATER_STRIDER,
+                SPELL_JADE_WATER_STRIDER,
+                SPELL_GOLDEN_WATER_STRIDER
+            });
+    }
 
-            void OnRemove(AuraEffect const* /*effect*/, AuraEffectHandleModes /*mode*/)
-            {
-                GetTarget()->RemoveAurasDueToSpell(GetSpellInfo()->GetEffect(EFFECT_1)->TriggerSpell);
-            }
+    void HandleRemove(AuraEffect const* /*effect*/, AuraEffectHandleModes /*mode*/)
+    {
+        Unit* target = GetTarget();
+        //GetTarget()->RemoveAurasDueToSpell(GetSpellInfo()->GetEffect(EFFECT_1)->TriggerSpell);
+    }
 
-            void Register() override
-            {
-                OnEffectRemove += AuraEffectRemoveFn(spell_item_water_strider_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_MOUNTED, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_item_water_strider_AuraScript();
-        }
+    void Register() override
+    {
+        OnEffectRemove += AuraEffectRemoveFn(spell_item_water_strider::HandleRemove, EFFECT_0, SPELL_AURA_MOUNTED, AURA_EFFECT_HANDLE_REAL);
+    }
 };
 
 // 144671 - Brutal Kinship
@@ -4730,7 +4681,7 @@ class spell_item_heart_of_azeroth : public AuraScript
         {
             target->ApplyAllAzeriteEmpoweredItemMods(equipped);
 
-            WorldPackets::Azerite::AzeriteEmpoweredItemEquippedStatusChanged statusChanged;
+            WorldPackets::Azerite::PlayerAzeriteItemEquippedStatusChanged statusChanged;
             statusChanged.IsHeartEquipped = equipped;
             target->SendDirectMessage(statusChanged.Write());
         }
@@ -4805,6 +4756,95 @@ class spell_item_demon_hunters_aspect : public AuraScript
     {
         AfterEffectApply += AuraEffectRemoveFn(spell_item_demon_hunters_aspect::OnApply, EFFECT_0, SPELL_AURA_TRANSFORM, AURA_EFFECT_HANDLE_REAL);
         AfterEffectRemove += AuraEffectRemoveFn(spell_item_demon_hunters_aspect::OnRemove, EFFECT_0, SPELL_AURA_TRANSFORM, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+// Item 10721: Gnomish Harm Prevention Belt 
+// 13234 - Harm Prevention Belt
+enum HarmPreventionBelt
+{
+    SPELL_FORCEFIELD_COLLAPSE = 13235
+};
+
+class spell_item_harm_prevention_belt : public SpellScriptLoader
+{
+public:
+    spell_item_harm_prevention_belt() : SpellScriptLoader("spell_item_harm_prevention_belt") { }
+
+    class spell_item_harm_prevention_belt_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_item_harm_prevention_belt_AuraScript);
+
+        bool Validate(SpellInfo const* /*spellInfo*/) override
+        {
+            if (!sSpellMgr->GetSpellInfo(SPELL_FORCEFIELD_COLLAPSE, DIFFICULTY_NONE))
+                return false;
+            return true;
+        }
+
+        void HandleProc(ProcEventInfo& /*eventInfo*/)
+        {
+            GetTarget()->CastSpell((Unit*)nullptr, SPELL_FORCEFIELD_COLLAPSE, true);
+        }
+
+        void Register() override
+        {
+            OnProc += AuraProcFn(spell_item_harm_prevention_belt_AuraScript::HandleProc);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_item_harm_prevention_belt_AuraScript();
+    }
+};
+
+// spell 188021 -  Avalanche Elixir
+enum AvalancheElixir
+{
+    SPELL_AVALANCHE_ELIXIR_BUFF = 188414,
+    SPELL_AVALANCHE_ELIXIR      = 188021
+};
+
+class aura_item_avalanche_elixir : public AuraScript
+{
+    PrepareAuraScript(aura_item_avalanche_elixir);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_AVALANCHE_ELIXIR_BUFF, SPELL_AVALANCHE_ELIXIR });
+    }
+
+    void HandleEffectPeriodic(AuraEffect const* aurEff)
+    {
+        if (Player* target = GetTarget()->ToPlayer())
+            if (target->HasAura(SPELL_AVALANCHE_ELIXIR) && target->IsFalling())
+            {
+                target->RemoveAurasDueToSpell(SPELL_AVALANCHE_ELIXIR);
+                target->CastSpell(target, SPELL_AVALANCHE_ELIXIR_BUFF, true);
+            }
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(aura_item_avalanche_elixir::HandleEffectPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+//54814 Talisman of Flame Ascendancy
+class talisman_of_flame_ascendancy : public ItemScript
+{
+public:
+    talisman_of_flame_ascendancy() : ItemScript("talisman_of_flame_ascendancy") { }
+    
+    bool OnUse(Player* plr, Item* /*item*/, SpellCastTargets const& targets, ObjectGuid /*castId*/) override
+    {
+        if (plr->GetQuestStatus(25310) == QUEST_STATUS_INCOMPLETE && plr->GetAreaId() == 4998)
+        {
+            if (plr->FindNearestCreature(139643, 25.0f, true))
+                plr->CastSpell(nullptr, 75554);
+        }
+        return true;
     }
 };
 
@@ -4923,10 +4963,12 @@ void AddSC_item_spell_scripts()
     new spell_item_talisman_of_ascendance();
     new spell_item_battle_trance();
     new spell_item_world_queller_focus();
-    new spell_item_water_strider();
+    RegisterAuraScript(spell_item_water_strider);
     new spell_item_brutal_kinship();
     RegisterAuraScript(aura_item_burning_essence);
     RegisterAuraScript(spell_item_heart_of_azeroth);
     RegisterAuraScript(spell_item_demon_hunters_aspect);
     RegisterAuraScript(spell_item_faded_wizard_hat);
+    RegisterAuraScript(aura_item_avalanche_elixir);
+    new talisman_of_flame_ascendancy();
 }

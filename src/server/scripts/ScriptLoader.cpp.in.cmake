@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,7 +26,7 @@
 
 @TRINITY_SCRIPTS_FORWARD_DECL@
 #ifdef TRINITY_IS_DYNAMIC_SCRIPTLOADER
-#  include "revision_data.h"
+#include "src/genrev/CMakeFiles/revision_data.h"
 #  define TC_SCRIPT_API TC_API_EXPORT
 extern "C" {
 

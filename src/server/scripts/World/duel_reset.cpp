@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -97,7 +97,7 @@ class DuelResetScript : public PlayerScript
                 {
                     SpellHistory::Clock::time_point now = GameTime::GetGameTimeSystemPoint();
                     uint32 cooldownDuration = itr->second.CooldownEnd > now ? std::chrono::duration_cast<std::chrono::milliseconds>(itr->second.CooldownEnd - now).count() : 0;
-                    SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(itr->first);
+                    SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(itr->first, DIFFICULTY_NONE);
                     return spellInfo->RecoveryTime < 10 * MINUTE * IN_MILLISECONDS
                            && spellInfo->CategoryRecoveryTime < 10 * MINUTE * IN_MILLISECONDS
                            && !itr->second.OnHold
@@ -111,7 +111,7 @@ class DuelResetScript : public PlayerScript
                 // remove cooldowns on spells that have < 10 min CD and has no onHold
                 player->GetSpellHistory()->ResetCooldowns([](SpellHistory::CooldownStorageType::iterator itr) -> bool
                 {
-                    SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(itr->first);
+                    SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(itr->first, DIFFICULTY_NONE);
                     return spellInfo->RecoveryTime < 10 * MINUTE * IN_MILLISECONDS
                            && spellInfo->CategoryRecoveryTime < 10 * MINUTE * IN_MILLISECONDS
                            && !itr->second.OnHold;

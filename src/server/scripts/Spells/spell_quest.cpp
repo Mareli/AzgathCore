@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -157,7 +157,7 @@ class spell_q5206_test_fetid_skull : public SpellScriptLoader
             {
                 Unit* caster = GetCaster();
                 uint32 spellId = roll_chance_i(50) ? SPELL_CREATE_RESONATING_SKULL : SPELL_CREATE_BONE_DUST;
-                caster->CastSpell(caster, spellId, true, NULL);
+                caster->CastSpell(caster, spellId, true, nullptr);
             }
 
             void Register() override
@@ -608,7 +608,7 @@ class spell_q12634_despawn_fruit_tosser : public SpellScriptLoader
                 // sometimes, if you're lucky, you get a dwarf
                 if (roll_chance_i(5))
                     spellId = SPELL_SUMMON_ADVENTUROUS_DWARF;
-                GetCaster()->CastSpell(GetCaster(), spellId, true, NULL);
+                GetCaster()->CastSpell(GetCaster(), spellId, true, nullptr);
             }
 
             void Register() override
@@ -642,7 +642,7 @@ class spell_q12683_take_sputum_sample : public SpellScriptLoader
                 if (caster->HasAuraEffect(reqAuraId, 0))
                 {
                     uint32 spellId = GetSpellInfo()->GetEffect(EFFECT_0)->CalcValue();
-                    caster->CastSpell(caster, spellId, true, NULL);
+                    caster->CastSpell(caster, spellId, true, nullptr);
                 }
             }
 
@@ -752,7 +752,7 @@ class spell_q12937_relief_for_the_fallen : public SpellScriptLoader
                 Player* caster = GetCaster()->ToPlayer();
                 if (Creature* target = GetHitCreature())
                 {
-                    caster->CastSpell(caster, SPELL_TRIGGER_AID_OF_THE_EARTHEN, true, NULL);
+                    caster->CastSpell(caster, SPELL_TRIGGER_AID_OF_THE_EARTHEN, true, nullptr);
                     caster->KilledMonsterCredit(NPC_FALLEN_EARTHEN_DEFENDER);
                     target->DespawnOrUnsummon();
                 }
@@ -1669,7 +1669,7 @@ class spell_q12527_zuldrak_rat : public SpellScriptLoader
             {
                 if (GetHitAura() && GetHitAura()->GetStackAmount() >= GetSpellInfo()->StackAmount)
                 {
-                    GetHitUnit()->CastSpell((Unit*) NULL, SPELL_SUMMON_GORGED_LURKING_BASILISK, true);
+                    GetHitUnit()->CastSpell((Unit*) nullptr, SPELL_SUMMON_GORGED_LURKING_BASILISK, true);
                     if (Creature* basilisk = GetHitUnit()->ToCreature())
                         basilisk->DespawnOrUnsummon();
                 }
@@ -2117,31 +2117,22 @@ class spell_q12641_death_comes_from_on_high : public SpellScriptLoader
             void HandleDummy(SpellEffIndex)
             {
                 Unit* caster = GetCaster();
-                float distance = 45.0f; //45 yards is the original effect range of siphon of acherus
 
-                if (Creature* npc = caster->FindNearestCreature(NPC_NEW_AVALON_FORGE, distance))
-                {
+                if (Creature* npc = caster->FindNearestCreature(NPC_NEW_AVALON_FORGE, 45.0f))
                     if (Player* player = GetCaster()->GetCharmerOrOwner()->ToPlayer())
                         player->KilledMonsterCredit(NPC_NEW_AVALON_FORGE);
-                }
 
-                if (Creature* npc = caster->FindNearestCreature(NPC_NEW_AVALON_TOWN_HALL, distance))
-                {
+                if (Creature* npc = caster->FindNearestCreature(NPC_NEW_AVALON_TOWN_HALL, 45.0f))
                     if (Player* player = GetCaster()->GetCharmerOrOwner()->ToPlayer())
                         player->KilledMonsterCredit(NPC_NEW_AVALON_TOWN_HALL);
-                }
 
-                if (Creature* npc = caster->FindNearestCreature(NPC_SCARLET_HOLD, distance))
-                {
+                if (Creature* npc = caster->FindNearestCreature(NPC_SCARLET_HOLD, 45.0f))
                     if (Player* player = GetCaster()->GetCharmerOrOwner()->ToPlayer())
                         player->KilledMonsterCredit(NPC_SCARLET_HOLD);
-                }
 
-                if (Creature* npc = caster->FindNearestCreature(NPC_CHAPEL_OF_THE_CRIMSON_FLAME, distance))
-                {
+                if (Creature* npc = caster->FindNearestCreature(NPC_CHAPEL_OF_THE_CRIMSON_FLAME, 45.0f))
                     if (Player* player = GetCaster()->GetCharmerOrOwner()->ToPlayer())
                         player->KilledMonsterCredit(NPC_CHAPEL_OF_THE_CRIMSON_FLAME);
-                }
             }
 
             void Register() override
@@ -2207,7 +2198,7 @@ class spell_q12619_emblazon_runeblade : public SpellScriptLoader
             {
                 PreventDefaultAction();
                 if (Unit* caster = GetCaster())
-                    caster->CastSpell(caster, GetSpellInfo()->GetEffect(aurEff->GetEffIndex())->TriggerSpell, true, NULL, aurEff);
+                    caster->CastSpell(caster, GetSpellInfo()->GetEffect(aurEff->GetEffIndex())->TriggerSpell, true, nullptr, aurEff);
             }
 
             void Register() override
@@ -2743,8 +2734,202 @@ public:
     }
 };
 
+// Cancel/Complete Scene - Artifact Trait Unlock - 234684
+class spell_q_artifact_trait_unlock : public SpellScriptLoader
+{
+public:
+    spell_q_artifact_trait_unlock() : SpellScriptLoader("spell_q_artifact_trait_unlock") { }
+
+    class spell_q_artifact_trait_unlock_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_q_artifact_trait_unlock_SpellScript);
+
+        void HandleOnCast()
+        {
+            if (Player* player = GetCaster()->ToPlayer())
+            {
+                if (!player->IsGameMaster())
+                {
+                    //uint32 questId = player->GetQuestForUnLockSecondTier();
+                    //if (!questId || player->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE) // Prevent complete art in other spec
+                    {
+                      //  ChatHandler(player).PSendSysMessage("Error: You need quest %u", questId);
+                        return;
+                    }
+                }
+
+              //  if (Item* artifact = player->GetArtifactWeapon())
+                {
+                   // uint32 artifactLevel = artifact->GetTotalPurchasedArtifactPowers();
+                  //  if (artifactLevel < 35) // Fix cheats
+                    {
+                      //  ChatHandler(player).PSendSysMessage("Error: You need 35 artifact Level, now you have %u", artifactLevel);
+                        return;
+                    }
+                //    if (artifact->GetModifier(ITEM_MODIFIER_ARTIFACT_TIER)) // Fix cheats
+                    {
+                   //     ChatHandler(player).PSendSysMessage("Error: The artifact already has new tier");
+                        return;
+                    }
+
+                   // if (artifactLevel > 35)
+                    {
+                      //  uint64 free_xp = artifact->GetUInt32Value(ITEM_FIELD_ARTIFACT_XP);
+                      //  for (uint32 i = 36; i <= artifactLevel; i++)
+                          //  if (GtArtifactLevelXPEntry const* cost = sArtifactLevelXPGameTable.GetRow(i))
+                         //       free_xp += cost->XP;
+
+                     //   artifact->SetUInt64Value(ITEM_FIELD_ARTIFACT_XP, free_xp);
+
+                     //   for (ItemDynamicFieldArtifactPowers const& artifactPowerDyn : artifact->GetArtifactPowers())
+                        {
+                           // ArtifactPowerEntry const* artifactPower = sArtifactPowerStore.AssertEntry(artifactPowerDyn.ArtifactPowerId);
+                         //   if (!artifactPower || artifactPower->MaxPurchasableRank != 20) // Find last power
+                               // continue;
+
+                         //   ItemDynamicFieldArtifactPowers newPower = artifactPowerDyn;
+                          //  newPower.PurchasedRank = 1;
+                         //   newPower.CurrentRankWithBonus = 1;
+                           // artifact->SetArtifactPower(&newPower);
+
+                          //  if (artifact->IsEquipped())
+                              //  if (ArtifactPowerRankEntry const* artifactPowerRank = sDB2Manager.GetArtifactPowerRank(artifactPowerDyn.ArtifactPowerId, 0))
+                              //      player->ApplyArtifactPowerRank(artifact, artifactPowerRank, false);
+                        }
+                    }
+                   // artifact->SetModifier(ITEM_MODIFIER_ARTIFACT_TIER, 1); //Activated 2 tier artifact
+                  //  artifact->InitArtifactsTier(artifact->GetTemplate()->GetArtifactID());
+                   // artifact->SetState(ITEM_CHANGED, player);
+
+                  //  WorldPackets::Artifact::ArtifactTraitsRefunded packet;
+                   // packet.Guid = artifact->GetGUID();
+                  //  packet.UnkInt = 0;
+                  //  packet.UnkInt2 = 0;
+                   // player->SendDirectMessage(packet.Write());
+                }
+            }
+        }
+
+        void Register() override
+        {
+            OnCast += SpellCastFn(spell_q_artifact_trait_unlock_SpellScript::HandleOnCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_q_artifact_trait_unlock_SpellScript();
+    }
+};
+
+// Faint Ritual Circle - 237784
+class spell_q_faint_ritual_circle : public SpellScriptLoader
+{
+public:
+    spell_q_faint_ritual_circle() : SpellScriptLoader("spell_q_faint_ritual_circle") { }
+
+    class spell_q_faint_ritual_circle_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_q_faint_ritual_circle_SpellScript);
+
+        void HandleOnCast()
+        {
+            if (Unit* caster = GetCaster())
+            {
+                Position pos{ -851.8559f, 4622.788f, 749.4676f };
+                uint32 AreaTriggerID = 13567;
+                AreaTrigger* areaTrigger = new AreaTrigger;
+               // if (!areaTrigger->CreateAreaTrigger(sObjectMgr->GetGenerator<HighGuid::AreaTrigger>()->Generate(), 0, caster, nullptr, pos, pos, nullptr, ObjectGuid::Empty, AreaTriggerID))
+                    delete areaTrigger;
+            }
+        }
+
+        void Register() override
+        {
+            OnCast += SpellCastFn(spell_q_faint_ritual_circle_SpellScript::HandleOnCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_q_faint_ritual_circle_SpellScript();
+    }
+};
+
+class spell_q30050_resuscitate : public SpellScriptLoader
+{
+public:
+    spell_q30050_resuscitate() : SpellScriptLoader("spell_q30050_resuscitate") { }
+
+    class spell_q30050_resuscitate_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_q30050_resuscitate_SpellScript);
+
+        void HandleDummy(SpellEffIndex /*effIndex*/)
+        {
+            if (Unit* caster = GetCaster())
+            {
+                if (AuraEffect const* aurEff = caster->GetAuraEffect(108123, EFFECT_0))
+                {
+                    int32 step = uint32(aurEff->GetTickNumber() / 15);
+                    if (step > 36)
+                        step -= 36;
+                    else if (step > 30)
+                        step -= 30;
+                    else if (step > 24)
+                        step -= 24;
+                    else if (step > 18)
+                        step = -18;
+                    else if (step > 12)
+                        step = -12;
+                    else if (step > 6)
+                        step = -6;
+
+                    switch (step)
+                    {
+                    case 0:
+                        caster->CastSpell(caster, 108106, true);
+                        break;
+                    case 1:
+                        caster->CastSpell(caster, 108108, true);
+                        break;
+                    case 2:
+                        caster->CastSpell(caster, 108109, true);
+                        break;
+                    case 3:
+                        caster->CastSpell(caster, 108110, true);
+                        break;
+                    case 4:
+                        caster->CastSpell(caster, 108111, true);
+                        break;
+                    case 5:
+                        caster->CastSpell(caster, 108112, true);
+                        break;
+                    case 6:
+                        caster->CastSpell(caster, 108114, true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectHit += SpellEffectFn(spell_q30050_resuscitate_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_q30050_resuscitate_SpellScript();
+    };
+};
+
 void AddSC_quest_spell_scripts()
 {
+    new spell_q30050_resuscitate();
+    new spell_q_faint_ritual_circle();
+    new spell_q_artifact_trait_unlock();
     new spell_q55_sacred_cleansing();
     new spell_q2203_thaumaturgy_channel();
     new spell_q5206_test_fetid_skull();

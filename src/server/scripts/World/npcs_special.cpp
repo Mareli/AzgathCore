@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,7 +24,7 @@
 #include "GameObjectAI.h"
 #include "GridNotifiersImpl.h"
 #include "Log.h"
-#include "MiscPackets.h"
+#include "NPCPackets.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
@@ -108,7 +107,7 @@ public:
     {
         npc_air_force_botsAI(Creature* creature) : ScriptedAI(creature)
         {
-            SpawnAssoc = NULL;
+            SpawnAssoc = nullptr;
             SpawnedGUID.Clear();
 
             // find the correct spawnhandling
@@ -132,7 +131,7 @@ public:
                 if (!spawnedTemplate)
                 {
                     TC_LOG_ERROR("sql.sql", "TCSR: Creature template entry %u does not exist in DB, which is required by npc_air_force_bots", SpawnAssoc->spawnedCreatureEntry);
-                    SpawnAssoc = NULL;
+                    SpawnAssoc = nullptr;
                     return;
                 }
             }
@@ -152,7 +151,7 @@ public:
             else
             {
                 TC_LOG_ERROR("sql.sql", "TCSR: npc_air_force_bots: wasn't able to spawn Creature %u", SpawnAssoc->spawnedCreatureEntry);
-                SpawnAssoc = NULL;
+                SpawnAssoc = nullptr;
             }
 
             return summoned;
@@ -165,7 +164,7 @@ public:
             if (creature && creature->IsAlive())
                 return creature;
 
-            return NULL;
+            return nullptr;
         }
 
         void MoveInLineOfSight(Unit* who) override
@@ -181,7 +180,7 @@ public:
                 if (!playerTarget)
                     return;
 
-                Creature* lastSpawnedGuard = SpawnedGUID.IsEmpty() ? NULL : GetSummonedGuard();
+                Creature* lastSpawnedGuard = SpawnedGUID.IsEmpty() ? nullptr : GetSummonedGuard();
 
                 // prevent calling ObjectAccessor::GetUnit at next MoveInLineOfSight call - speedup
                 if (!lastSpawnedGuard)
@@ -287,7 +286,7 @@ public:
         void Reset() override
         {
             Initialize();
-            me->setFaction(FACTION_CHICKEN);
+            me->SetFaction(FACTION_CHICKEN);
             me->RemoveNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
         }
 
@@ -319,7 +318,7 @@ public:
                     if (player->GetQuestStatus(QUEST_CLUCK) == QUEST_STATUS_NONE && rand32() % 30 == 1)
                     {
                         me->AddNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
-                        me->setFaction(FACTION_FRIENDLY);
+                        me->SetFaction(FACTION_FRIENDLY);
                         Talk(player->GetTeam() == HORDE ? EMOTE_HELLO_H : EMOTE_HELLO_A);
                     }
                     break;
@@ -327,7 +326,7 @@ public:
                     if (player->GetQuestStatus(QUEST_CLUCK) == QUEST_STATUS_COMPLETE)
                     {
                         me->AddNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
-                        me->setFaction(FACTION_FRIENDLY);
+                        me->SetFaction(FACTION_FRIENDLY);
                         Talk(EMOTE_CLUCK_TEXT);
                     }
                     break;
@@ -755,7 +754,7 @@ public:
         void Initialize()
         {
             DoctorGUID.Clear();
-            Coord = NULL;
+            Coord = nullptr;
         }
 
         ObjectGuid DoctorGUID;
@@ -948,9 +947,9 @@ class npc_garments_of_quests : public CreatureScript
 public:
     npc_garments_of_quests() : CreatureScript("npc_garments_of_quests") { }
 
-    struct npc_garments_of_questsAI : public npc_escortAI
+    struct npc_garments_of_questsAI : public EscortAI
     {
-        npc_garments_of_questsAI(Creature* creature) : npc_escortAI(creature)
+        npc_garments_of_questsAI(Creature* creature) : EscortAI(creature)
         {
             switch (me->GetEntry())
             {
@@ -1073,7 +1072,7 @@ public:
                     RunAwayTimer -= diff;
             }
 
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
         }
     };
 
@@ -1431,7 +1430,7 @@ public:
         void DamageTaken(Unit* doneBy, uint32& damage) override
         {
             me->AddThreat(doneBy, float(damage));    // just to create threat reference
-            _damageTimes[doneBy->GetGUID()] = time(NULL);
+            _damageTimes[doneBy->GetGUID()] = time(nullptr);
             damage = 0;
         }
 
@@ -1451,7 +1450,7 @@ public:
                 {
                     case EVENT_TD_CHECK_COMBAT:
                     {
-                        time_t now = time(NULL);
+                        time_t now = time(nullptr);
                         for (std::unordered_map<ObjectGuid, time_t>::iterator itr = _damageTimes.begin(); itr != _damageTimes.end();)
                         {
                             // If unit has not dealt damage to training dummy for 5 seconds, remove him from combat
@@ -1760,7 +1759,7 @@ public:
 
         GameObject* FindNearestLauncher()
         {
-            GameObject* launcher = NULL;
+            GameObject* launcher = nullptr;
 
             if (isCluster())
             {
@@ -1875,7 +1874,7 @@ public:
                     break;
             }
 
-            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId))
+            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId, DIFFICULTY_NONE))
                 if (SpellEffectInfo const* effect0 = spellInfo->GetEffect(EFFECT_0))
                     if (effect0->Effect == SPELL_EFFECT_SUMMON_OBJECT_WILD)
                         return effect0->MiscValue;
@@ -2195,7 +2194,7 @@ struct npc_argent_squire_gruntling : public ScriptedAI
             });
     }
 
-    void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+    bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
     {
         switch (gossipListId)
         {
@@ -2246,6 +2245,8 @@ struct npc_argent_squire_gruntling : public ScriptedAI
                 break;
         }
         player->PlayerTalkClass->SendCloseGossip();
+
+        return true;
     }
 
     bool IsArgentSquire() const { return me->GetEntry() == NPC_ARGENT_SQUIRE; }
@@ -2318,10 +2319,10 @@ public:
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 /*action*/) override
     {
-        WorldPackets::Misc::OpenAlliedRaceDetailsGiver openAlliedRaceDetailsGiver;
-        openAlliedRaceDetailsGiver.Guid = creature->GetGUID();
-        openAlliedRaceDetailsGiver.RaceId = _raceId;
-        player->SendDirectMessage(openAlliedRaceDetailsGiver.Write());
+        WorldPackets::NPC::OpenAlliedRaceDetails OpenAlliedRaceDetails;
+        OpenAlliedRaceDetails.Guid = creature->GetGUID();
+        OpenAlliedRaceDetails.RaceId = _raceId;
+        player->SendDirectMessage(OpenAlliedRaceDetails.Write());
         return true;
     }
 
@@ -2339,14 +2340,56 @@ public:
 
     npc_moira_thaurissan_bfa(Creature* creature) : ScriptedAI(creature) { }
 
-    void sQuestAccept(Player* player, Quest const* quest) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
-        if (quest->GetQuestId() == QUEST_FER_THE_ALLIANCE)
+        if (quest->ID == QUEST_FER_THE_ALLIANCE)
 		{
             player->TeleportTo(0, -8177.66f, 792.195f, 73.9964f, 0.781548f);
         }
     }
 };
+
+/*######
+## npc_lunaclaw_spirit
+######*/
+
+enum
+{
+    QUEST_BODY_HEART_A = 6001,
+    QUEST_BODY_HEART_H = 6002,
+
+    TEXT_ID_DEFAULT = 4714,
+    TEXT_ID_PROGRESS = 4715
+};
+
+#define GOSSIP_ITEM_GRANT   "You have thought well, spirit. I ask you to grant me the strength of your body and the strength of your heart."
+
+class npc_lunaclaw_spirit : public CreatureScript
+{
+public:
+    npc_lunaclaw_spirit() : CreatureScript("npc_lunaclaw_spirit") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (player->GetQuestStatus(QUEST_BODY_HEART_A) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_BODY_HEART_H) == QUEST_STATUS_INCOMPLETE)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_ITEM_GRANT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+            SendGossipMenuFor(player, TEXT_ID_DEFAULT, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)
+        {
+            SendGossipMenuFor(player, TEXT_ID_PROGRESS, creature->GetGUID());
+            player->AreaExploredOrEventHappens(player->GetTeam() == ALLIANCE ? QUEST_BODY_HEART_A : QUEST_BODY_HEART_H);
+        }
+        return true;
+    }
+};
+
 
 void AddSC_npcs_special()
 {
@@ -2370,9 +2413,17 @@ void AddSC_npcs_special()
     RegisterCreatureAI(npc_argent_squire_gruntling);
     new npc_creature_damage_limit();
     new npc_regzar();
-    new npc_allied_race_infos("npc_allied_race_infos_nightborne", 27);
-    new npc_allied_race_infos("npc_allied_race_infos_tauren", 28);
-    new npc_allied_race_infos("npc_allied_race_infos_voidelf", 29);
-    new npc_allied_race_infos("npc_allied_race_infos_draenei", 30);
+    new npc_allied_race_infos("npc_allied_race_infos_nightborne",           27);
+    new npc_allied_race_infos("npc_allied_race_infos_highmountaintauren",   28);
+    new npc_allied_race_infos("npc_allied_race_infos_voidelf",              29);
+    new npc_allied_race_infos("npc_allied_race_infos_lightforgeddraenei",   30);
+    new npc_allied_race_infos("npc_allied_race_infos_zandalaritroll",       31);
+    new npc_allied_race_infos("npc_allied_race_infos_kultiran",             32);
+    new npc_allied_race_infos("npc_allied_race_infos_human",                33); // NYU
+    new npc_allied_race_infos("npc_allied_race_infos_darkirondwarf",        34);
+    new npc_allied_race_infos("npc_allied_race_infos_vulpera",              35);
+    new npc_allied_race_infos("npc_allied_race_infos_magharorc",            36);
+    new npc_allied_race_infos("npc_allied_race_infos_mechagnome",           37);
     RegisterCreatureAI(npc_moira_thaurissan_bfa);
+    new npc_lunaclaw_spirit();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -126,7 +126,7 @@ class spell_mastery_icicles_proc : public AuraScript
                     // Launch the icicle with the smallest duration
                     if (AuraEffect* currentIcicleAuraEffect = player->GetAuraEffect(IcicleAuras[smallestIcicle], EFFECT_0))
                     {
-                        int32 basePoints = currentIcicleAuraEffect->GetAmount();
+                        float basePoints = currentIcicleAuraEffect->GetAmount();
 
                         if (caster->HasAura(SPELL_MAGE_BLACK_ICE))
                         {
@@ -135,7 +135,7 @@ class spell_mastery_icicles_proc : public AuraScript
                         }
 
                         player->CastSpell(target, IcicleHits[smallestIcicle], true);
-                        player->CastCustomSpell(target, SPELL_MAGE_ICICLE_DAMAGE, &basePoints, NULL, NULL, true);
+                        player->CastCustomSpell(target, SPELL_MAGE_ICICLE_DAMAGE, &basePoints, nullptr, nullptr, true);
                         player->RemoveAura(IcicleAuras[smallestIcicle]);
                     }
 
@@ -193,7 +193,7 @@ class spell_mastery_icicles_proc : public AuraScript
                         // Launch the icicle with the smallest duration
                         if (AuraEffect* currentIcicleAuraEffect = player->GetAuraEffect(IcicleAuras[smallestIcicle], EFFECT_0))
                         {
-                            int32 basePoints = currentIcicleAuraEffect->GetAmount();
+                            float basePoints = currentIcicleAuraEffect->GetAmount();
 
                             if (caster->HasAura(SPELL_MAGE_BLACK_ICE))
                             {
@@ -202,7 +202,7 @@ class spell_mastery_icicles_proc : public AuraScript
                             }
 
                             player->CastSpell(target, IcicleHits[smallestIcicle], true);
-                            player->CastCustomSpell(target, SPELL_MAGE_ICICLE_DAMAGE, &basePoints, NULL, NULL, true);
+                            player->CastCustomSpell(target, SPELL_MAGE_ICICLE_DAMAGE, &basePoints, nullptr, nullptr, true);
                             player->RemoveAura(IcicleAuras[smallestIcicle]);
                         }
 
@@ -304,7 +304,7 @@ class spell_mastery_icicles_periodic : public AuraScript
                         int32 amount = aura->GetAmount();
                         if (Aura* currentIcicleAura = caster->GetAura(icicles[amount]))
                         {
-                            int32 basePoints = currentIcicleAura->GetEffect(0)->GetAmount();
+                            float basePoints = currentIcicleAura->GetEffect(0)->GetAmount();
 
                             if (caster->HasAura(SPELL_MAGE_BLACK_ICE))
                             {
@@ -313,7 +313,7 @@ class spell_mastery_icicles_periodic : public AuraScript
                             }
 
                             caster->CastSpell(target, IcicleHits[amount], true);
-                            caster->CastCustomSpell(target, SPELL_MAGE_ICICLE_DAMAGE, &basePoints, NULL, NULL, true);
+                            caster->CastCustomSpell(target, SPELL_MAGE_ICICLE_DAMAGE, &basePoints, nullptr, nullptr, true);
                             caster->RemoveAura(IcicleAuras[amount]);
                         }
 
@@ -382,15 +382,15 @@ class spell_mastery_icicles_glacial_spike : public SpellScript
         if (!caster || !target || !explTarget)
             return;
 
-        int32 damage = GetHitDamage();
+        float damage = GetHitDamage();
         damage += IcicleDamage;
 
         if (GetCaster()->HasAura(SPELL_MAGE_SPLITTING_ICE))
-            if (SpellEffectInfo const* eff1 = sSpellMgr->GetSpellInfo(SPELL_MAGE_SPLITTING_ICE)->GetEffect(EFFECT_1))
+            if (SpellEffectInfo const* eff1 = sSpellMgr->GetSpellInfo(SPELL_MAGE_SPLITTING_ICE, DIFFICULTY_NONE)->GetEffect(EFFECT_1))
                 if (target != explTarget)
                     damage = CalculatePct(damage, eff1->CalcValue());
 
-        caster->CastCustomSpell(target, SPELL_MAGE_GLACIAL_SPIKE_DAMAGE, &damage, NULL, NULL, true);
+        caster->CastCustomSpell(target, SPELL_MAGE_GLACIAL_SPIKE_DAMAGE, &damage, nullptr, nullptr, true);
 
         if (caster->HasAura(SPELL_MAGE_ICICLE_AURA))
             caster->RemoveAurasDueToSpell(SPELL_MAGE_ICICLE_AURA);
@@ -419,7 +419,7 @@ class spell_mage_icicle_damage : public SpellScript
             });
     }
 
-    void DoEffectHitTarget(SpellEffIndex /*effIndex*/)
+    void HandleOnHit()
     {
         Unit* explTarget = GetExplTargetUnit();
         Unit* hitUnit = GetHitUnit();
@@ -427,15 +427,20 @@ class spell_mage_icicle_damage : public SpellScript
             return;
 
         if (GetCaster()->HasAura(SPELL_MAGE_SPLITTING_ICE))
-            if (SpellEffectInfo const* eff1 = sSpellMgr->GetSpellInfo(SPELL_MAGE_SPLITTING_ICE)->GetEffect(EFFECT_1))
+            if (SpellEffectInfo const* eff1 = sSpellMgr->GetSpellInfo(SPELL_MAGE_SPLITTING_ICE, DIFFICULTY_NONE)->GetEffect(EFFECT_1))
                 if (hitUnit != explTarget)
                     SetHitDamage(CalculatePct(GetHitDamage(), eff1->CalcValue()));
     }
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_mage_icicle_damage::DoEffectHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
+        OnHit += SpellHitFn(spell_mage_icicle_damage::HandleOnHit);
     }
+};
+
+enum
+{
+    SPELL_MAGE_SEARING_TOUCH = 269644,
 };
 
 // 12846 - Mastery : Ignite
@@ -449,6 +454,26 @@ public:
     {
         PrepareSpellScript(spell_mastery_ignite_SpellScript);
 
+        void HandleOnHit()
+        {
+            Unit* caster = GetCaster();
+            Unit* target = GetHitUnit();
+            if (caster->HasAura(SPELL_MAGE_SEARING_TOUCH))
+            {
+                if (!target->HealthBelowPct(31))
+                {
+                    //Scorch deals 150 % increased damage
+                    SetHitDamage(GetHitDamage() + GetHitDamage() / 2);
+                }
+                else
+                {                    
+                    //and is a guaranteed Critical Strike when the target is below 30 % health.
+                    int32 critChance = caster->ToPlayer()->GetRatingBonusValue(CR_CRIT_SPELL) * 100;
+                    SetHitDamage(GetHitDamage() + GetHitDamage() / 2 + critChance);
+                }
+            }
+        }
+
         void HandleAfterHit()
         {
             if (Unit* caster = GetCaster())
@@ -457,15 +482,15 @@ public:
                 {
                     if (caster->GetTypeId() == TYPEID_PLAYER && caster->HasAura(SPELL_MAGE_IGNITE) && caster->getLevel() >= 78)
                     {
-                        const SpellInfo* igniteAura = sSpellMgr->GetSpellInfo(SPELL_MAGE_IGNITE_AURA);
+                        const SpellInfo* igniteAura = sSpellMgr->GetSpellInfo(SPELL_MAGE_IGNITE_AURA, DIFFICULTY_NONE);
                         if (GetSpellInfo()->Id != SPELL_MAGE_IGNITE_AURA && igniteAura != nullptr)
                         {
                             float masteryValue = caster->ToPlayer()->m_activePlayerData->Mastery * 0.75f;
 
-                            int32 basePoints = GetHitDamage() /*+ GetAbsorbedDamage()*/;
+                            float basePoints = GetHitDamage() /*+ GetAbsorbedDamage()*/;
                             if (basePoints)
                             {
-                                basePoints = int32(CalculatePct(basePoints, masteryValue));
+                                basePoints = CalculatePct(basePoints, masteryValue);
 
                                 if (igniteAura->GetEffect(EFFECT_0)->Amplitude > 0)
                                     basePoints = basePoints / (igniteAura->GetMaxDuration() / igniteAura->GetEffect(EFFECT_0)->Amplitude);
@@ -479,7 +504,8 @@ public:
                                     }
                                 }
 
-                                caster->CastCustomSpell(target, SPELL_MAGE_IGNITE_AURA, &basePoints, NULL, NULL, true);
+                                if (target->IsHostileTo(caster))
+                                    caster->CastCustomSpell(target, SPELL_MAGE_IGNITE_AURA, &basePoints, nullptr, nullptr, true);
                             }
                         }
                     }
@@ -489,6 +515,7 @@ public:
 
         void Register() override
         {
+            OnHit += SpellHitFn(spell_mastery_ignite_SpellScript::HandleOnHit);
             AfterHit += SpellHitFn(spell_mastery_ignite_SpellScript::HandleAfterHit);
         }
     };
@@ -583,6 +610,9 @@ class spell_mage_mastery_ignite : public AuraScript
                 }
                 if (target)
                 {
+                    if (target->IsFriendlyTo(caster) || !target->IsVisible() || target->IsFriendlyTo(caster) || target->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_PC) || target->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC) || target->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
+                        return;
+
                     // copy values of base dot
                     caster->AddAura(SPELL_MAGE_IGNITE_AURA, target);
                     if (Aura* ignite = target->GetAura(SPELL_MAGE_IGNITE_AURA, caster->GetGUID()))
