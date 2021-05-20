@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,13 +61,18 @@ ObjectGuid::LowType GuildMgr::GenerateGuildId()
 }
 
 // Guild collection
+GuildChallengeRewardData const& GuildMgr::GetGuildChallengeRewardData() const
+{
+    return _challengeRewardData;
+}
+
 Guild* GuildMgr::GetGuildById(ObjectGuid::LowType guildId) const
 {
     GuildContainer::const_iterator itr = GuildStore.find(guildId);
     if (itr != GuildStore.end())
         return itr->second;
 
-    return NULL;
+    return nullptr;
 }
 
 Guild* GuildMgr::GetGuildByGuid(ObjectGuid guid) const
@@ -78,7 +83,7 @@ Guild* GuildMgr::GetGuildByGuid(ObjectGuid guid) const
         if (ObjectGuid::LowType guildId = guid.GetCounter())
             return GetGuildById(guildId);
 
-    return NULL;
+    return nullptr;
 }
 
 Guild* GuildMgr::GetGuildByName(const std::string& guildName) const
@@ -92,7 +97,7 @@ Guild* GuildMgr::GetGuildByName(const std::string& guildName) const
         if (search == gname)
             return itr->second;
     }
-    return NULL;
+    return nullptr;
 }
 
 std::string GuildMgr::GetGuildNameById(ObjectGuid::LowType guildId) const
@@ -115,7 +120,7 @@ Guild* GuildMgr::GetGuildByLeader(ObjectGuid guid) const
         if (itr->second->GetLeaderGUID() == guid)
             return itr->second;
 
-    return NULL;
+    return nullptr;
 }
 
 void GuildMgr::LoadGuilds()
@@ -125,9 +130,9 @@ void GuildMgr::LoadGuilds()
     {
         uint32 oldMSTime = getMSTime();
 
-        //          0          1       2             3              4              5              6
-        QueryResult result = CharacterDatabase.Query("SELECT g.guildid, g.name, g.leaderguid, g.EmblemStyle, g.EmblemColor, g.BorderStyle, g.BorderColor, "
-            //   7                  8       9       10            11          12
+                                                    //          0          1       2             3           4              5              6            7
+        QueryResult result = CharacterDatabase.Query("SELECT g.guildid, g.name, g.leaderguid, g.flags, g.EmblemStyle, g.EmblemColor, g.BorderStyle, g.BorderColor, "
+            //   8                 9       10       11            12          13
             "g.BackgroundColor, g.info, g.motd, g.createdate, g.BankMoney, COUNT(gbt.guildid) "
             "FROM guild g LEFT JOIN guild_bank_tab gbt ON g.guildid = gbt.guildid GROUP BY g.guildid ORDER BY g.guildid ASC");
 
@@ -434,7 +439,7 @@ void GuildMgr::LoadGuilds()
             do
             {
                 Field* fields = result->Fetch();
-                uint64 guildId = fields[43].GetUInt64();
+                uint64 guildId = fields[49].GetUInt64();
 
                 if (Guild* guild = GetGuildById(guildId))
                     guild->LoadBankItemFromDB(fields);
@@ -491,6 +496,26 @@ void GuildMgr::LoadGuilds()
         }
 
         TC_LOG_INFO("server.loading", ">> Validated data of loaded guilds in %u ms", GetMSTimeDiffToNow(oldMSTime));
+    }
+
+    /// 12. Loading guild challenges
+    TC_LOG_INFO("misc", "Loading guild challenges...");
+    {
+        auto oldMSTime = getMSTime();
+        if (auto result = CharacterDatabase.Query(CharacterDatabase.GetPreparedStatement(CHAR_LOAD_GUILD_CHALLENGES)))
+        {
+            uint32 count = 0;
+            do
+            {
+                auto fields = result->Fetch();
+                if (auto guild = GetGuildById(fields[0].GetInt32()))
+                    guild->LoadGuildChallengesFromDB(fields);
+
+                ++count;
+            } while (result->NextRow());
+
+            TC_LOG_INFO("server.loading", ">> Loaded %u guild challenges in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
+        }
     }
 }
 

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,121 +16,327 @@
  */
 
 #include "BattlePetDataStore.h"
+#include <fstream>
+#include "DatabaseEnv.h"
+#include "Log.h"
+#include "Timer.h"
+#include "MapManager.h"
+#include "DB2Stores.h"
 #include "Containers.h"
 
-void BattlePetDataStore::Initialize()
+BattlePetDataStoreMgr::BattlePetDataStoreMgr()
 {
-    if (QueryResult result = LoginDatabase.Query("SELECT MAX(guid) FROM battle_pets"))
-        sObjectMgr->GetGenerator<HighGuid::BattlePet>().Set((*result)[0].GetUInt64() + 1);
-
-    for (BattlePetBreedStateEntry const* battlePetBreedState : sBattlePetBreedStateStore)
-        _battlePetBreedStates[battlePetBreedState->BattlePetBreedID][BattlePetState(battlePetBreedState->BattlePetStateID)] = battlePetBreedState->Value;
-
-    for (BattlePetSpeciesStateEntry const* battlePetSpeciesState : sBattlePetSpeciesStateStore)
-        _battlePetSpeciesStates[battlePetSpeciesState->BattlePetSpeciesID][BattlePetState(battlePetSpeciesState->BattlePetStateID)] = battlePetSpeciesState->Value;
-
-    LoadAvailablePetBreeds();
-    LoadDefaultPetQualities();
 }
 
-void BattlePetDataStore::LoadAvailablePetBreeds()
+BattlePetDataStoreMgr::~BattlePetDataStoreMgr()
 {
-    QueryResult result = WorldDatabase.Query("SELECT speciesId, breedId FROM battle_pet_breeds");
-    if (!result)
-    {
-        TC_LOG_INFO("server.loading", ">> Loaded 0 battle pet breeds. DB table `battle_pet_breeds` is empty.");
-        return;
-    }
-
-    uint32 count = 0;
-    do
-    {
-        Field* fields = result->Fetch();
-        uint32 speciesId = fields[0].GetUInt32();
-        uint16 breedId = fields[1].GetUInt16();
-
-        if (!sBattlePetSpeciesStore.LookupEntry(speciesId))
-        {
-            TC_LOG_ERROR("sql.sql", "Non-existing BattlePetSpecies.db2 entry %u was referenced in `battle_pet_breeds` by row (%u, %u).", speciesId, speciesId, breedId);
-            continue;
-        }
-
-        // TODO: verify breed id (3 - 12 (male) or 3 - 22 (male and female)) if needed
-
-        _availableBreedsPerSpecies[speciesId].insert(breedId);
-        ++count;
-    } while (result->NextRow());
-
-    TC_LOG_INFO("server.loading", ">> Loaded %u battle pet breeds.", count);
 }
 
-void BattlePetDataStore::LoadDefaultPetQualities()
+BattlePetDataStoreMgr* BattlePetDataStoreMgr::instance()
 {
-    QueryResult result = WorldDatabase.Query("SELECT speciesId, quality FROM battle_pet_quality");
-    if (!result)
-    {
-        TC_LOG_INFO("server.loading", ">> Loaded 0 battle pet qualities. DB table `battle_pet_quality` is empty.");
-        return;
-    }
-
-    do
-    {
-        Field* fields = result->Fetch();
-        uint32 speciesId = fields[0].GetUInt32();
-        uint8 quality = fields[1].GetUInt8();
-
-        if (!sBattlePetSpeciesStore.LookupEntry(speciesId))
-        {
-            TC_LOG_ERROR("sql.sql", "Non-existing BattlePetSpecies.db2 entry %u was referenced in `battle_pet_quality` by row (%u, %u).", speciesId, speciesId, quality);
-            continue;
-        }
-
-        // TODO: verify quality (0 - 3 for player pets or 0 - 5 for both player and tamer pets) if needed
-
-        _defaultQualityPerSpecies[speciesId] = quality;
-    } while (result->NextRow());
-
-    TC_LOG_INFO("server.loading", ">> Loaded %u battle pet qualities.", uint32(_defaultQualityPerSpecies.size()));
-}
-
-uint16 BattlePetDataStore::RollPetBreed(uint32 species) const
-{
-    auto itr = _availableBreedsPerSpecies.find(species);
-    if (itr == _availableBreedsPerSpecies.end())
-        return 3; // default B/B
-
-    return Trinity::Containers::SelectRandomContainerElement(itr->second);
-}
-
-uint8 BattlePetDataStore::GetDefaultPetQuality(uint32 species) const
-{
-    auto itr = _defaultQualityPerSpecies.find(species);
-    if (itr == _defaultQualityPerSpecies.end())
-        return 0; // default poor
-
-    return itr->second;
-}
-
-BattlePetStateMap* BattlePetDataStore::GetPetBreedStats(uint16 BreedID)
-{
-    auto breedState = _battlePetBreedStates.find(BreedID);
-    if (breedState == _battlePetBreedStates.end()) // non existing breed id
-        return nullptr;
-
-    return &breedState->second;
-}
-
-BattlePetStateMap* BattlePetDataStore::GetPetSpeciesStats(uint16 SpeciesID)
-{
-    auto speciesState = _battlePetSpeciesStates.find(SpeciesID);
-    if (speciesState == _battlePetSpeciesStates.end())
-        return nullptr;
-
-    return &speciesState->second;
-}
-
-BattlePetDataStore* BattlePetDataStore::Instance()
-{
-    static BattlePetDataStore instance;
+    static BattlePetDataStoreMgr instance;
     return &instance;
+}
+
+void BattlePetDataStoreMgr::Initialize()
+{
+    LoadBattlePetTemplate();
+    LoadBattlePetNpcTeamMember();
+    //ComputeBattlePetSpawns();
+}
+
+void BattlePetDataStoreMgr::LoadBattlePetTemplate()
+{
+    uint32 oldMSTime = getMSTime();
+
+    _battlePetTemplateStore.clear();
+
+    auto result = WorldDatabase.Query("SELECT Specie, breadsMask, minquality, NpcID, minlevel, maxlevel FROM battlepet_info");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 battlepet template. DB table `battlepet_info` is empty.");
+        return;
+    }
+
+    do
+    {
+        auto fields = result->Fetch();
+
+        uint32 species = fields[0].GetUInt32();
+        BattlePetTemplate& temp = _battlePetTemplateStore[species];
+        temp.BreedMask = fields[1].GetUInt32();
+        temp.MinQuality = fields[2].GetUInt32();
+        temp.CreatureID = fields[3].GetUInt32();
+        temp.minlevel = fields[4].GetUInt32();
+        temp.maxlevel = fields[5].GetUInt32();
+        temp.Species = species;
+
+        if (temp.minlevel == 0)
+            temp.minlevel = 1;
+        if (temp.maxlevel == 0)
+            temp.maxlevel = 1;
+        if (temp.maxlevel < temp.minlevel)
+            temp.maxlevel = temp.minlevel;
+
+        if (temp.BreedMask == 0)
+            temp.BreedMask = 8;
+
+        for (uint8 i = 3; i < 13; ++i)
+            if (temp.BreedMask & (1 << i))
+                temp.BreedIDs.insert(i);
+
+        _battlePetTemplate[temp.CreatureID] = &temp;
+
+    } while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded %u battlepet template in %u ms.", _battlePetTemplateStore.size(), GetMSTimeDiffToNow(oldMSTime));
+}
+
+void BattlePetDataStoreMgr::LoadBattlePetNpcTeamMember()
+{
+    uint32 oldMSTime = getMSTime();
+
+    _battlePetNpcTeamMembers.clear();
+
+    auto result = WorldDatabase.Query("SELECT NpcID, Specie, minlevel, maxlevel, minquality, breadsMask, Ability1, Ability2, Ability3 FROM battlepet_npc_team_member");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 battlepet npc team member. DB table `battlepet_npc_team_member` is empty.");
+        return;
+    }
+
+    do
+    {
+        Field* fields = result->Fetch();
+
+        BattlePetNpcTeamMember npcTeamMember;
+        npcTeamMember.Specie = fields[1].GetUInt32();
+        npcTeamMember.minlevel = fields[2].GetUInt32();
+        npcTeamMember.maxlevel = fields[3].GetUInt32();
+        npcTeamMember.minquality = fields[4].GetUInt32();
+        npcTeamMember.breadsMask = fields[5].GetUInt32();
+        npcTeamMember.Ability[0] = fields[6].GetUInt32();
+        npcTeamMember.Ability[1] = fields[7].GetUInt32();
+        npcTeamMember.Ability[2] = fields[8].GetUInt32();
+
+        if (npcTeamMember.breadsMask == 0)
+            npcTeamMember.breadsMask = 8;
+
+        for (uint8 i = 3; i < 13; ++i)
+            if (npcTeamMember.breadsMask & (1 << i))
+                npcTeamMember.BreedIDs.insert(i);
+
+        _battlePetNpcTeamMembers[fields[0].GetUInt32()].push_back(npcTeamMember);
+    } while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded %u battlepet npc team member in %u ms.", static_cast<uint32>(_battlePetNpcTeamMembers.size()), GetMSTimeDiffToNow(oldMSTime));
+}
+
+void BattlePetDataStoreMgr::ComputeBattlePetSpawns()
+{
+    uint32 oldMSTime = getMSTime();
+
+    auto result = WorldDatabase.Query("SELECT CritterEntry, BattlePetEntry FROM temp_battlepet_spawn_relation a");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> ComputeBattlePetSpawns No battlepet relation");
+        return;
+    }
+
+    std::map<uint32, uint32> battlePetToCritter;
+    do
+    {
+        Field* fields = result->Fetch();
+        battlePetToCritter[fields[1].GetUInt32()] = fields[0].GetUInt32();
+    } while (result->NextRow());
+
+    result = WorldDatabase.Query("SELECT MapID, a.Zone, BattlePetNPCID, XPos, YPos, MinLevel, MaxLevel FROM temp_battlepet_tocompute a");
+
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> ComputeBattlePetSpawns No data");
+        return;
+    }
+
+    struct PoolInfo
+    {
+        uint32 ZoneID;
+        std::map<uint32, uint32> CountPerBattlePetTemplateEntry;
+        uint32 MinLevel;
+        uint32 MaxLevel;
+    };
+
+    std::map<uint32, PoolInfo> poolInfosPerZoneID;
+    std::map<uint32, uint32> missingCorelations;
+
+    std::ofstream outSpawns;
+    outSpawns.open("BattlePetSpawns.sql");
+
+    do
+    {
+        auto fields = result->Fetch();
+        auto mapID = fields[0].GetUInt32();
+        auto zoneID = fields[1].GetUInt32();
+        auto battlePetNpcID = fields[2].GetUInt32();
+        auto xPos = fields[3].GetDouble();
+        auto yPos = fields[4].GetDouble();
+        auto minLevel = fields[5].GetUInt32();
+        auto maxLevel = fields[6].GetUInt32();
+
+        if (battlePetToCritter.find(battlePetNpcID) == battlePetToCritter.end())
+        {
+            missingCorelations[battlePetNpcID] = 1;
+            continue;
+        }
+
+        if (!MapManager::IsValidMapCoord(mapID, xPos, yPos))
+        {
+            printf("Map %u Zone %u Npc %u X %f Y %F invalid map coord\n", mapID, zoneID, battlePetNpcID, xPos, yPos);
+            continue;
+        }
+
+        auto mapEntry = sMapMgr->CreateBaseMap(mapID);
+        auto zPos = MAX_HEIGHT + 0.5f;
+
+        std::string query = "INSERT INTO creature(id, map, zoneID, spawnMask, phaseMask, position_x, position_y, position_z, spawntimesecs) VALUES (";
+        query += std::to_string(battlePetToCritter[battlePetNpcID]) + ", " + std::to_string(mapID) + ", " + std::to_string(zoneID) + ", 1, 1, " + std::to_string(xPos) + ", " + std::to_string(yPos) + ", " + std::to_string(zPos) + ", 120);\n";
+
+        outSpawns << query << std::flush;
+
+        poolInfosPerZoneID[zoneID].ZoneID = zoneID;
+        poolInfosPerZoneID[zoneID].MinLevel = minLevel;
+        poolInfosPerZoneID[zoneID].MaxLevel = maxLevel;
+
+        if (poolInfosPerZoneID[zoneID].CountPerBattlePetTemplateEntry.find(battlePetNpcID) == poolInfosPerZoneID[zoneID].CountPerBattlePetTemplateEntry.end())
+            poolInfosPerZoneID[zoneID].CountPerBattlePetTemplateEntry[battlePetNpcID] = 1;
+        else
+            poolInfosPerZoneID[zoneID].CountPerBattlePetTemplateEntry[battlePetNpcID] = 1 + poolInfosPerZoneID[zoneID].CountPerBattlePetTemplateEntry[battlePetNpcID];
+    } while (result->NextRow());
+
+    for (auto itr = missingCorelations.begin(); itr != missingCorelations.end(); ++itr)
+        printf("Npc %u no critter npc found\n", itr->first);
+
+    outSpawns.close();
+
+    std::ofstream outPools;
+    outPools.open("BattlePetPools.sql");
+
+    for (auto itrX = poolInfosPerZoneID.begin(); itrX != poolInfosPerZoneID.end(); ++itrX)
+    {
+        PoolInfo& poolInfo = itrX->second;
+
+        for (auto itr = poolInfo.CountPerBattlePetTemplateEntry.begin(); itr != poolInfo.CountPerBattlePetTemplateEntry.end(); ++itr)
+        {
+            uint32 respawnTime = 60;
+            uint32 replace = battlePetToCritter[itr->first];
+            uint32 max = float(itr->second) > 1 ? (float(itr->second) * 0.95f) : 1;
+
+            if (battlePetToCritter[itr->first] == itr->first)
+                max = itr->second;
+
+            uint32 speciesID = 0;
+
+            //if (auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(itr->first))
+                //speciesID = speciesInfo->ID;
+
+            if (speciesID == 0 || replace == 0)
+            {
+                printf("No species or replacement for npc %u found\n", itr->first);
+                continue;
+            }
+
+            std::string query = "INSERT INTO `wild_battlepet_zone_pool` (`Zone`, `Species`, `Replace`, `Max`, `RespawnTime`, `MinLevel`, `MaxLevel`) VALUES (";
+            query += std::to_string(poolInfo.ZoneID) + ", " + std::to_string(speciesID) + ", " + std::to_string(replace) + ", " + std::to_string(max) + ", " + std::to_string(respawnTime) + ", " + std::to_string(poolInfo.MinLevel) + ", " + std::to_string(poolInfo.MaxLevel) + ");\n";
+
+            outPools << query << std::flush;
+        }
+    }
+
+    outPools.close();
+
+    TC_LOG_INFO("server.loading", ">> ComputeBattlePetSpawns %u ms.", GetMSTimeDiffToNow(oldMSTime));
+}
+
+BattlePetTemplate const* BattlePetDataStoreMgr::GetBattlePetTemplate(uint32 species) const
+{
+    return Trinity::Containers::MapGetValuePtr(_battlePetTemplateStore, species);
+}
+
+BattlePetTemplate const* BattlePetDataStoreMgr::GetBattlePetTemplateByEntry(uint32 CreatureID) const
+{
+    return Trinity::Containers::MapGetValuePtr(_battlePetTemplate, CreatureID);
+}
+
+uint16 BattlePetDataStoreMgr::GetRandomBreedID(std::set<uint32> BreedIDs)
+{
+    if (BreedIDs.empty())
+        return 0;
+
+    uint32 sum = 0;
+    for (auto itr : BreedIDs)
+        sum += GetWeightForBreed(itr);
+
+    uint32 r = urand(0, sum);
+    uint32 current_sum = 0;
+
+    for (auto itr : BreedIDs)
+    {
+        uint16 breedID = itr;
+        if (current_sum <= r && r < current_sum + GetWeightForBreed(breedID))
+            return breedID;
+
+        current_sum += GetWeightForBreed(breedID);
+    }
+
+    return 0;
+}
+
+uint8 BattlePetDataStoreMgr::GetWeightForBreed(uint16 breedID)
+{
+    uint8 weight = 0;
+    switch (breedID)
+    {
+    case 3:
+        weight = 60;
+        break;
+    case 4:
+    case 5:
+    case 6:
+        weight = 10;
+        break;
+    case 7:
+    case 8:
+    case 9:
+        weight = 20;
+        break;
+    case 10:
+    case 11:
+    case 12:
+        weight = 30;
+        break;
+    default:
+        break;
+    }
+    return weight;
+}
+
+uint8 BattlePetDataStoreMgr::GetRandomQuailty()
+{
+    // 42% - grey, 33% - white, 19% - green, 6% - rare
+    uint32 r = urand(0, 1000);
+
+    uint8 quality = 0;
+    if (r >= 420 && r < 750)
+        quality = 1;
+    else if (r >= 750 && r < 940)
+        quality = 2;
+    else if (r >= 940 && r <= 1000)
+        quality = 3;
+
+    return quality;
+}
+
+std::vector<BattlePetNpcTeamMember> BattlePetDataStoreMgr::GetPetBattleTrainerTeam(uint32 npcID)
+{
+    return _battlePetNpcTeamMembers[npcID];
 }

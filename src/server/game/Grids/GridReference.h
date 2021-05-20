@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +18,7 @@
 #ifndef _GRIDREFERENCE_H
 #define _GRIDREFERENCE_H
 
-#include "LinkedReference/Reference.h"
+#include <Reference.h>
 
 template<class OBJECT>
 class GridRefManager;

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -126,7 +125,7 @@ enum ScriptCommands
     SCRIPT_COMMAND_CALLSCRIPT_TO_UNIT    = 21,               // source = WorldObject (if present used as a search center), datalong = script id, datalong2 = unit lowguid, dataint = script table to use (see ScriptsType)
     SCRIPT_COMMAND_KILL                  = 22,               // source/target = Creature, dataint = remove corpse attribute
 
-    // TrinityCore only
+    // AzgathCore only
     SCRIPT_COMMAND_ORIENTATION           = 30,               // source = Unit, target (datalong > 0) = Unit, datalong = > 0 turn source to face target, o = orientation
     SCRIPT_COMMAND_EQUIP                 = 31,               // soucre = Creature, datalong = equipment id
     SCRIPT_COMMAND_MODEL                 = 32,               // source = Creature, datalong = model id
@@ -473,7 +472,7 @@ struct CellObjectGuids
 typedef std::unordered_map<uint32/*cell_id*/, CellObjectGuids> CellObjectGuidsMap;
 typedef std::unordered_map<uint32/*(mapid, spawnMode) pair*/, CellObjectGuidsMap> MapObjectGuids;
 
-// Trinity Trainer Reference start range
+// AzgathCore Trainer Reference start range
 #define TRINITY_TRAINER_START_REF      200000
 #define TRINITY_TRAINER_END_REF        1000000
 
@@ -565,9 +564,6 @@ typedef std::multimap<uint32, uint32> QuestRelationsReverse; // quest -> unit/go
 typedef std::pair<QuestRelations::const_iterator, QuestRelations::const_iterator> QuestRelationBounds;
 typedef std::pair<QuestRelationsReverse::const_iterator, QuestRelationsReverse::const_iterator> QuestRelationReverseBounds;
 
-typedef std::multimap<int32, uint32> ExclusiveQuestGroups; // exclusiveGroupId -> quest
-typedef std::pair<ExclusiveQuestGroups::const_iterator, ExclusiveQuestGroups::const_iterator> ExclusiveQuestGroupsBounds;
-
 struct PlayerCreateInfoItem
 {
     PlayerCreateInfoItem(uint32 id, uint32 amount) : item_id(id), item_amount(amount) { }
@@ -648,7 +644,7 @@ struct RepRewardRate
     float spellRate;
 };
 
-struct ReputationOnKillEntry
+struct RewardOnKillEntry
 {
     uint32 RepFaction1;
     uint32 RepFaction2;
@@ -659,6 +655,12 @@ struct ReputationOnKillEntry
     bool IsTeamAward1;
     bool IsTeamAward2;
     bool TeamDependent;
+    uint32 CurrencyId1;
+    uint32 CurrencyId2;
+    uint32 CurrencyId3;
+    int32 CurrencyCount1;
+    int32 CurrencyCount2;
+    int32 CurrencyCount3;
 };
 
 struct RepSpilloverTemplate
@@ -693,7 +695,6 @@ struct GossipMenuItems
     uint32               BoxMoney;
     std::string          BoxText;
     uint32               BoxBroadcastTextId;
-    uint32               TrainerId;
     ConditionContainer   Conditions;
 };
 
@@ -715,9 +716,10 @@ struct QuestPOIBlobPoint
 {
     int32 X;
     int32 Y;
+    int32 Z;
 
-    QuestPOIBlobPoint() : X(0), Y(0) { }
-    QuestPOIBlobPoint(int32 _X, int32 _Y) : X(_X), Y(_Y) { }
+    QuestPOIBlobPoint() : X(0), Y(0), Z(0) { }
+    QuestPOIBlobPoint(int32 x, int32 y, int32 z) : X(x), Y(y), Z(z) { }
 };
 
 struct QuestPOIBlobData
@@ -732,24 +734,24 @@ struct QuestPOIBlobData
     int32 Flags;
     int32 WorldEffectID;
     int32 PlayerConditionID;
+    int32 NavigationPlayerConditionID;
     int32 SpawnTrackingID;
-    std::vector<QuestPOIBlobPoint> QuestPOIBlobPointStats;
+    std::vector<QuestPOIBlobPoint> Points;
     bool AlwaysAllowMergingBlobs;
 
     QuestPOIBlobData() : BlobIndex(0), ObjectiveIndex(0), QuestObjectiveID(0), QuestObjectID(0), MapID(0), UiMapID(0), Priority(0), Flags(0), WorldEffectID(0),
-        PlayerConditionID(0), SpawnTrackingID(0), AlwaysAllowMergingBlobs(false) { }
+        PlayerConditionID(0), NavigationPlayerConditionID(0), SpawnTrackingID(0), AlwaysAllowMergingBlobs(false) { }
     QuestPOIBlobData(int32 blobIndex, int32 objectiveIndex, int32 questObjectiveID, int32 questObjectID, int32 mapID, int32 uiMapID, int32 priority,
-        int32 flags, int32 worldEffectID, int32 playerConditionID, int32 spawnTrackingID, std::vector<QuestPOIBlobPoint> questPOIBlobPointStats,
-        bool alwaysAllowMergingBlobs) : BlobIndex(blobIndex), ObjectiveIndex(objectiveIndex), QuestObjectiveID(questObjectiveID),
+        int32 flags, int32 worldEffectID, int32 playerConditionID, int32 navigationPlayerConditionID, int32 spawnTrackingID, std::vector<QuestPOIBlobPoint> points, bool alwaysAllowMergingBlobs) : BlobIndex(blobIndex), ObjectiveIndex(objectiveIndex), QuestObjectiveID(questObjectiveID),
         QuestObjectID(questObjectID), MapID(mapID), UiMapID(uiMapID), Priority(priority), Flags(flags), WorldEffectID(worldEffectID),
-        PlayerConditionID(playerConditionID), SpawnTrackingID(spawnTrackingID), QuestPOIBlobPointStats(std::move(questPOIBlobPointStats)),
+        PlayerConditionID(playerConditionID), NavigationPlayerConditionID(navigationPlayerConditionID), SpawnTrackingID(spawnTrackingID), Points(std::move(points)),
         AlwaysAllowMergingBlobs(alwaysAllowMergingBlobs) { }
 };
 
 struct QuestPOIData
 {
     int32 QuestID = 0;
-    std::vector<QuestPOIBlobData> QuestPOIBlobDataStats;
+    std::vector<QuestPOIBlobData> Blobs;
 
     void InitializeQueryData();
     ByteBuffer QueryDataBuffer;
@@ -777,16 +779,16 @@ typedef std::pair<GraveYardContainer::const_iterator, GraveYardContainer::const_
 typedef std::pair<GraveYardContainer::iterator, GraveYardContainer::iterator> GraveYardMapBoundsNonConst;
 
 typedef std::unordered_map<uint32, VendorItemData> CacheVendorItemContainer;
-typedef std::unordered_map<uint32, TrainerSpellData> CacheTrainerSpellContainer;
 
 typedef std::unordered_map<uint32, std::string> RealmNameContainer;
 
 struct SceneTemplate
 {
-    uint32 SceneId;
-    uint32 PlaybackFlags;
-    uint32 ScenePackageId;
-    uint32 ScriptId;
+    uint32 SceneId = 0;
+    uint32 PlaybackFlags = 0;
+    uint32 ScenePackageId = 0;
+    bool Encrypted = false;
+    uint32 ScriptId = 0;
 };
 
 typedef std::unordered_map<uint32, SceneTemplate> SceneTemplateContainer;
@@ -824,17 +826,29 @@ struct PlayerChoiceResponseReward
     std::vector<PlayerChoiceResponseRewardItem> Items;
     std::vector<PlayerChoiceResponseRewardEntry> Currency;
     std::vector<PlayerChoiceResponseRewardEntry> Faction;
+    std::vector<PlayerChoiceResponseRewardItem> ItemChoices;
+};
+
+struct PlayerChoiceResponseMawPower
+{
+    int32 TypeArtFileID = 0;
+    int32 Rarity = 0;
+    uint32 RarityColor = 0;
+    int32 SpellID = 0;
+    int32 MaxStacks = 0;
 };
 
 struct PlayerChoiceResponse
 {
-    int32 ResponseId;
-    int32 ChoiceArtFileId;
-    int32 Flags;
-    uint32 WidgetSetID;
+    int32 ResponseId = 0;
+    uint16 ResponseIdentifier = 0;
+    int32 ChoiceArtFileId = 0;
+    int32 Flags = 0;
+    uint32 WidgetSetID = 0;
     uint32 UiTextureAtlasElementID = 0;
     uint32 SoundKitID = 0;
-    uint8 GroupID;
+    uint8 GroupID = 0;
+    int32 UiTextureKitID = 0;
     std::string Answer;
     std::string Header;
     std::string SubHeader;
@@ -843,6 +857,7 @@ struct PlayerChoiceResponse
     std::string Confirmation;
     Optional<PlayerChoiceResponseReward> Reward;
     Optional<uint32> RewardQuestID;
+    Optional<PlayerChoiceResponseMawPower> MawPower;
 };
 
 struct PlayerChoice
@@ -927,6 +942,18 @@ struct DungeonEncounter
 
 typedef std::list<DungeonEncounter const*> DungeonEncounterList;
 typedef std::unordered_map<uint64, DungeonEncounterList> DungeonEncounterContainer;
+typedef std::unordered_map<uint32, uint16> CreatureToDungeonEncounterMap;
+typedef std::vector<uint32> DungeonEncounterToCreatureMap;
+
+struct DungeonCreditEncounter
+{
+    DungeonCreditEncounter(uint32 _dbcEntry, uint32 _creditEntry)
+        : dbcEntry(_dbcEntry), creditEntry(_creditEntry) { }
+    uint32 dbcEntry;
+    uint32 creditEntry;
+};
+
+typedef std::unordered_map<uint32, DungeonCreditEncounter*> DungeonCreditEncounterMap;
 
 struct TerrainSwapInfo
 {
@@ -1022,7 +1049,7 @@ class TC_GAME_API ObjectMgr
         typedef std::unordered_map<uint64, AccessRequirement*> AccessRequirementContainer;
 
         typedef std::unordered_map<uint32, RepRewardRate > RepRewardRateContainer;
-        typedef std::unordered_map<uint32, ReputationOnKillEntry> RepOnKillContainer;
+        typedef std::unordered_map<uint32, RewardOnKillEntry> RewOnKillContainer;
         typedef std::unordered_map<uint32, RepSpilloverTemplate> RepSpilloverTemplateContainer;
 
         typedef std::unordered_map<uint32, PointOfInterest> PointOfInterestContainer;
@@ -1039,8 +1066,8 @@ class TC_GAME_API ObjectMgr
         void LoadGameObjectTemplateAddons();
 
         CreatureTemplate const* GetCreatureTemplate(uint32 entry) const;
-        uint32 GetCreatureTemplateJournalId(uint32 entry) const;
         CreatureTemplateContainer const* GetCreatureTemplates() const { return &_creatureTemplateStore; }
+        uint32 GetCreatureTemplateJournalId(uint32 entry) const;
         CreatureModelInfo const* GetCreatureModelInfo(uint32 modelId) const;
         CreatureModelInfo const* GetCreatureModelRandomGender(CreatureModel* mode, CreatureTemplate const* creatureTemplate) const;
         static CreatureModel const* ChooseDisplayId(CreatureTemplate const* cinfo, CreatureData const* data = nullptr);
@@ -1060,6 +1087,8 @@ class TC_GAME_API ObjectMgr
         ScriptParams const& GetTemplateScriptParam(uint32 entry) { return _templateScriptParamContainer[entry]; }
 
         InstanceTemplate const* GetInstanceTemplate(uint32 mapId) const;
+
+        Player* GetPlayerByLowGUID(ObjectGuid::LowType const& lowguid) const;
 
         void GetPlayerClassLevelInfo(uint32 class_, uint8 level, uint32& baseMana) const;
 
@@ -1097,6 +1126,7 @@ class TC_GAME_API ObjectMgr
         }
 
         QuestMap const& GetQuestTemplates() const { return _questTemplates; }
+        std::vector<Quest const*> const& GetQuestTemplatesAutoPush() const { return _questTemplatesAutoPush; }
 
         QuestObjective const* GetQuestObjective(uint32 questObjectiveId) const
         {
@@ -1153,10 +1183,10 @@ class TC_GAME_API ObjectMgr
             return nullptr;
         }
 
-        ReputationOnKillEntry const* GetReputationOnKilEntry(uint32 id) const
+        RewardOnKillEntry const* GetRewardOnKillEntry(uint32 id) const
         {
-            RepOnKillContainer::const_iterator itr = _repOnKillStore.find(id);
-            if (itr != _repOnKillStore.end())
+            RewOnKillContainer::const_iterator itr = _rewOnKillStore.find(id);
+            if (itr != _rewOnKillStore.end())
                 return &itr->second;
             return nullptr;
         }
@@ -1192,13 +1222,15 @@ class TC_GAME_API ObjectMgr
 
         DungeonEncounterList const* GetDungeonEncounterList(uint32 mapId, Difficulty difficulty) const;
 
+        uint16 GetDungeonEncounterByCreature(uint32 creatureId);
+        uint32 GetCreatureByDungeonEncounter(uint32 EncounterID);
+
         void LoadQuests();
         void LoadQuestStartersAndEnders();
         void LoadGameobjectQuestStarters();
         void LoadGameobjectQuestEnders();
         void LoadCreatureQuestStarters();
         void LoadCreatureQuestEnders();
-        void LoadQuestTasks();
 
         struct BonusQuestRectEntry
         {
@@ -1252,11 +1284,6 @@ class TC_GAME_API ObjectMgr
             return _creatureQuestInvolvedRelationsReverse.equal_range(questId);
         }
 
-        ExclusiveQuestGroupsBounds GetExclusiveQuestGroupBounds(int32 exclusiveGroupId) const
-        {
-            return _exclusiveQuestGroups.equal_range(exclusiveGroupId);
-        }
-
         bool LoadTrinityStrings();
 
         void LoadEventScripts();
@@ -1272,7 +1299,6 @@ class TC_GAME_API ObjectMgr
         void LoadCreatureTemplateJournals();
         void LoadCreatureTemplateModels();
         void LoadCreatureTemplateAddons();
-        void LoadCreatureSparringTemplate();
         void LoadScriptParams();
         void LoadCreatureTemplate(Field* fields);
         void LoadCreatureScalingData();
@@ -1303,6 +1329,7 @@ class TC_GAME_API ObjectMgr
         void LoadPointOfInterestLocales();
         void LoadInstanceTemplate();
         void LoadInstanceEncounters();
+        uint32 GetDungeonEncounterID(uint32 creatureEntry);
         void LoadMailLevelRewards();
         void LoadVehicleTemplateAccessories();
         void LoadVehicleAccessories();
@@ -1328,7 +1355,7 @@ class TC_GAME_API ObjectMgr
         void LoadSkillTiers();
 
         void LoadReputationRewardRate();
-        void LoadReputationOnKill();
+        void LoadRewardOnKill();
         void LoadReputationSpilloverTemplate();
 
         void LoadPointsOfInterest();
@@ -1343,12 +1370,8 @@ class TC_GAME_API ObjectMgr
 
         void LoadVendors();
 
-        /* OLD SYSTEM TEMP PURPOSE */
-        void LoadTrainerSpell();
-        void AddSpellToTrainer(uint32 entry, uint32 spell, uint32 spellCost, uint32 reqSkill, uint32 reqSkillValue, uint32 reqLevel, uint32 Index);
-
         void LoadTrainers();
-        void LoadCreatureDefaultTrainers();
+        void LoadCreatureTrainers();
 
         void LoadCreatureSummonerEntry();
 
@@ -1369,7 +1392,7 @@ class TC_GAME_API ObjectMgr
         void LoadInstanceDifficultyMultiplier();
 
         void InitializeQueriesData(QueryDataGroup mask);
-
+        
 
         std::string GeneratePetName(uint32 entry);
         uint32 GetBaseXP(uint8 level);
@@ -1397,8 +1420,7 @@ class TC_GAME_API ObjectMgr
         template<HighGuid type>
         inline ObjectGuidGeneratorBase& GetGenerator()
         {
-            static_assert(ObjectGuidTraits<type>::SequenceSource.HasFlag(ObjectGuidSequenceSource::Global)
-                || ObjectGuidTraits<type>::SequenceSource.HasFlag(ObjectGuidSequenceSource::Realm),
+            static_assert(ObjectGuidTraits<type>::SequenceSource.HasFlag(ObjectGuidSequenceSource::Global | ObjectGuidSequenceSource::Realm),
                 "Only global guid can be generated in ObjectMgr context");
             return GetGuidSequenceGenerator<type>();
         }
@@ -1410,6 +1432,12 @@ class TC_GAME_API ObjectMgr
         uint64 GenerateVoidStorageItemId();
         uint64 GenerateCreatureSpawnId();
         uint64 GenerateGameObjectSpawnId();
+        uint64 ScenarioGuidId();
+
+        typedef std::multimap<int32, uint32> ExclusiveQuestGroups;
+        typedef std::pair<ExclusiveQuestGroups::const_iterator, ExclusiveQuestGroups::const_iterator> ExclusiveQuestGroupsBounds;
+
+        ExclusiveQuestGroups mExclusiveQuestGroups;
 
         MailLevelReward const* GetMailLevelReward(uint8 level, uint8 race)
         {
@@ -1534,17 +1562,6 @@ class TC_GAME_API ObjectMgr
         }
         GameObjectData& NewGOData(ObjectGuid::LowType guid) { return _gameObjectDataStore[guid]; }
         void DeleteGOData(ObjectGuid::LowType guid);
-
-        float GetSparringHealthLimitFor(uint32 entry) const
-        {
-            auto itr = _creatureSparringTemplateStore.find(entry);
-            if (itr != _creatureSparringTemplateStore.end())
-            {
-                return itr->second;
-            }
-            return 0.0f;
-        }
-
         InstanceDifficultyMultiplier const* GetInstanceDifficultyMultiplier(uint32 mapId, uint32 difficultyId) const
         {
             auto itr = _instanceDifficultyMultipliers.find(std::pair<uint32, uint32>(mapId, difficultyId));
@@ -1597,17 +1614,12 @@ class TC_GAME_API ObjectMgr
         bool AddGameTele(GameTele& data);
         bool DeleteGameTele(std::string const& name);
 
-        TrainerSpellData const* GetNpcTrainerSpells(uint32 entry) const
-        {
-            CacheTrainerSpellContainer::const_iterator  iter = _cacheTrainerSpellStore.find(entry);
-            if (iter == _cacheTrainerSpellStore.end())
-                return nullptr;
-
-            return &iter->second;
-        }
-
         Trainer::Trainer const* GetTrainer(uint32 trainerId) const;
-        uint32 GetCreatureDefaultTrainer(uint32 creatureId) const;
+        uint32 GetCreatureDefaultTrainer(uint32 creatureId) const
+        {
+            return GetCreatureTrainerForGossipOption(creatureId, 0, 0);
+        }
+        uint32 GetCreatureTrainerForGossipOption(uint32 creatureId, uint32 gossipMenuId, uint32 gossipOptionIndex) const;
 
         uint32 GetCreatureSummonerSpecificEntry(uint32 creatureId) const;
         uint32 GetAdventureMapUIByCreature(uint32 creatureId) const;
@@ -1729,14 +1741,15 @@ class TC_GAME_API ObjectMgr
         uint64 _voidItemId;
         uint64 _creatureSpawnId;
         uint64 _gameObjectSpawnId;
-
+        uint64 _scenarioGuidId;
+        
         // first free low guid for selected guid type
         template<HighGuid high>
         inline ObjectGuidGeneratorBase& GetGuidSequenceGenerator()
         {
             auto itr = _guidGenerators.find(high);
             if (itr == _guidGenerators.end())
-                itr = _guidGenerators.insert(std::make_pair(high, Trinity::make_unique<ObjectGuidGenerator<high>>())).first;
+                itr = _guidGenerators.insert(std::make_pair(high, std::make_unique<ObjectGuidGenerator<high>>())).first;
 
             return *itr->second;
         }
@@ -1744,6 +1757,7 @@ class TC_GAME_API ObjectMgr
         std::map<HighGuid, std::unique_ptr<ObjectGuidGeneratorBase>> _guidGenerators;
 
         QuestMap _questTemplates;
+        std::vector<Quest const*> _questTemplatesAutoPush;
         QuestObjectivesByIdContainer _questObjectives;
 
         typedef std::unordered_map<uint32, NpcText> NpcTextContainer;
@@ -1761,10 +1775,13 @@ class TC_GAME_API ObjectMgr
         AreaTriggerScriptContainer _areaTriggerScriptStore;
         AccessRequirementContainer _accessRequirementStore;
         DungeonEncounterContainer _dungeonEncounterStore;
+        CreatureToDungeonEncounterMap _creatureToDungeonEncounter;
+        DungeonEncounterToCreatureMap _dungeonEncounterToCreature;
+        DungeonCreditEncounterMap _DungeonCreditEncounters;
         std::unordered_map<uint32, WorldSafeLocsEntry> _worldSafeLocs;
 
         RepRewardRateContainer _repRewardRateStore;
-        RepOnKillContainer _repOnKillStore;
+        RewOnKillContainer _rewOnKillStore;
         RepSpilloverTemplateContainer _repSpilloverTemplateStore;
 
         GossipMenusContainer _gossipMenusStore;
@@ -1779,8 +1796,6 @@ class TC_GAME_API ObjectMgr
         QuestRelations _creatureQuestRelations;
         QuestRelations _creatureQuestInvolvedRelations;
         QuestRelationsReverse _creatureQuestInvolvedRelationsReverse;
-
-        ExclusiveQuestGroups _exclusiveQuestGroups;
 
         //character reserved names
         typedef std::set<std::wstring> ReservedNamesContainer;
@@ -1853,7 +1868,6 @@ class TC_GAME_API ObjectMgr
         GameObjectQuestItemMap _gameObjectQuestItemStore;
         CreatureQuestItemMap _creatureQuestItemStore;
         CreatureTemplateAddonContainer _creatureTemplateAddonStore;
-        CreatureSparringTemplateMap _creatureSparringTemplateStore;
         EquipmentInfoContainer _equipmentInfoStore;
         LinkedRespawnContainer _linkedRespawnStore;
         CreatureLocaleContainer _creatureLocaleStore;
@@ -1883,9 +1897,8 @@ class TC_GAME_API ObjectMgr
         TrinityStringContainer _trinityStringStore;
 
         CacheVendorItemContainer _cacheVendorItemStore;
-        CacheTrainerSpellContainer _cacheTrainerSpellStore;
         std::unordered_map<uint32, Trainer::Trainer> _trainers;
-        std::unordered_map<uint32, uint32> _creatureDefaultTrainers;
+        std::map<std::tuple<uint32, uint32, uint32>, uint32> _creatureDefaultTrainers;
         std::unordered_map<uint32, uint32> _creatureSummonerEntry;
         std::unordered_map<uint32, uint32> _adventureMapUIByCreature;
 

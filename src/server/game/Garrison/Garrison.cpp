@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,6 +23,7 @@
 #include "GarrisonAI.h"
 #include "GameObject.h"
 #include "GarrisonMgr.h"
+#include "GarrisonConstants.h"
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
@@ -108,6 +109,10 @@ bool Garrison::LoadFromDB()
     stmt->setUInt8(1, _garrisonType);
     PreparedQueryResult rewardsStmt = CharacterDatabase.Query(stmt);
 
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_GARRISON_WORKORDER);
+    stmt->setUInt64(0, lowGuid);
+    PreparedQueryResult workordersStmt = CharacterDatabase.Query(stmt);
+
     if (!garrisonStmt)
         return false;
 
@@ -164,11 +169,13 @@ bool Garrison::LoadFromDB()
                 if (!ability)
                     continue;
 
-                auto itr = _followers.find(dbId);
-                if (itr == _followers.end())
-                    continue;
+                if (Garrison::Follower* follower = GetFollower(dbId))
+                    follower->PacketInfo.AbilityID.push_back(ability);
+                //auto itr = _followers.find(dbId);
+                //if (itr == _followers.end())
+                //    continue;
 
-                itr->second.PacketInfo.AbilityID.push_back(ability);
+               // itr->second.PacketInfo.AbilityID.push_back(ability);
             } while (abilitiesStmt->NextRow());
         }
     }
@@ -213,25 +220,43 @@ bool Garrison::LoadFromDB()
                 uint64 dbId = fields[0].GetUInt64();
                 uint8 type  = fields[1].GetUInt8();
 
-                auto itr = _missions.find(dbId);
-                if (itr == _missions.end())
-                    continue;
+                if (Mission* mission = GetMission(dbId))
+                {
+                    WorldPackets::Garrison::GarrisonMissionReward reward;
+                    reward.ItemID = fields[2].GetInt32();
+                    reward.ItemQuantity = fields[3].GetUInt32();
+                    reward.CurrencyID = fields[4].GetInt32();
+                    reward.CurrencyQuantity = fields[5].GetUInt32();
+                    reward.FollowerXP = fields[6].GetUInt32();
 
-                WorldPackets::Garrison::GarrisonMissionReward reward;
-                reward.ItemID           = fields[2].GetInt32();
-                reward.ItemQuantity     = fields[3].GetUInt32();
-                reward.CurrencyID       = fields[4].GetInt32();
-                reward.CurrencyQuantity = fields[5].GetUInt32();
-                reward.FollowerXP       = fields[6].GetUInt32();
-                reward.BonusAbilityID   = fields[7].GetUInt32();
-
-                if (type == GarrisonMission::RewardType::Normal)
-                    itr->second.Rewards.push_back(reward);
-                else
-                    itr->second.BonusRewards.push_back(reward);
+                    if (type == GarrisonMission::RewardType::Normal)
+                        mission->Rewards.push_back(reward);
+                    else
+                        mission->BonusRewards.push_back(reward);
+                }
 
             } while (rewardsStmt->NextRow());
         }
+    }
+
+    //SELECT id, plot_instance_id, shipment_id, creation_time, complete_time FROM character_garrison_work_order
+    if (workordersStmt)
+    {
+        do
+        {
+            fields = workordersStmt->Fetch();
+            uint64 dbId = fields[0].GetUInt64();
+            uint32 plotInstanceId = fields[1].GetUInt32();
+
+            _workorderIds.insert(plotInstanceId);
+            WorkOrder& workorder = _workorders[dbId];
+            workorder.DatabaseID = dbId;
+            workorder.PlotInstanceID = plotInstanceId;
+            workorder.ShipmentID = fields[2].GetUInt32();
+            workorder.CreationTime = fields[3].GetUInt32();
+            workorder.CompleteTime = fields[4].GetUInt32();
+
+        } while (workordersStmt->NextRow());
     }
 
     return true;
@@ -280,6 +305,9 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
 
     for (auto const& p : _missions)
     {
+        // dbId, guid, garrison_type, missionId, offerTime, startTime, status
+        // 0     1     2              3          4          5          6
+
         Mission const& mission = p.second;
         uint8 index = 0;
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CHARACTER_GARRISON_MISSIONS);
@@ -288,7 +316,20 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
         stmt->setUInt8(index++, _garrisonType);
         stmt->setUInt32(index++, mission.PacketInfo.MissionRecID);
         stmt->setUInt32(index++, mission.PacketInfo.OfferTime);
-        stmt->setUInt32(index++, mission.PacketInfo.StartTime != time_t(2254525440) ? mission.PacketInfo.StartTime: 0);
+
+
+        // range for startTime is 0-4294967295, so lets limit it to avoid mysql errors. -Varjgard
+        time_t gar_startTime = mission.PacketInfo.StartTime;
+
+        if(gar_startTime < 0)
+            gar_startTime = 0;
+
+        if(gar_startTime > 4294967294)
+            gar_startTime = 4294967294;
+
+        stmt->setUInt32(index++, gar_startTime != time_t(2254525440) ? gar_startTime: 0);
+
+
         stmt->setUInt32(index++, mission.PacketInfo.MissionState);
         trans->Append(stmt);
 
@@ -305,10 +346,24 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
                 stmt->setInt32(4, reward.CurrencyID);
                 stmt->setUInt32(5, reward.CurrencyQuantity);
                 stmt->setUInt32(6, reward.FollowerXP);
-                stmt->setUInt32(7, reward.BonusAbilityID);
                 trans->Append(stmt);
             }
         }
+    }
+    for (auto const& p : _workorders)
+    {
+        WorkOrder const& workorder = p.second;
+        uint8 index = 0;
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GARRISON_WORKORDER);
+
+        stmt->setUInt64(index++, workorder.DatabaseID);
+        stmt->setUInt64(index++, _owner->GetGUID().GetCounter());
+        stmt->setUInt32(index++, workorder.PlotInstanceID);
+        stmt->setUInt32(index++, workorder.ShipmentID);
+        stmt->setUInt32(index++, workorder.CreationTime);
+        stmt->setUInt32(index++, workorder.CompleteTime);
+
+        trans->Append(stmt);
     }
 }
 
@@ -323,6 +378,7 @@ void Garrison::DeleteFromDB(CharacterDatabaseTransaction& trans, ObjectGuid::Low
     stmt->setUInt64(0, guid);
     stmt->setUInt8(1, garrType);
     trans->Append(stmt);
+
 
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHARACTER_GARRISON_MISSIONS);
     stmt->setUInt64(0, guid);
@@ -342,6 +398,10 @@ void Garrison::DeleteFromDB(CharacterDatabaseTransaction& trans, ObjectGuid::Low
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHARACTER_GARRISON_BUILDINGS);
     stmt->setUInt64(0, guid);
     stmt->setUInt8(1, garrType);
+    trans->Append(stmt);
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_GARRISON_WORKORDERS);
+    stmt->setUInt64(0, guid);
     trans->Append(stmt);
 }
 
@@ -371,6 +431,7 @@ void Garrison::SetSiteLevel(GarrSiteLevelEntry const* siteLevel)
 {
     _siteLevel = siteLevel;
     AI_Initialize();
+    AI()->OnUpgrade(_owner);
 }
 
 void Garrison::AI_Initialize()
@@ -422,9 +483,13 @@ void Garrison::AddFollower(uint32 garrFollowerId)
 
 Garrison::Follower* Garrison::GetFollower(uint64 dbId)
 {
-    auto itr = _followers.find(dbId);
-    if (itr != _followers.end())
-        return &itr->second;
+    for (auto it = _followers.begin(); it != _followers.end(); ++it)
+    {
+        if ((uint32)it->second.PacketInfo.DbID == (uint32)dbId)
+        {
+            return &it->second;
+        }
+    }
 
     return nullptr;
 }
@@ -465,6 +530,62 @@ uint32 Garrison::GetMaxFollowerLevel() const
     return maxFollowerLevel;
 }
 
+void Garrison::ChangeFollowerActivationState(uint64 followerDBID, bool active)
+{
+    Follower* follower = GetFollower(followerDBID);;
+
+    if (active)
+    {
+        if (!_owner->HasEnoughMoney((uint64)GarrisonMisc::FollowerActivationCost))
+            return;
+
+        if (GetNumFollowerActivationsRemaining() < 1)
+            return;
+
+        if (follower)
+        {
+            if (!follower->IsGarrison())
+                return;
+
+            if (GetActiveFollowersCount() >= GarrisonMisc::MaxActiveFollowerAllowedCount)//+ GetFollowersCountBarracksBonus()
+                return;
+
+            _owner->ModifyMoney(-GarrisonMisc::FollowerActivationCost);
+
+            _followerActivationsRemainingToday--;
+            m_NumFollowerActivationRegenTimestamp = time(0);
+
+            follower->PacketInfo.FollowerStatus = follower->PacketInfo.FollowerStatus & ~FOLLOWER_STATUS_INACTIVE;
+        }
+    }
+    else
+    {
+        if (!_owner->HasEnoughMoney((uint64)GarrisonMisc::FollowerActivationCost))
+            return;
+
+        if (follower)
+        {
+            _owner->ModifyMoney(-GarrisonMisc::FollowerActivationCost);
+
+            follower->PacketInfo.FollowerStatus |= FOLLOWER_STATUS_INACTIVE;
+
+            WorldPacket l_Data(SMSG_GARRISON_REMOVE_FOLLOWER_FROM_BUILDING_RESULT);
+            l_Data << uint64(followerDBID);
+            l_Data << uint32(GarrisonError::GARRISON_SUCCESS);
+            _owner->SendDirectMessage(&l_Data);
+        }
+    }
+
+    if (!follower)
+        return;
+    follower->SendFollowerUpdate(_owner);
+}
+
+uint32 Garrison::GetNumFollowerActivationsRemaining() const
+{
+    return _followerActivationsRemainingToday;
+}
+
 void Garrison::AddMission(uint32 garrMissionId)
 {
     GarrMissionEntry const* missionEntry = sGarrMissionStore.LookupEntry(garrMissionId);
@@ -479,7 +600,6 @@ void Garrison::AddMission(uint32 garrMissionId)
     mission.PacketInfo.OfferTime = time(nullptr);
     mission.PacketInfo.OfferDuration = missionEntry->OfferDuration;
     mission.PacketInfo.MissionState = GarrisonMission::State::Offered;
-    mission.PacketInfo.Unknown2 = 1;
 
     // TODO : Generate rewards for mission
     WorldPackets::Garrison::GarrisonMissionReward reward;
@@ -488,8 +608,6 @@ void Garrison::AddMission(uint32 garrMissionId)
     reward.CurrencyID = 0;
     reward.CurrencyQuantity = 0;
     reward.FollowerXP = 0;
-    reward.BonusAbilityID = 0;
-    reward.Unknown = 1118739;
     mission.Rewards.push_back(reward);
 
     WorldPackets::Garrison::GarrisonAddMissionResult garrisonAddMissionResult;
@@ -505,16 +623,20 @@ void Garrison::AddMission(uint32 garrMissionId)
 
 Garrison::Mission* Garrison::GetMission(uint64 dbId)
 {
-    auto itr = _missions.find(dbId);
-    if (itr != _missions.end())
-        return &itr->second;
+    for (auto it = _missions.begin(); it != _missions.end(); ++it)
+    {
+        if ((uint32)it->second.PacketInfo.DbID == (uint32)dbId)
+        {
+            return &it->second;
+        }
+    }
 
     return nullptr;
 }
 
 Garrison::Mission* Garrison::GetMissionByID(uint32 ID)
 {
-    auto missionItr = std::find_if(_missions.begin(), _missions.end(), [ID](auto itr)
+    auto missionItr = std::find_if(_missions.begin(), _missions.end(), [ID](auto& itr)
     {
         return itr.second.PacketInfo.MissionRecID == ID;
     });
@@ -533,7 +655,7 @@ void Garrison::DeleteMission(uint64 dbId)
 std::vector<Garrison::Follower*> Garrison::GetMissionFollowers(uint32 garrMissionId)
 {
     std::vector<Follower*> missionFollowers;
-    for (auto followerItr : _followers)
+    for (auto& followerItr : _followers)
         if (followerItr.second.PacketInfo.CurrentMissionID == garrMissionId)
             missionFollowers.push_back(&followerItr.second);
 
@@ -574,7 +696,7 @@ std::pair<std::vector<GarrMissionEntry const*>, std::vector<double>> Garrison::G
         if (missionEntry->GarrTypeID != GetType())
             continue;
 
-        if (missionEntry->TargetLevel > maxFollowerlevel)
+        if (missionEntry->TargetLevel > int8(maxFollowerlevel))
             continue;
 
         if (missionEntry->MaxFollowers > activeFolowerCount)
@@ -583,11 +705,11 @@ std::pair<std::vector<GarrMissionEntry const*>, std::vector<double>> Garrison::G
         //if (missionEntry->RequiredItemLevel > averageFollowerILevel)
         //    continue;
 
-        uint32 requiredClass = sGarrisonMgr.GetClassByMissionType(missionEntry->GarrMissionTypeId);
+        uint32 requiredClass = sGarrisonMgr.GetClassByMissionType(missionEntry->GarrMissionTypeID);
         if (requiredClass != CLASS_NONE && requiredClass != _owner->getClass())
             continue;
 
-        uint32 requiredTeam = sGarrisonMgr.GetFactionByMissionType(missionEntry->GarrMissionTypeId);
+        uint32 requiredTeam = sGarrisonMgr.GetFactionByMissionType(missionEntry->GarrMissionTypeID);
         if (requiredTeam != TEAM_OTHER && requiredTeam != _owner->GetTeamId())
             continue;
 
@@ -636,6 +758,19 @@ void Garrison::GenerateMissions()
     CharacterDatabase.CommitTransaction(trans);
 }
 
+Garrison::WorkOrder* Garrison::GetWorkOrder(uint64 dbId)
+{
+    for (auto it = _workorders.begin(); it != _workorders.end(); ++it)
+    {
+        if ((uint32)it->second.DatabaseID == (uint32)dbId)
+        {
+            return &it->second;
+        }
+    }
+
+    return nullptr;
+}
+
 void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> Followers)
 {
     GarrMissionEntry const* missionEntry = sGarrMissionStore.LookupEntry(garrMissionId);
@@ -646,7 +781,7 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
     if (!mission)
         return SendStartMissionResult(false);
 
-    if (missionEntry->MissionCost && !_owner->HasCurrency(missionEntry->MissionCostCurrencyTypesId, missionEntry->MissionCost))
+    if (missionEntry->MissionCost && !_owner->HasCurrency(missionEntry->MissionCostCurrencyTypesID, missionEntry->MissionCost))
         return SendStartMissionResult(false); // GARRISON_ERROR_NOT_ENOUGH_CURRENCY
 
     mission->PacketInfo.TravelDuration = missionEntry->TravelDuration;
@@ -670,7 +805,7 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
         follower->PacketInfo.CurrentMissionID = missionEntry->ID;
     }
 
-    _owner->ModifyCurrency(missionEntry->MissionCostCurrencyTypesId, -static_cast<int32>(missionEntry->MissionCost));
+    _owner->ModifyCurrency(missionEntry->MissionCostCurrencyTypesID, -static_cast<int32>(missionEntry->MissionCost));
 
     SendStartMissionResult(true, mission, &Followers);
 }
@@ -766,7 +901,10 @@ void Garrison::RewardMission(Mission* mission, bool withOvermaxReward)
             {
                 std::vector<Follower*> followers = GetMissionFollowers(mission->PacketInfo.MissionRecID);
                 for (Follower* follower : followers)
+                {
                     follower->EarnXP(GetOwner(), reward.FollowerXP);
+                    follower->PacketInfo.CurrentMissionID = 0;
+                }
             }
 
             //if (reward.BonusAbilityID)
@@ -869,4 +1007,34 @@ uint32 Garrison::Follower::GetRequiredLevelUpXP() const
     }
 
     return 0;
+}
+
+GarrFollowerEntry const* Garrison::Follower::GetEntry() const
+{
+    return sGarrFollowerStore.LookupEntry(PacketInfo.GarrFollowerID);
+}
+
+bool Garrison::Follower::IsShipyard() const
+{
+    GarrFollowerEntry const* l_Entry = GetEntry();
+    return l_Entry && l_Entry->GarrFollowerTypeID == GarrisonFollowerType::FOLLOWER_TYPE_SHIPYARD;
+}
+
+bool Garrison::Follower::IsGarrison() const
+{
+    GarrFollowerEntry const* l_Entry = GetEntry();
+    return l_Entry && (l_Entry->GarrFollowerTypeID == GarrisonFollowerType::FOLLOWER_TYPE_GARRISON || l_Entry->GarrFollowerTypeID == GarrisonFollowerType::FOLLOWER_TYPE_CLASS_HALL);
+}
+
+void Garrison::Follower::SendFollowerUpdate(WorldSession* session) const
+{
+    WorldPackets::Garrison::GarrisonUpdateFollower followerStatus;
+    followerStatus.resultID = uint32(GarrisonError::GARRISON_SUCCESS);
+    followerStatus.followers.push_back(PacketInfo);
+    session->SendPacket(followerStatus.Write());
+}
+
+void Garrison::Follower::SendFollowerUpdate(Player* player) const
+{
+    SendFollowerUpdate(player->GetSession());
 }

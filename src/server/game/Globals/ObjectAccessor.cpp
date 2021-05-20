@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -60,7 +59,7 @@ T* HashMapHolder<T>::Find(ObjectGuid guid)
     boost::shared_lock<boost::shared_mutex> lock(*GetLock());
 
     typename MapType::iterator itr = GetContainer().find(guid);
-    return (itr != GetContainer().end()) ? itr->second : NULL;
+    return (itr != GetContainer().end()) ? itr->second : nullptr;
 }
 
 template<class T>
@@ -251,6 +250,14 @@ Player* ObjectAccessor::GetPlayer(WorldObject const& u, ObjectGuid const& guid)
     return GetPlayer(u.GetMap(), guid);
 }
 
+Player* ObjectAccessor::GetObjectInWorld(ObjectGuid guid, Player* /*typeSpecifier*/)
+{
+    Player* player = HashMapHolder<Player>::Find(guid);
+    if (player && player->IsInWorld())
+        return player;
+    return nullptr;
+}
+
 Creature* ObjectAccessor::GetCreatureOrPetOrVehicle(WorldObject const& u, ObjectGuid const& guid)
 {
     if (guid.IsPet())
@@ -259,13 +266,31 @@ Creature* ObjectAccessor::GetCreatureOrPetOrVehicle(WorldObject const& u, Object
     if (guid.IsCreatureOrVehicle())
         return GetCreature(u, guid);
 
-    return NULL;
+    return nullptr;
+}
+
+Unit* ObjectAccessor::FindUnit(ObjectGuid const& guid)
+{
+    Unit* unit = HashMapHolder<Unit>::Find(guid);
+    return unit && unit->IsInWorld() ? unit : nullptr;
 }
 
 Player* ObjectAccessor::FindPlayer(ObjectGuid const& guid)
 {
     Player* player = HashMapHolder<Player>::Find(guid);
     return player && player->IsInWorld() ? player : nullptr;
+}
+
+GameObject* ObjectAccessor::FindGameObject(ObjectGuid const& guid)
+{
+    GameObject* gameObject = HashMapHolder<GameObject>::Find(guid);
+    return gameObject && gameObject->IsInWorld() ? gameObject : nullptr;
+}
+
+Creature* ObjectAccessor::FindCreature(ObjectGuid const& guid)
+{
+    Creature* creature = HashMapHolder<Creature>::Find(guid);
+    return creature && creature->IsInWorld() ? creature : nullptr;
 }
 
 Player* ObjectAccessor::FindPlayerByName(std::string const& name)

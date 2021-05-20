@@ -15,15 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "NGrid.h"
-#include "Random.h"
+#ifndef GarrisonPlot_h_
+#define GarrisonPlot_h_
 
-GridInfo::GridInfo() : i_timer(0), vis_Update(0, irand(0, DEFAULT_VISIBILITY_NOTIFY_PERIOD)),
-    i_unloadActiveLockCount(0), i_unloadExplicitLock(false)
-{
-}
-
-GridInfo::GridInfo(time_t expiry, bool unload /*= true */) : i_timer(expiry), vis_Update(0, irand(0, DEFAULT_VISIBILITY_NOTIFY_PERIOD)),
-    i_unloadActiveLockCount(0), i_unloadExplicitLock(!unload)
-{
-}
+#endif // GarrisonPlot_h_

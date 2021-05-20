@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,95 +15,60 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BattlePetDataStore_h__
-#define BattlePetDataStore_h__
+#ifndef _BATTLE_PET_DATA_STORE_H
+#define _BATTLE_PET_DATA_STORE_H
 
-#include "Define.h"
-
-enum BattlePetMisc
+struct BattlePetTemplate
 {
-    MAX_PET_BATTLE_SLOTS            = 3,
-    MAX_BATTLE_PETS_PER_SPECIES     = 3,
-    BATTLE_PET_CAGE_ITEM_ID         = 82800,
-    DEFAULT_SUMMON_BATTLE_PET_SPELL = 118301
+    uint32 CreatureID;
+    uint32 BreedMask;
+    uint32 MinQuality;
+    uint32 minlevel;
+    uint32 maxlevel;
+    uint32 Species;
+    std::set<uint32> BreedIDs;
 };
 
-// 6.2.4
-enum FlagsControlType
+struct BattlePetNpcTeamMember
 {
-    FLAGS_CONTROL_TYPE_APPLY        = 1,
-    FLAGS_CONTROL_TYPE_REMOVE       = 2
+    uint32 Specie;
+    uint32 maxlevel;
+    uint32 minlevel;
+    uint32 minquality;
+    uint32 breadsMask;
+    uint32 Ability[3];
+    std::set<uint32> BreedIDs;
 };
 
-// 6.2.4
-enum BattlePetError
+typedef std::map<uint32, BattlePetTemplate> BattlePetTemplateContainer;
+typedef std::map<uint32, BattlePetTemplate*> BattlePetTemplateMap;
+typedef std::map<uint32, std::vector<BattlePetNpcTeamMember>> BattlePetNpcTeamMembers;
+
+class BattlePetDataStoreMgr
 {
-    BATTLEPETRESULT_CANT_HAVE_MORE_PETS_OF_THAT_TYPE = 3,
-    BATTLEPETRESULT_CANT_HAVE_MORE_PETS              = 4,
-    BATTLEPETRESULT_TOO_HIGH_LEVEL_TO_UNCAGE         = 7,
+    BattlePetDataStoreMgr();
+    ~BattlePetDataStoreMgr();
 
-    // TODO: find correct values if possible and needed (also wrong order)
-    BATTLEPETRESULT_DUPLICATE_CONVERTED_PET,
-    BATTLEPETRESULT_NEED_TO_UNLOCK,
-    BATTLEPETRESULT_BAD_PARAM,
-    BATTLEPETRESULT_LOCKED_PET_ALREADY_EXISTS,
-    BATTLEPETRESULT_OK,
-    BATTLEPETRESULT_UNCAPTURABLE,
-    BATTLEPETRESULT_CANT_INVALID_CHARACTER_GUID
-};
-
-// taken from BattlePetState.db2 - it seems to store some initial values for battle pets
-// there are only values used in BattlePetSpeciesState.db2 and BattlePetBreedState.db2
-// TODO: expand this enum if needed
-enum BattlePetState
-{
-    STATE_MAX_HEALTH_BONUS          = 2,
-    STATE_INTERNAL_INITIAL_LEVEL    = 17,
-    STATE_STAT_POWER                = 18,
-    STATE_STAT_STAMINA              = 19,
-    STATE_STAT_SPEED                = 20,
-    STATE_MOD_DAMAGE_DEALT_PERCENT  = 23,
-    STATE_GENDER                    = 78, // 1 - male, 2 - female
-    STATE_COSMETIC_WATER_BUBBLED    = 85,
-    STATE_SPECIAL_IS_COCKROACH      = 93,
-    STATE_COSMETIC_FLY_TIER         = 128,
-    STATE_COSMETIC_BIGGLESWORTH     = 144,
-    STATE_PASSIVE_ELITE             = 153,
-    STATE_PASSIVE_BOSS              = 162,
-    STATE_COSMETIC_TREASURE_GOBLIN  = 176,
-    // these are not in BattlePetState.db2 but are used in BattlePetSpeciesState.db2
-    STATE_START_WITH_BUFF           = 183,
-    STATE_START_WITH_BUFF_2         = 184,
-    //
-    STATE_COSMETIC_SPECTRAL_BLUE    = 196
-};
-
-typedef std::unordered_map<BattlePetState /*state*/, int32 /*value*/, std::hash<std::underlying_type<BattlePetState>::type>> BattlePetStateMap;
-
-class TC_GAME_API BattlePetDataStore
-{
 public:
+    static BattlePetDataStoreMgr* instance();
+
     void Initialize();
+    void LoadBattlePetTemplate();
+    void LoadBattlePetNpcTeamMember();
+    void ComputeBattlePetSpawns();
 
-    uint16 RollPetBreed(uint32 species) const;
-    uint8 GetDefaultPetQuality(uint32 species) const;
-
-    BattlePetStateMap* GetPetBreedStats(uint16 BreedID);
-    BattlePetStateMap* GetPetSpeciesStats(uint16 SpeciesID);
-
-    static BattlePetDataStore* Instance();
-
+    BattlePetTemplate const* GetBattlePetTemplate(uint32 species) const;
+    BattlePetTemplate const* GetBattlePetTemplateByEntry(uint32 CreatureID) const;
+    uint16 GetRandomBreedID(std::set<uint32> BreedIDs);
+    uint8 GetWeightForBreed(uint16 breedID);
+    uint8 GetRandomQuailty();
+    std::vector<BattlePetNpcTeamMember> GetPetBattleTrainerTeam(uint32 npcID);
 private:
-    void LoadAvailablePetBreeds();
-    void LoadDefaultPetQualities();
-
-    // hash no longer required in C++14
-    std::unordered_map<uint16 /*BreedID*/, BattlePetStateMap> _battlePetBreedStates;
-    std::unordered_map<uint32 /*SpeciesID*/, BattlePetStateMap> _battlePetSpeciesStates;
-    std::unordered_map<uint32 /*SpeciesID*/, std::unordered_set<uint8 /*breed*/>> _availableBreedsPerSpecies;
-    std::unordered_map<uint32 /*SpeciesID*/, uint8 /*quality*/> _defaultQualityPerSpecies;
+    BattlePetTemplateContainer _battlePetTemplateStore;
+    BattlePetTemplateMap _battlePetTemplate;
+    BattlePetNpcTeamMembers _battlePetNpcTeamMembers;
 };
 
-#define sBattlePetDataStore BattlePetDataStore::Instance()
+#define sBattlePetDataStore BattlePetDataStoreMgr::instance()
 
-#endif // BattlePetDataStore_h__
+#endif

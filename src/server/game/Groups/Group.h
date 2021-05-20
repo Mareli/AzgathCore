@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -55,8 +54,19 @@ namespace WorldPackets
 
 #define TARGET_ICONS_COUNT  8
 #define RAID_MARKERS_COUNT  8
-
+#define RAID_ROLL_TIMER 180000
+#define NORMAL_ROLL_TIMER 60000
 #define READYCHECK_DURATION 35000
+
+enum RollVote
+{
+    PASS              = 0,
+    NEED              = 1,
+    GREED             = 2,
+    DISENCHANT        = 3,
+    NOT_EMITED_YET    = 4,
+    NOT_VALID         = 5
+};
 
 enum GroupMemberOnlineStatus
 {
@@ -160,13 +170,39 @@ enum GroupUpdatePetFlags
                             GROUP_UPDATE_FLAG_PET_CUR_HP | GROUP_UPDATE_FLAG_PET_MAX_HP | GROUP_UPDATE_FLAG_PET_AURAS // all pet flags
 };
 
+class Roll : public LootValidatorRef
+{
+    public:
+        explicit Roll(LootItem const& li);
+        ~Roll();
+        void setLoot(Loot* pLoot);
+        Loot* getLoot();
+        void targetObjectBuildLink() override;
+        void FillPacket(WorldPackets::Loot::LootItemData& lootItem) const;
+        ItemDisenchantLootEntry const* GetItemDisenchantLoot(Player const* player) const;
+
+        uint32 itemid;
+        ItemRandomBonusListId itemRandomBonusListId;
+        uint8 itemCount;
+        ObjectGuid lootedGUID;
+        typedef std::map<ObjectGuid, RollVote> PlayerVote;
+        PlayerVote playerVote;                              //vote position correspond with player position (in group)
+        uint8 totalPlayersRolling;
+        uint8 totalNeed;
+        uint8 totalGreed;
+        uint8 totalPass;
+        uint8 itemSlot;
+        uint8 aoeSlot;
+        uint8 rollVoteMask;
+};
+
 struct InstanceGroupBind
 {
     InstanceSave* save;
     bool perm;
     /* permanent InstanceGroupBinds exist if the leader has a permanent
        PlayerInstanceBind for the same instance. */
-    InstanceGroupBind() : save(NULL), perm(false) { }
+    InstanceGroupBind() : save(nullptr), perm(false) { }
 };
 
 struct RaidMarker
@@ -186,7 +222,7 @@ struct RaidMarker
 class TC_GAME_API Group
 {
     public:
-        Ashamane::AnyData Variables;
+        AzgathCore::AnyData Variables;
 
         struct MemberSlot
         {
@@ -206,6 +242,8 @@ class TC_GAME_API Group
         typedef MemberSlotList::iterator member_witerator;
         typedef std::set<Player*> InvitesList;
 
+        typedef std::vector<Roll*> Rolls;
+
     public:
         Group();
         ~Group();
@@ -219,7 +257,7 @@ class TC_GAME_API Group
         void   RemoveAllInvites();
         bool   AddLeaderInvite(Player* player);
         bool   AddMember(Player* player);
-        bool   RemoveMember(ObjectGuid guid, const RemoveMethod &method = GROUP_REMOVEMETHOD_DEFAULT, ObjectGuid kicker = ObjectGuid::Empty, const char* reason = NULL);
+        bool   RemoveMember(ObjectGuid guid, RemoveMethod method = GROUP_REMOVEMETHOD_DEFAULT, ObjectGuid kicker = ObjectGuid::Empty, const char* reason = nullptr);
         void   ChangeLeader(ObjectGuid guid, int8 partyIndex = 0);
  static void   ConvertLeaderInstancesToGroup(Player* player, Group* group, bool switchLeader);
         void   SetLootMethod(LootMethod method);
@@ -277,7 +315,7 @@ class TC_GAME_API Group
         bool IsMember(ObjectGuid guid) const;
         bool IsLeader(ObjectGuid guid) const;
         ObjectGuid GetMemberGUID(const std::string& name);
-        bool IsAssistant(ObjectGuid guid) const;
+        uint8 GetMemberFlags(ObjectGuid guid) const;
 
         Player* GetInvited(ObjectGuid guid) const;
         Player* GetInvited(const std::string& name) const;
@@ -291,6 +329,7 @@ class TC_GAME_API Group
         GroupReference* GetFirstMember() { return m_memberMgr.getFirst(); }
         GroupReference const* GetFirstMember() const { return m_memberMgr.getFirst(); }
         uint32 GetMembersCount() const { return uint32(m_memberSlots.size()); }
+        uint32 GetInviteeCount() const { return m_invitees.size(); }
         GroupFlags GetGroupFlags() const { return m_groupFlags; }
 
         uint8 GetMemberGroup(ObjectGuid guid) const;
@@ -322,7 +361,7 @@ class TC_GAME_API Group
         //void SendInit(WorldSession* session);
         void SendTargetIconList(WorldSession* session, int8 partyIndex = 0);
         void SendUpdate();
-        void SendUpdateToPlayer(ObjectGuid playerGUID, MemberSlot* slot = NULL);
+        void SendUpdateToPlayer(ObjectGuid playerGUID, MemberSlot* slot = nullptr);
         void SendUpdateDestroyGroupToPlayer(Player* player) const;
         void UpdatePlayerOutOfRange(Player* player);
 
@@ -342,6 +381,29 @@ class TC_GAME_API Group
 
         void BroadcastPacket(WorldPacket const* packet, bool ignorePlayersInBGRaid, int group = -1, ObjectGuid ignoredPlayer = ObjectGuid::Empty);
         void BroadcastAddonMessagePacket(WorldPacket const* packet, const std::string& prefix, bool ignorePlayersInBGRaid, int group = -1, ObjectGuid ignore = ObjectGuid::Empty);
+
+        /*********************************************************/
+        /***                   LOOT SYSTEM                     ***/
+        /*********************************************************/
+
+        bool isRollLootActive() const { return !RollId.empty(); }
+        void SendLootStartRoll(uint32 mapid, const Roll& r);
+        void SendLootStartRollToPlayer(uint32 countDown, uint32 mapId, Player* p, bool canNeed, Roll const& r) const;
+        void SendLootRoll(ObjectGuid playerGuid, int32 rollNumber, uint8 rollType, Roll const& roll) const;
+        void SendLootRollWon(ObjectGuid winnerGuid, int32 rollNumber, uint8 rollType, Roll const& roll) const;
+        void SendLootAllPassed(Roll const& roll) const;
+        void SendLootRollsComplete(Roll const& roll) const;
+        void SendLooter(Creature* creature, Player* pLooter);
+        void GroupLoot(Loot* loot, WorldObject* pLootedObject);
+        void MasterLoot(Loot* loot, WorldObject* pLootedObject);
+        Rolls::iterator GetRoll(uint8 slot);
+        void CountTheRoll(Rolls::iterator roll, Map* allowedMap);
+        void CountRollVote(ObjectGuid playerGuid, uint8 AoeSlot, uint8 choice);
+        void DoRollForAllMembers(ObjectGuid guid, uint8 slot, uint32 mapid, Loot*, LootItem&, Player*);
+        void EndRoll(Loot* loot, Map* allowedMap);
+        bool isRolledSlot(uint8 _slot);
+        bool RollIsActive();
+
 
         /*********************************************************/
         /***                  ARENA SYSTEM                     ***/
@@ -371,6 +433,14 @@ class TC_GAME_API Group
 
         // FG: evil hacks
         void BroadcastGroupUpdate(void);
+        bool InChallenge();
+        bool GetMaxCountOfRolesForArenaQueue(uint8 role);
+        ObjectGuid m_challengeOwner;
+        ObjectGuid m_challengeItem;
+        MapChallengeModeEntry const* m_challengeEntry;
+        uint32 m_challengeLevel;
+        uint32 m_challengeInstanceID;
+        std::array<uint32, 3> m_affixes{};
 
     protected:
         bool _setMembersGroup(ObjectGuid guid, uint8 group);
@@ -400,11 +470,13 @@ class TC_GAME_API Group
         ItemQualities       m_lootThreshold;
         ObjectGuid          m_looterGuid;
         ObjectGuid          m_masterLooterGuid;
+        Rolls               RollId;
         BoundInstancesMap   m_boundInstances;
         uint8*              m_subGroupsCounts;
         ObjectGuid          m_guid;
         uint32              m_maxEnchantingLevel;
         uint32              m_dbStoreId;                    // Represents the ID used in database (Can be reused by other groups if group was disbanded)
+        uint8               m_aoe_slots;                    // centrilize aoe loot method
 
         // Ready Check
         bool                m_readyCheckStarted;

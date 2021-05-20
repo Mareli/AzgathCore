@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -91,7 +90,7 @@ public:
     void Enter() override;
     void Leave() override;
 
-    bool IsAllowedArea(AreaTableEntry const* area) const override;
+    bool IsAllowedArea(uint32 areaID) const override;
 
     // Plots
     std::vector<Plot*> GetPlots();
@@ -106,8 +105,6 @@ public:
     void CancelBuildingConstruction(uint32 garrPlotInstanceId);
     void ActivateBuilding(uint32 garrPlotInstanceId);
     std::unordered_set<uint32 /*garrBuildingId*/> const& GetKnownBuildings() const;
-
-    void SendBuildingLandmarks(Player* receiver) const;
 
 private:
     void InitializePlots();
