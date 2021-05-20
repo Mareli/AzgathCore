@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,6 +31,7 @@ EndContentData */
 
 #include "ScriptMgr.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
 
@@ -169,7 +169,7 @@ public:
     {
         npc_cooshcooshAI(Creature* creature) : ScriptedAI(creature)
         {
-            m_uiNormFaction = creature->getFaction();
+            m_uiNormFaction = creature->GetFaction();
             Initialize();
         }
 
@@ -184,8 +184,8 @@ public:
         void Reset() override
         {
             Initialize();
-            if (me->getFaction() != m_uiNormFaction)
-                me->setFaction(m_uiNormFaction);
+            if (me->GetFaction() != m_uiNormFaction)
+                me->SetFaction(m_uiNormFaction);
         }
 
         void EnterCombat(Unit* /*who*/) override { }
@@ -225,7 +225,7 @@ public:
         if (action == GOSSIP_ACTION_INFO_DEF)
         {
             CloseGossipMenuFor(player);
-            creature->setFaction(FACTION_HOSTILE_CO);
+            creature->SetFaction(FACTION_HOSTILE_CO);
             creature->AI()->AttackStart(player);
         }
         return true;
@@ -274,13 +274,13 @@ public:
                 {
                     ItemPosCountVec dest;
                     uint32 itemId = 24573;
-                    InventoryResult msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, 1, NULL);
+                    InventoryResult msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, 1, nullptr);
                     if (msg == EQUIP_ERR_OK)
                     {
                         player->StoreNewItem(dest, itemId, true);
                     }
                     else
-                        player->SendEquipError(msg, NULL, NULL, itemId);
+                        player->SendEquipError(msg, nullptr, nullptr, itemId);
                 }
                 SendGossipMenuFor(player, 9231, creature->GetGUID());
                 break;
@@ -311,9 +311,9 @@ class npc_kayra_longmane : public CreatureScript
 public:
     npc_kayra_longmane() : CreatureScript("npc_kayra_longmane") { }
 
-    struct npc_kayra_longmaneAI : public npc_escortAI
+    struct npc_kayra_longmaneAI : public EscortAI
     {
-        npc_kayra_longmaneAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_kayra_longmaneAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
@@ -356,7 +356,7 @@ public:
         {
             creature->AI()->Talk(SAY_START, player);
 
-            if (npc_escortAI* pEscortAI = CAST_AI(npc_kayra_longmane::npc_kayra_longmaneAI, creature->AI()))
+            if (EscortAI* pEscortAI = CAST_AI(npc_kayra_longmane::npc_kayra_longmaneAI, creature->AI()))
                 pEscortAI->Start(false, false, player->GetGUID());
         }
         return true;
@@ -368,9 +368,74 @@ public:
     }
 };
 
-/*######
-## AddSC
-######*/
+class npc_mortog_steamhead : public CreatureScript
+{
+public:
+    npc_mortog_steamhead() : CreatureScript("npc_mortog_steamhead") {}
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsVendor() && player->GetReputationRank(942) == REP_EXALTED)
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        //if (action == GOSSIP_ACTION_TRADE)
+          //  player->GetSession()->SendListInventory(creature->GetGUID());
+
+        return true;
+    }
+};
+
+#define GOSSIP_TIMOTHY_DANIELS_ITEM1    "Specialist, eh? Just what kind of specialist are you, anyway?"
+#define GOSSIP_TEXT_BROWSE_POISONS      "Let me browse your reagents and poison supplies."
+
+enum eTimothy
+{
+    GOSSIP_TEXTID_TIMOTHY_DANIELS1 = 9239
+};
+
+class npc_timothy_daniels : public CreatureScript
+{
+public:
+    npc_timothy_daniels() : CreatureScript("npc_timothy_daniels") {}
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (creature->IsVendor())
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_POISONS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_TIMOTHY_DANIELS_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        ClearGossipMenuFor(player);
+
+        switch (action)
+        {
+        case GOSSIP_ACTION_INFO_DEF + 1:
+            SendGossipMenuFor(player, GOSSIP_TEXTID_TIMOTHY_DANIELS1, creature->GetGUID());
+            break;
+        case GOSSIP_ACTION_TRADE:
+         //   player->GetSession()->SendListInventory(creature->GetGUID());
+            break;
+        }
+
+        return true;
+    }
+};
 
 void AddSC_zangarmarsh()
 {
@@ -378,4 +443,6 @@ void AddSC_zangarmarsh()
     new npc_cooshcoosh();
     new npc_elder_kuruti();
     new npc_kayra_longmane();
+    new npc_mortog_steamhead();
+    new npc_timothy_daniels();
 }

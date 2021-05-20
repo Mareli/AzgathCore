@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -65,7 +64,7 @@ public:
         if (action == GOSSIP_ACTION_INFO_DEF+1)
         {
             CloseGossipMenuFor(player);
-            creature->setFaction(FACTION_OGRE_HOSTILE);
+            creature->SetFaction(FACTION_OGRE_HOSTILE);
             creature->AI()->Talk(SAY_RALIQ_ATTACK, player);
             creature->AI()->AttackStart(player);
         }
@@ -155,7 +154,7 @@ public:
         if (action == GOSSIP_ACTION_INFO_DEF+1)
         {
             CloseGossipMenuFor(player);
-            creature->setFaction(FACTION_DEMON_HOSTILE);
+            creature->SetFaction(FACTION_DEMON_HOSTILE);
             creature->AI()->Talk(SAY_DEMONIC_AGGRO, player);
             creature->AI()->AttackStart(player);
         }
@@ -379,10 +378,10 @@ public:
         return new npc_kservantAI(creature);
     }
 
-    struct npc_kservantAI : public npc_escortAI
+    struct npc_kservantAI : public EscortAI
     {
     public:
-        npc_kservantAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_kservantAI(Creature* creature) : EscortAI(creature) { }
 
         void WaypointReached(uint32 waypointId) override
         {
@@ -486,12 +485,14 @@ struct npc_vormu : public ScriptedAI
 {
     npc_vormu(Creature* creature) : ScriptedAI(creature) { }
 
-    void sGossipSelect(Player* player, uint32 /*sender*/, uint32 /*action*/) override
+    bool GossipSelect(Player* player, uint32 menuId, uint32 action) override
     {
         ClearGossipMenuFor(player);
 
         if (!player->GetGroup() || player->GetGroup()->GetLeaderGUID() == player->GetGUID())
             sLFGMgr->JoinLfg(player, LFG_DUNGEON_TIME_WALKING_BLACK_TEMPLE);
+
+        return true;
     }
 };
 

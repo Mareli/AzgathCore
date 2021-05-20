@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -380,7 +379,7 @@ public:
         void Reset() override
         {
             if (!Tapped)
-                me->setFaction(FACTION_DEFAULT);
+                me->SetFaction(FACTION_DEFAULT);
 
             FlyTimer = 10000;
             me->SetDisableGravity(false);
@@ -396,7 +395,7 @@ public:
                 Tapped = true;
                 PlayerGUID = caster->GetGUID();
 
-                me->setFaction(FACTION_FRIENDLY);
+                me->SetFaction(FACTION_FRIENDLY);
                 DoCast(caster, SPELL_FORCE_OF_NELTHARAKU, true);
 
                 Unit* Dragonmaw = me->FindNearestCreature(NPC_DRAGONMAW_SUBJUGATOR, 50);
@@ -526,7 +525,7 @@ public:
 
                 Tapped = true;
                 float x, y, z;
-                caster->GetClosePoint(x, y, z, me->GetCombatReach());
+                caster->GetClosePoint(x, y, z, me->GetObjectSize());
 
                 me->SetWalk(false);
                 me->GetMotionMaster()->MovePoint(1, x, y, z);
@@ -558,7 +557,7 @@ public:
                             player->KilledMonsterCredit(23209);
                     }
                     PoisonTimer = 0;
-                    me->DealDamage(me, me->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    me->DealDamage(me, me->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
                 } else PoisonTimer -= diff;
             }
             if (!UpdateVictim())
@@ -603,7 +602,7 @@ public:
         if (quest->GetQuestId() == QUEST_ESCAPE_COILSCAR)
         {
             creature->AI()->Talk(SAY_WIL_START, player);
-            creature->setFaction(FACTION_EARTHEN);
+            creature->SetFaction(FACTION_EARTHEN);
 
             if (npc_earthmender_wildaAI* pEscortAI = CAST_AI(npc_earthmender_wilda::npc_earthmender_wildaAI, creature->AI()))
                 pEscortAI->Start(false, false, player->GetGUID(), quest);
@@ -616,9 +615,9 @@ public:
         return new npc_earthmender_wildaAI(creature);
     }
 
-    struct npc_earthmender_wildaAI : public npc_escortAI
+    struct npc_earthmender_wildaAI : public EscortAI
     {
-        npc_earthmender_wildaAI(Creature* creature) : npc_escortAI(creature)
+        npc_earthmender_wildaAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -728,7 +727,7 @@ public:
 
         void UpdateAI(uint32 uiDiff) override
         {
-            npc_escortAI::UpdateAI(uiDiff);
+            EscortAI::UpdateAI(uiDiff);
 
             if (!UpdateVictim())
                 return;
@@ -1338,8 +1337,11 @@ void npc_lord_illidan_stormrage::npc_lord_illidan_stormrageAI::SummonNextWave()
         }
     }
     ++WaveCount;
-    WaveTimer = WavesInfo[WaveCount].SpawnTimer;
-    AnnounceTimer = WavesInfo[WaveCount].YellTimer;
+    if (WaveCount < 4)
+    {
+        WaveTimer = WavesInfo[WaveCount].SpawnTimer;
+        AnnounceTimer = WavesInfo[WaveCount].YellTimer;
+    }
 }
 
 /*#####
@@ -1468,8 +1470,8 @@ public:
             }
 
             // Spawn Soul on Kill ALWAYS!
-            Creature* Summoned = NULL;
-            Unit* totemOspirits = NULL;
+            Creature* Summoned = nullptr;
+            Unit* totemOspirits = nullptr;
 
             if (entry != 0)
                 Summoned = DoSpawnCreature(entry, 0, 0, 1, 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 5000);
@@ -1480,7 +1482,7 @@ public:
                  totemOspirits = me->FindNearestCreature(ENTRY_TOTEM_OF_SPIRITS, RADIUS_TOTEM_OF_SPIRITS);
                  if (totemOspirits)
                  {
-                     Summoned->setFaction(FACTION_ENRAGED_SOUL_FRIENDLY);
+                     Summoned->SetFaction(FACTION_ENRAGED_SOUL_FRIENDLY);
                      Summoned->GetMotionMaster()->MovePoint(0, totemOspirits->GetPositionX(), totemOspirits->GetPositionY(), Summoned->GetPositionZ());
 
                      if (Unit* owner = totemOspirits->GetOwner())

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -77,7 +76,7 @@ public:
             Initialize();
 
             me->RemoveNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
-            me->setFaction(FACTION_FRIENDLY);
+            me->SetFaction(FACTION_FRIENDLY);
 
             Talk(SAY_SUMMON);
         }
@@ -88,7 +87,7 @@ public:
             {
                 if (faction_Timer <= diff)
                 {
-                    me->setFaction(FACTION_HOSTILE);
+                    me->SetFaction(FACTION_HOSTILE);
                     faction_Timer = 0;
                 } else faction_Timer -= diff;
             }
@@ -98,7 +97,7 @@ public:
 
             if (HealthBelowPct(30))
             {
-                me->setFaction(FACTION_FRIENDLY);
+                me->SetFaction(FACTION_FRIENDLY);
                 me->AddNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
                 me->RemoveAllAuras();
                 me->DeleteThreatList();
@@ -152,9 +151,9 @@ class npc_ancestral_wolf : public CreatureScript
 public:
     npc_ancestral_wolf() : CreatureScript("npc_ancestral_wolf") { }
 
-    struct npc_ancestral_wolfAI : public npc_escortAI
+    struct npc_ancestral_wolfAI : public EscortAI
     {
-        npc_ancestral_wolfAI(Creature* creature) : npc_escortAI(creature)
+        npc_ancestral_wolfAI(Creature* creature) : EscortAI(creature)
         {
             if (creature->GetOwner() && creature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
                 Start(false, false, creature->GetOwner()->GetGUID());
@@ -172,7 +171,7 @@ public:
         // Override Evade Mode event, recast buff that was removed by standard handler
         void EnterEvadeMode(EvadeReason why) override
         {
-            npc_escortAI::EnterEvadeMode(why);
+            EscortAI::EnterEvadeMode(why);
             DoCast(me, SPELL_ANCESTRAL_WOLF_BUFF, true);
         }
 
@@ -261,9 +260,9 @@ class npc_wounded_blood_elf : public CreatureScript
 public:
     npc_wounded_blood_elf() : CreatureScript("npc_wounded_blood_elf") { }
 
-    struct npc_wounded_blood_elfAI : public npc_escortAI
+    struct npc_wounded_blood_elfAI : public EscortAI
     {
-        npc_wounded_blood_elfAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_wounded_blood_elfAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
@@ -278,12 +277,12 @@ public:
             summoned->AI()->AttackStart(me);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest) override
+        void QuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_ROAD_TO_FALCON_WATCH)
             {
-                me->setFaction(FACTION_FALCON_WATCH_QUEST);
-                npc_escortAI::Start(true, false, player->GetGUID());
+                me->SetFaction(FACTION_FALCON_WATCH_QUEST);
+                EscortAI::Start(true, false, player->GetGUID());
             }
         }
 
@@ -687,7 +686,7 @@ public:
             me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
         }
 
-        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
         {
             ClearGossipMenuFor(player);
             switch (gossipListId)
@@ -700,6 +699,8 @@ public:
                 default:
                     break;
             }
+
+            return true;
         }
 
         void DoAction(int32 action) override
@@ -1005,7 +1006,7 @@ public:
                     break;
                 case EVENT_ATTACK:
                     me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-                    me->setFaction(FACTION_HOSTILE);
+                    me->SetFaction(FACTION_HOSTILE);
                     if (Player* player = ObjectAccessor::GetPlayer(*me, _playerGUID))
                         me->CombatStart(player);
                     _events.ScheduleEvent(EVENT_FIREBALL, 1);

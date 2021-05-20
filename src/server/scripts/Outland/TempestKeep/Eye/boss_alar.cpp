@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -195,7 +194,7 @@ class boss_alar : public CreatureScript
                 {
                     me->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_FIRE, true);
                     me->SetDisplayId(11686);
-                    //me->SendUpdateObjectToAllExcept(NULL);
+                    //me->SendUpdateObjectToAllExcept(nullptr);
                 }
             }
 
@@ -411,7 +410,7 @@ class boss_alar : public CreatureScript
                                 Summoned->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                                 Summoned->SetObjectScale(Summoned->GetObjectScale() * 2.5f);
                                 Summoned->SetDisplayId(11686);
-                                Summoned->setFaction(me->getFaction());
+                                Summoned->SetFaction(me->GetFaction());
                                 Summoned->SetLevel(me->getLevel());
                                 Summoned->CastSpell(Summoned, SPELL_FLAME_PATCH, false);
                             }
@@ -523,7 +522,7 @@ class npc_ember_of_alar : public CreatureScript
 
                 if (toDie)
                 {
-                    me->DealDamage(me, me->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    me->DealDamage(me, me->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
                     //me->SetVisibility(VISIBILITY_OFF);
                 }
 

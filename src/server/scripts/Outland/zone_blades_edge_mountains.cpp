@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -840,8 +839,8 @@ class npc_simon_bunny : public CreatureScript
                 // so player gets damage equal to calculated damage  dbc basepoints for SPELL_BAD_PRESS_DAMAGE (~50)
                 if (spell->Id == SPELL_BAD_PRESS_TRIGGER)
                 {
-                    int32 bp = (int32)((float)(fails)*0.33f*target->GetMaxHealth());
-                    target->CastCustomSpell(target, SPELL_BAD_PRESS_DAMAGE, &bp, NULL, NULL, true);
+                    float bp = ((float)(fails) * 0.33f * target->GetMaxHealth());
+                    target->CastCustomSpell(target, SPELL_BAD_PRESS_DAMAGE, &bp, nullptr, nullptr, true);
                 }
             }
 

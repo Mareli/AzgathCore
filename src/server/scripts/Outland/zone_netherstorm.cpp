@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -499,9 +498,9 @@ public:
     {
         if (quest->GetQuestId() == Q_ALMABTRIEB)
         {
-            creature->setFaction(113);
+            creature->SetFaction(113);
             creature->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            ENSURE_AI(npc_escortAI, (creature->AI()))->Start(true, false, player->GetGUID());
+            ENSURE_AI(EscortAI, (creature->AI()))->Start(true, false, player->GetGUID());
         }
         return true;
     }
@@ -511,9 +510,9 @@ public:
         return new npc_bessyAI(creature);
     }
 
-    struct npc_bessyAI : public npc_escortAI
+    struct npc_bessyAI : public EscortAI
     {
-        npc_bessyAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_bessyAI(Creature* creature) : EscortAI(creature) { }
 
         void JustDied(Unit* /*killer*/) override
         {
@@ -582,9 +581,9 @@ public:
         return new npc_maxx_a_million_escortAI(creature);
     }
 
-    struct npc_maxx_a_million_escortAI : public npc_escortAI
+    struct npc_maxx_a_million_escortAI : public EscortAI
     {
-        npc_maxx_a_million_escortAI(Creature* creature) : npc_escortAI(creature)
+        npc_maxx_a_million_escortAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -637,7 +636,7 @@ public:
 
         void UpdateAI(uint32 uiDiff) override
         {
-            npc_escortAI::UpdateAI(uiDiff);
+            EscortAI::UpdateAI(uiDiff);
 
             if (bTake)
             {
@@ -665,7 +664,7 @@ public:
         {
             if (npc_maxx_a_million_escortAI* pEscortAI = CAST_AI(npc_maxx_a_million_escort::npc_maxx_a_million_escortAI, creature->AI()))
             {
-                creature->setFaction(113);
+                creature->SetFaction(113);
                 pEscortAI->Start(false, false, player->GetGUID());
             }
         }

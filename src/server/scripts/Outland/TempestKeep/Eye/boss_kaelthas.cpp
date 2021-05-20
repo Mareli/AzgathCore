@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1280,7 +1279,7 @@ class npc_kael_flamestrike : public CreatureScript
                 Initialize();
 
                 me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
-                me->setFaction(14);
+                me->SetFaction(14);
             }
 
             void MoveInLineOfSight(Unit* /*who*/) override { }
