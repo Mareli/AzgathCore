@@ -10,8 +10,7 @@
 
 master | 8.3.7
 :------------: | :------------:
-[![master Build Status](https://travis-ci.org/AzgathCore/AzgathCore.svg?branch=master)](https://travis-ci.org/AzgathCore/AzgathCore) | [![8.3.7 Build Status](https://travis-ci.org/AzgathCore/AzgathCore.svg?branch=8.3.7)](https://travis-ci.org/AzgathCore/AzgathCore)
-[![Build status](https://ci.appveyor.com/api/projects/status/x7rf9799etmji7y5/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcore-vkv2k/branch/master) | [![Build status](https://ci.appveyor.com/api/projects/status/54d0u1fxe50ad80o/branch/8.3.7?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcore-vkv2k/branch/master)
+[![Build status](https://ci.appveyor.com/api/projects/status/x7rf9799etmji7y5/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcoresl/branch/master) | [![Build status](https://ci.appveyor.com/api/projects/status/54d0u1fxe50ad80o/branch/8.3.7?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcorebfa/branch/master)
 
 ## Introduction
 
