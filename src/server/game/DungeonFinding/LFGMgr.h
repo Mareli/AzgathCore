@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -65,11 +65,12 @@ enum LFGMgrEnum
 
 enum LfgFlags
 {
-    LFG_FLAG_UNK1                               = 0x1,
-    LFG_FLAG_UNK2                               = 0x2,
-    LFG_FLAG_SEASONAL                           = 0x4,
-    LFG_FLAG_UNK3                               = 0x8,
-    LFG_FLAG_TIMEWALKER                         = 0x2000,
+    LFG_FLAG_UNK1                           = 0x0001,
+    LFG_FLAG_UNK2                           = 0x0002,
+    LFG_FLAG_SEASONAL                       = 0x0004,
+    LFG_FLAG_USER_TELEPORT_NOT_ALLOWED      = 0x0800,
+    LFG_FLAG_NON_BACKFILLABLE               = 0x1000,
+    LFG_FLAG_TIMEWALKER                     = 0x2000,
 };
 
 /// Determines the type of instance
@@ -308,15 +309,15 @@ struct LFGDungeonData
     LFGDungeonData();
     LFGDungeonData(LFGDungeonsEntry const* dbc);
 
+    LFGDungeonsEntry const* dbc;
     uint32 id;
     std::string name;
     uint32 map;
+    uint32 contentTuningID;
     uint8 type;
     uint8 subtype;
     uint8 expansion;
     uint8 randomId;
-    uint8 minlevel;
-    uint8 maxlevel;
     Difficulty difficulty;
     bool seasonal;
     float x, y, z, o;
@@ -416,7 +417,7 @@ class TC_GAME_API LFGMgr
         /// Gets the random dungeon reward corresponding to given dungeon and player level
         LfgReward const* GetRandomDungeonReward(uint32 dungeon, uint8 level);
         /// Returns all random and seasonal dungeons for given level and expansion
-        LfgDungeonSet GetRandomAndSeasonalDungeons(uint8 level, uint8 expansion);
+        LfgDungeonSet GetRandomAndSeasonalDungeons(uint8 level, uint8 expansion, uint32 contentTuningReplacementConditionMask);
         /// Teleport a player to/from selected dungeon
         void TeleportPlayer(Player* player, bool out, bool fromOpcode = false);
         /// Inits new proposal to boot a player
@@ -443,6 +444,8 @@ class TC_GAME_API LFGMgr
         void ToggleTesting();
         /// Check if debug mode
         bool IsTesting() const { return m_isTesting; }
+        /// Personal LFG
+        void JoinPersonalLfg(Player* player, uint32 dungeonId);
 
         // LfgQueue
         /// Get last lfg state (NONE, DUNGEON or FINISHED_DUNGEON)

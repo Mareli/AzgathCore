@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,6 +27,8 @@
 GameTable<GtArtifactKnowledgeMultiplierEntry>   sArtifactKnowledgeMultiplierGameTable;
 GameTable<GtArtifactLevelXPEntry>               sArtifactLevelXPGameTable;
 GameTable<GtBarberShopCostBaseEntry>            sBarberShopCostBaseGameTable;
+GameTable<GtBattlePetXPEntry>                   sBattlePetXPTable;
+GameTable<GtBattlePetTypeDamageModEntry>        sBattlePetTypeDamageModTable;
 GameTable<GtBaseMPEntry>                        sBaseMPGameTable;
 GameTable<GtCombatRatingsEntry>                 sCombatRatingsGameTable;
 GameTable<GtCombatRatingsMultByILvl>            sCombatRatingsMultByILvlGameTable;
@@ -34,7 +36,9 @@ GameTable<GtChallengeModeDamage>                sChallengeModeDamage;
 GameTable<GtChallengeModeHealth>                sChallengeModeHealth;
 GameTable<GtHpPerStaEntry>                      sHpPerStaGameTable;
 GameTable<GtItemSocketCostPerLevelEntry>        sItemSocketCostPerLevelGameTable;
+GameTable<GtNpcDamageByClassEntry>              sNpcDamageByClassGameTable[MAX_EXPANSIONS];
 GameTable<GtNpcManaCostScalerEntry>             sNpcManaCostScalerGameTable;
+GameTable<GtNpcTotalHpEntry>                    sNpcTotalHpGameTable[MAX_EXPANSIONS];
 GameTable<GtSpellScalingEntry>                  sSpellScalingGameTable;
 GameTable<GtStaminaMultByILvl>                  sStaminaMultByILvlGameTable;
 GameTable<GtXpEntry>                            sXpGameTable;
@@ -114,6 +118,8 @@ void LoadGameTables(std::string const& dataPath)
     LOAD_GT(sArtifactKnowledgeMultiplierGameTable, "ArtifactKnowledgeMultiplier.txt");
     LOAD_GT(sArtifactLevelXPGameTable, "ArtifactLevelXP.txt");
     LOAD_GT(sBarberShopCostBaseGameTable, "BarberShopCostBase.txt");
+    LOAD_GT(sBattlePetXPTable, "BattlePetXP.txt");
+    LOAD_GT(sBattlePetTypeDamageModTable, "BattlePetTypeDamageMod.txt");
     LOAD_GT(sBaseMPGameTable, "BaseMp.txt");
     LOAD_GT(sCombatRatingsGameTable, "CombatRatings.txt");
     LOAD_GT(sCombatRatingsMultByILvlGameTable, "CombatRatingsMultByILvl.txt");
@@ -121,7 +127,25 @@ void LoadGameTables(std::string const& dataPath)
     LOAD_GT(sChallengeModeHealth, "ChallengeModeHealth.txt");
     LOAD_GT(sItemSocketCostPerLevelGameTable, "ItemSocketCostPerLevel.txt");
     LOAD_GT(sHpPerStaGameTable, "HpPerSta.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[0], "NpcDamageByClass.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[1], "NpcDamageByClassExp1.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[2], "NpcDamageByClassExp2.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[3], "NpcDamageByClassExp3.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[4], "NpcDamageByClassExp4.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[5], "NpcDamageByClassExp5.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[6], "NpcDamageByClassExp6.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[7], "NpcDamageByClassExp7.txt");
+    LOAD_GT(sNpcDamageByClassGameTable[8], "NpcDamageByClassExp8.txt");
     LOAD_GT(sNpcManaCostScalerGameTable, "NPCManaCostScaler.txt");
+    LOAD_GT(sNpcTotalHpGameTable[0], "NpcTotalHp.txt");
+    LOAD_GT(sNpcTotalHpGameTable[1], "NpcTotalHpExp1.txt");
+    LOAD_GT(sNpcTotalHpGameTable[2], "NpcTotalHpExp2.txt");
+    LOAD_GT(sNpcTotalHpGameTable[3], "NpcTotalHpExp3.txt");
+    LOAD_GT(sNpcTotalHpGameTable[4], "NpcTotalHpExp4.txt");
+    LOAD_GT(sNpcTotalHpGameTable[5], "NpcTotalHpExp5.txt");
+    LOAD_GT(sNpcTotalHpGameTable[6], "NpcTotalHpExp6.txt");
+    LOAD_GT(sNpcTotalHpGameTable[7], "NpcTotalHpExp7.txt");
+    LOAD_GT(sNpcTotalHpGameTable[8], "NpcTotalHpExp8.txt");
     LOAD_GT(sSpellScalingGameTable, "SpellScaling.txt");
     LOAD_GT(sStaminaMultByILvlGameTable, "StaminaMultByILvl.txt");
     LOAD_GT(sXpGameTable, "xp.txt");

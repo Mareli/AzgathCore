@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -281,7 +281,7 @@ LfgCompatibilityData* LFGQueue::GetCompatibilityData(std::string const& key)
     if (itr != CompatibleMapStore.end())
         return &(itr->second);
 
-    return NULL;
+    return nullptr;
 }
 
 uint8 LFGQueue::FindGroups()
@@ -538,7 +538,7 @@ LfgCompatibility LFGQueue::CheckCompatibility(GuidList check)
     }
 
     // Create a new proposal
-    proposal.cancelTime = time(NULL) + LFG_TIME_PROPOSAL;
+    proposal.cancelTime = time(nullptr) + LFG_TIME_PROPOSAL;
     proposal.state = LFG_PROPOSAL_INITIATING;
     proposal.leader.Clear();
     proposal.dungeonId = Trinity::Containers::SelectRandomContainerElement(proposalDungeons);

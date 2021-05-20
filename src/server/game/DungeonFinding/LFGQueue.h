@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -75,7 +75,7 @@ struct LfgQueueRoleCount
 /// Stores player or group queue info
 struct LfgQueueData
 {
-    LfgQueueData(): joinTime(time_t(time(NULL))), tanks(LFG_TANKS_NEEDED),
+    LfgQueueData(): joinTime(time_t(time(nullptr))), tanks(LFG_TANKS_NEEDED),
         healers(LFG_HEALERS_NEEDED), damages(LFG_DAMAGES_NEEDED)
         { }
 

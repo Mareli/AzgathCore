@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -147,6 +147,7 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
 
                 float x = lastTarget.locations.GetPositionX();
                 float y = lastTarget.locations.GetPositionY();
+                float z = lastTarget.locations.GetPositionZ();
 
                 // Now, the timestamps for target cam and position can be different. So, if they differ we interpolate
                 if (lastTarget.timeStamp != posTimestamps[i])
@@ -155,8 +156,10 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
                     uint32 timeDiffThis = posTimestamps[i] - lastTarget.timeStamp;
                     float xDiff = nextTarget.locations.GetPositionX() - lastTarget.locations.GetPositionX();
                     float yDiff = nextTarget.locations.GetPositionY() - lastTarget.locations.GetPositionY();
+                    float zDiff = nextTarget.locations.GetPositionZ() - lastTarget.locations.GetPositionZ();
                     x = lastTarget.locations.GetPositionX() + (xDiff * (float(timeDiffThis) / float(timeDiffTarget)));
                     y = lastTarget.locations.GetPositionY() + (yDiff * (float(timeDiffThis) / float(timeDiffTarget)));
+                    z = lastTarget.locations.GetPositionZ() + (zDiff * (float(timeDiffThis) / float(timeDiffTarget)));
                 }
                 float xDiff = x - thisCam.locations.GetPositionX();
                 float yDiff = y - thisCam.locations.GetPositionY();
@@ -262,6 +265,7 @@ TC_GAME_API void LoadM2Cameras(std::string const& dataPath)
         if (!readCamera(cam, fileSize - m2start, header, cameraEntry))
             TC_LOG_ERROR("server.loading", "Camera file %s is damaged. Camera references position beyond file end", filename.string().c_str());
     }
+
     TC_LOG_INFO("server.loading", ">> Loaded " SZFMTD " cinematic waypoint sets in %u ms", sFlyByCameraStore.size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
