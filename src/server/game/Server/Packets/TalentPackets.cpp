@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -74,7 +74,7 @@ void WorldPackets::Talent::ConfirmRespecWipe::Read()
     _worldPacket >> RespecType;
 }
 
-WorldPacket const* WorldPackets::Talent::LearnTalentsFailed::Write()
+WorldPacket const* WorldPackets::Talent::LearnTalentFailed::Write()
 {
     _worldPacket.WriteBits(Reason, 4);
     _worldPacket << int32(SpellID);
@@ -111,7 +111,7 @@ void WorldPackets::Talent::LearnPvpTalents::Read()
         _worldPacket >> Talents[i];
 }
 
-WorldPacket const* WorldPackets::Talent::LearnPvpTalentsFailed::Write()
+WorldPacket const* WorldPackets::Talent::LearnPvpTalentFailed::Write()
 {
     _worldPacket.WriteBits(Reason, 4);
     _worldPacket << int32(SpellID);
@@ -120,4 +120,9 @@ WorldPacket const* WorldPackets::Talent::LearnPvpTalentsFailed::Write()
         _worldPacket << pvpTalent;
 
     return &_worldPacket;
+}
+
+void WorldPackets::Talent::UnlearnSpecialization::Read()
+{
+    _worldPacket >> SpecializationID;
 }

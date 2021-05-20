@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,12 +20,12 @@
 WorldPacket const* WorldPackets::Scenes::PlayScene::Write()
 {
     _worldPacket << int32(SceneID);
-    _worldPacket << int32(PlaybackFlags);
-    _worldPacket << int32(SceneInstanceID);
+    _worldPacket << uint32(PlaybackFlags);
+    _worldPacket << uint32(SceneInstanceID);
     _worldPacket << int32(SceneScriptPackageID);
     _worldPacket << TransportGUID;
     _worldPacket << Location.PositionXYZOStream();
-    _worldPacket.WriteBit(PerformTactCallbacks);
+    _worldPacket.WriteBit(Encrypted);
     _worldPacket.FlushBits();
 
     return &_worldPacket;

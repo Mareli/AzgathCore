@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -79,7 +79,7 @@ WorldPacket const* WorldPackets::Scenario::ScenarioCompleted::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::Scenario::ScenarioBoot::Write()
+WorldPacket const* WorldPackets::Scenario::ScenarioVacate::Write()
 {
     _worldPacket << int32(ScenarioID);
     _worldPacket << int32(Unk1);
@@ -102,7 +102,7 @@ WorldPacket const* WorldPackets::Scenario::ScenarioPOIs::Write()
 
     for (ScenarioPOIData const& scenarioPOIData : ScenarioPOIDataStats)
     {
-        _worldPacket << int32(scenarioPOIData.CriteriaTreeID);
+        _worldPacket << int32(scenarioPOIData.Criteriatreeid);
         _worldPacket << uint32(scenarioPOIData.ScenarioPOIs->size());
 
         for (ScenarioPOI const& scenarioPOI : *scenarioPOIData.ScenarioPOIs)
@@ -114,12 +114,14 @@ WorldPacket const* WorldPackets::Scenario::ScenarioPOIs::Write()
             _worldPacket << int32(scenarioPOI.Flags);
             _worldPacket << int32(scenarioPOI.WorldEffectID);
             _worldPacket << int32(scenarioPOI.PlayerConditionID);
+            _worldPacket << int32(scenarioPOI.NavigationPlayerConditionID);
             _worldPacket << uint32(scenarioPOI.Points.size());
 
             for (ScenarioPOIPoint const& scenarioPOIBlobPoint : scenarioPOI.Points)
             {
                 _worldPacket << int32(scenarioPOIBlobPoint.X);
                 _worldPacket << int32(scenarioPOIBlobPoint.Y);
+                _worldPacket << int32(scenarioPOIBlobPoint.Z);
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -85,7 +85,7 @@ namespace WorldPackets
 
             WhoRequest Request;
             uint32 RequestID = 0;
-			Array<int32, 10> Areas;
+            Array<int32, 10> Areas;
         };
 
         struct WhoEntry
@@ -110,7 +110,7 @@ namespace WorldPackets
 
             WorldPacket const* Write() override;
 
-			uint32 RequestID = 0;
+            uint32 RequestID = 0;
             WhoResponse Response;
         };
     }

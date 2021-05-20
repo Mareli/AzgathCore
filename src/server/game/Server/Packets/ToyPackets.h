@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -45,10 +45,10 @@ namespace WorldPackets
             WorldPackets::Spells::SpellCastRequest Cast;
         };
 
-        class AccountToysUpdate final : public ServerPacket
+        class AccountToyUpdate final : public ServerPacket
         {
         public:
-            AccountToysUpdate() : ServerPacket(SMSG_ACCOUNT_TOYS_UPDATE, 1 + 4 + 1) { }
+            AccountToyUpdate() : ServerPacket(SMSG_ACCOUNT_TOY_UPDATE, 1 + 4 + 1) { }
 
             WorldPacket const* Write() override;
 

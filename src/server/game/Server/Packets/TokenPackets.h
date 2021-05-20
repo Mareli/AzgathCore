@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,20 +24,20 @@ namespace WorldPackets
 {
     namespace Token
     {
-        class UpdateListedAuctionableTokens final : public ClientPacket
+        class CommerceTokenGetLog final : public ClientPacket
         {
         public:
-            UpdateListedAuctionableTokens(WorldPacket&& packet) : ClientPacket(CMSG_UPDATE_WOW_TOKEN_AUCTIONABLE_LIST, std::move(packet)) { }
+            CommerceTokenGetLog(WorldPacket&& packet) : ClientPacket(CMSG_COMMERCE_TOKEN_GET_LOG, std::move(packet)) { }
 
             void Read() override;
 
             uint32 UnkInt   = 0;
         };
 
-        class UpdateListedAuctionableTokensResponse final : public ServerPacket
+        class CommerceTokenGetLogResponse final : public ServerPacket
         {
         public:
-            UpdateListedAuctionableTokensResponse() : ServerPacket(SMSG_WOW_TOKEN_UPDATE_AUCTIONABLE_LIST_RESPONSE, 12) { }
+            CommerceTokenGetLogResponse() : ServerPacket(SMSG_COMMERCE_TOKEN_GET_LOG_RESPONSE, 12) { }
 
             WorldPacket const* Write() override;
 
@@ -53,22 +53,22 @@ namespace WorldPackets
             uint32 UnkInt           = 0; // send CMSG_UPDATE_WOW_TOKEN_AUCTIONABLE_LIST
             uint32 Result           = 0;
             std::vector<AuctionableTokenAuctionable> AuctionableTokenAuctionableList;
-        };
+        }; 
 
-        class RequestWowTokenMarketPrice final : public ClientPacket
+        class CommerceTokenGetMarketPrice final : public ClientPacket
         {
         public:
-            RequestWowTokenMarketPrice(WorldPacket&& packet) : ClientPacket(CMSG_REQUEST_WOW_TOKEN_MARKET_PRICE, std::move(packet)) { }
+            CommerceTokenGetMarketPrice(WorldPacket&& packet) : ClientPacket(CMSG_COMMERCE_TOKEN_GET_MARKET_PRICE, std::move(packet)) { }
 
             void Read() override;
 
             uint32 UnkInt = 0;
         };
 
-        class WowTokenMarketPriceResponse final : public ServerPacket
+        class CommerceTokenGetMarketPriceResponse final : public ServerPacket
         {
         public:
-            WowTokenMarketPriceResponse() : ServerPacket(SMSG_WOW_TOKEN_MARKET_PRICE_RESPONSE, 20) { }
+            CommerceTokenGetMarketPriceResponse() : ServerPacket(SMSG_COMMERCE_TOKEN_GET_MARKET_PRICE_RESPONSE, 20) { }
 
             WorldPacket const* Write() override;
 
@@ -78,16 +78,26 @@ namespace WorldPackets
             uint32 AuctionDuration      = 0; // preset auction duration enum
         };
 
-        class WowTokenBuyStart final : public ClientPacket
+        class ConsumableTokenCanVeteranBuy final : public ClientPacket
         {
         public:
-            WowTokenBuyStart(WorldPacket&& packet) : ClientPacket(CMSG_BUY_WOW_TOKEN_START, std::move(packet)) { }
+            ConsumableTokenCanVeteranBuy(WorldPacket&& packet) : ClientPacket(CMSG_CONSUMABLE_TOKEN_CAN_VETERAN_BUY, std::move(packet)) { }
 
             void Read() override;
 
-            int32 UnkInt32 = 0;
-            ObjectGuid BuyerGuid;
-            uint64 CurrentMarketPrice = 0;
+            uint32 UnkInt = 0;
+        };
+
+        class ConsumableTokenCanVeteranBuyResponse final : public ServerPacket
+        {
+        public:
+            ConsumableTokenCanVeteranBuyResponse() : ServerPacket(SMSG_CONSUMABLE_TOKEN_CAN_VETERAN_BUY_RESPONSE, 8 + 4 + 4) { }
+
+            WorldPacket const* Write() override;
+
+            uint64 UnkLong = 0;
+            uint32 UnkInt = 0;
+            uint32 UnkInt2 = 0;
         };
     }
 }

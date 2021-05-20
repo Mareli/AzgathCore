@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -90,7 +90,7 @@ void WorldPackets::Who::WhoRequestPkt::Read()
     Areas.resize(_worldPacket.ReadBits(4));
 
     _worldPacket >> Request;
-	_worldPacket >> RequestID;
+    _worldPacket >> RequestID;
 
     for (size_t i = 0; i < Areas.size(); ++i)
         _worldPacket >> Areas[i];
@@ -126,7 +126,7 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Who::WhoResponse const& r
 
 WorldPacket const* WorldPackets::Who::WhoResponsePkt::Write()
 {
-	_worldPacket << uint32(RequestID);
+    _worldPacket << uint32(RequestID);
     _worldPacket << Response;
 
     return &_worldPacket;

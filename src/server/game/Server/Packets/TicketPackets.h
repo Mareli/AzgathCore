@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -92,26 +92,15 @@ namespace WorldPackets
             int32 CaseID;
         };
 
-        class SupportTicketSubmitBug final : public ClientPacket
+        class SubmitUserFeedback final : public ClientPacket
         {
         public:
-            SupportTicketSubmitBug(WorldPacket&& packet) : ClientPacket(CMSG_SUPPORT_TICKET_SUBMIT_BUG, std::move(packet)) { }
-
+            SubmitUserFeedback(WorldPacket&& packet) : ClientPacket(CMSG_SUBMIT_USER_FEEDBACK, std::move(packet)) { }
             void Read() override;
 
             SupportTicketHeader Header;
             std::string Note;
-        };
-
-        class SupportTicketSubmitSuggestion final : public ClientPacket
-        {
-        public:
-            SupportTicketSubmitSuggestion(WorldPacket&& packet) : ClientPacket(CMSG_SUPPORT_TICKET_SUBMIT_SUGGESTION, std::move(packet)) { }
-
-            void Read() override;
-
-            SupportTicketHeader Header;
-            std::string Note;
+            bool IsSuggestion = false;
         };
 
         class SupportTicketSubmitComplaint final : public ClientPacket

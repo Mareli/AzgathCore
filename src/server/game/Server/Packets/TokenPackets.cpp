@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,12 +17,12 @@
 
 #include "TokenPackets.h"
 
-void WorldPackets::Token::UpdateListedAuctionableTokens::Read()
+void WorldPackets::Token::CommerceTokenGetLog::Read()
 {
     _worldPacket >> UnkInt;
 }
 
-WorldPacket const* WorldPackets::Token::UpdateListedAuctionableTokensResponse::Write()
+WorldPacket const* WorldPackets::Token::CommerceTokenGetLogResponse::Write()
 {
     _worldPacket << UnkInt;
     _worldPacket << Result;
@@ -39,12 +39,12 @@ WorldPacket const* WorldPackets::Token::UpdateListedAuctionableTokensResponse::W
     return &_worldPacket;
 }
 
-void WorldPackets::Token::RequestWowTokenMarketPrice::Read()
+void WorldPackets::Token::CommerceTokenGetMarketPrice::Read()
 {
     _worldPacket >> UnkInt;
 }
 
-WorldPacket const* WorldPackets::Token::WowTokenMarketPriceResponse::Write()
+WorldPacket const* WorldPackets::Token::CommerceTokenGetMarketPriceResponse::Write()
 {
     _worldPacket << CurrentMarketPrice;
     _worldPacket << UnkInt;
@@ -54,9 +54,17 @@ WorldPacket const* WorldPackets::Token::WowTokenMarketPriceResponse::Write()
     return &_worldPacket;
 }
 
-void WorldPackets::Token::WowTokenBuyStart::Read()
+void WorldPackets::Token::ConsumableTokenCanVeteranBuy::Read()
 {
-    _worldPacket >> UnkInt32;
-    _worldPacket >> BuyerGuid;
-    _worldPacket >> CurrentMarketPrice;
+    _worldPacket >> UnkInt; // always 0
+}
+
+
+WorldPacket const* WorldPackets::Token::ConsumableTokenCanVeteranBuyResponse::Write()
+{
+    _worldPacket << UnkLong; // always 0
+    _worldPacket << UnkInt; // always 0
+    _worldPacket << UnkInt2; // always 1
+
+    return &_worldPacket;
 }

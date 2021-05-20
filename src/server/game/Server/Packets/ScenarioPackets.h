@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +22,7 @@
 #include "PacketUtilities.h"
 #include "AchievementPackets.h"
 
-#define MAX_ALLOWED_SCENARIO_POI_QUERY_SIZE 50
+#define MAX_ALLOWED_SCENARIO_POI_QUERY_SIZE 66
 
 struct ScenarioPOI;
 
@@ -82,10 +82,10 @@ namespace WorldPackets
             uint32 ScenarioID = 0;
         };
 
-        class ScenarioBoot final : public ServerPacket
+        class ScenarioVacate final : public ServerPacket
         {
         public:
-            ScenarioBoot() : ServerPacket(SMSG_SCENARIO_BOOT, 4 + 4 + 1) { }
+            ScenarioVacate() : ServerPacket(SMSG_SCENARIO_VACATE, 4 + 4 + 1) { }
 
             WorldPacket const* Write() override;
 
@@ -106,7 +106,7 @@ namespace WorldPackets
 
         struct ScenarioPOIData
         {
-            int32 CriteriaTreeID = 0;
+            int32 Criteriatreeid = 0;
             std::vector<ScenarioPOI> const* ScenarioPOIs = nullptr;
         };
 
