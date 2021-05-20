@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -456,8 +455,8 @@ struct npc_krikthik : public ScriptedAI
         else
             actualAngle += (float)M_PI / 8.0f;
 
-        x = CenterPos.GetPositionX() + (me->GetCombatReach() + RADIUS_CIRCLE) * std::cos(actualAngle);
-        y = CenterPos.GetPositionY() + (me->GetCombatReach() + RADIUS_CIRCLE) * std::sin(actualAngle);
+        x = CenterPos.GetPositionX() + (me->GetObjectSize() + RADIUS_CIRCLE) * std::cos(actualAngle);
+        y = CenterPos.GetPositionY() + (me->GetObjectSize() + RADIUS_CIRCLE) * std::sin(actualAngle);
     }
 
     void UpdateAI(uint32 diff) override

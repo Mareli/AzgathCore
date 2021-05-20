@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -759,9 +758,9 @@ class npc_lorewalker_cho : public CreatureScript
             return true;
         }
 
-        struct npc_lorewalker_choAI : public npc_escortAI
+        struct npc_lorewalker_choAI : public EscortAI
         {
-            npc_lorewalker_choAI(Creature* creature) : npc_escortAI(creature)
+            npc_lorewalker_choAI(Creature* creature) : EscortAI(creature)
             {
                 pInstance = creature->GetInstanceScript();
                 SetMaxPlayerDistance(200.0f);
@@ -1238,7 +1237,7 @@ class npc_lorewalker_cho : public CreatureScript
 
             void UpdateAI(const uint32 diff) override
             {
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
 
                 // Wipe on event: reset all trashs of the events
                 if (pInstance)

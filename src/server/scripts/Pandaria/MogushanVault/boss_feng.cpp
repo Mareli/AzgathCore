@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1595,7 +1594,7 @@ public:
     {
         go_inversionAI(GameObject* go) : GameObjectAI(go) { }
 
-        bool GossipHello(Player* /*player*/, bool /*isUse*/) override
+        bool GossipHello(Player* /*player*/) override
         {
             return false;
         }
@@ -1617,7 +1616,7 @@ public:
     {
         go_cancelAI(GameObject* go) : GameObjectAI(go) { }
 
-        bool GossipHello(Player* /*player*/, bool /*isUse*/) override
+        bool GossipHello(Player* /*player*/) override
         {
             return false;
         }

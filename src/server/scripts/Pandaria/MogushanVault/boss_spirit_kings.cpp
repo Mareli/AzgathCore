@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -812,7 +811,7 @@ class boss_spirit_kings : public CreatureScript
                         me->RemoveAurasDueToSpell(SPELL_INACTIVE_STUN);
                         me->RemoveAurasDueToSpell(SPELL_ACTIVATION_VISUAL);
                         me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE));
-                        me->setFaction(14);
+                        me->SetFaction(14);
                         break;
                     }
                     case ACTION_REACH_HOME:
@@ -990,14 +989,14 @@ class boss_spirit_kings : public CreatureScript
                 if (me->HasAura(SPELL_COWARDICE))
                 {
                     int32 percentage = me->GetPower(POWER_RAGE) / 10;
-                    int32 bp = int32(CalculatePct(damage, percentage));
+                    float bp = CalculatePct(damage, percentage);
 
                     bp /= 5;
 
                     if (attacker->HasAura(SPELL_COWARDICE_DOT))
                         bp += attacker->GetRemainingPeriodicAmount(me->GetGUID(), SPELL_COWARDICE_DOT, SPELL_AURA_PERIODIC_DAMAGE);
 
-                    me->CastCustomSpell(attacker, SPELL_COWARDICE_DOT, &bp, NULL, NULL, true);
+                    me->CastCustomSpell(attacker, SPELL_COWARDICE_DOT, &bp, nullptr, nullptr, true);
                 }
             }
 

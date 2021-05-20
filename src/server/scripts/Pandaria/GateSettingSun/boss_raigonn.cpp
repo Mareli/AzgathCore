@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -132,7 +131,7 @@ class boss_raigonn : public CreatureScript
 
                     if (Unit* passenger = meVehicle->GetPassenger(1)) // Check if weak_spot already spawned
                     {
-                        passenger->setFaction(35);
+                        passenger->SetFaction(35);
                         passenger->SetFullHealth();
                         passenger->AddUnitState(UNIT_STATE_UNATTACKABLE);
                         pInstance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, passenger);
@@ -185,7 +184,7 @@ class boss_raigonn : public CreatureScript
                 if (Creature* weakPoint = pInstance->instance->GetCreature(pInstance->GetGuidData(NPC_WEAK_SPOT)))
                 {
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, weakPoint);
-                    weakPoint->setFaction(16);
+                    weakPoint->SetFaction(16);
                     weakPoint->ClearUnitState(UNIT_STATE_UNATTACKABLE);
                     weakPoint->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                 }

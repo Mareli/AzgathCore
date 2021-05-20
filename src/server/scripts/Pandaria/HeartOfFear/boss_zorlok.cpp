@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -335,7 +334,9 @@ class boss_zorlok : public CreatureScript
                     if (phase == PHASE_ZORLOK1 && hasTalk < numPlat)
                     {
                         me->GetMotionMaster()->MovePoint(platformToUse, zorlokReachPoints[platformToUse - 1]);
-                        me->TextEmote("Imperial Vizier Zor'lok is flying to one of hist platforms!", 0, true);
+                        std::ostringstream str;
+                        str << "Imperial Vizier Zor'lok is flying to one of hist platforms!";
+                        me->TextEmote(str.str().c_str(), 0, true);
                         hasTalk = numPlat;
                     }
                     else
@@ -824,7 +825,9 @@ class boss_zorlok : public CreatureScript
                 if (id == 4)
                 {
                     me->CastSpell(me, SPELL_INHALE_PHEROMONES, true);
-                    me->TextEmote("Imperial Vizier Zor'lok inhales Pheromones of Zeal!", 0, true);
+                    std::ostringstream str;
+                    str << "Imperial Vizier Zor'lok inhales Pheromones of Zeal!";
+                    me->TextEmote(str.str().c_str(), 0, true);
                     pInstance->DoRemoveAurasDueToSpellOnPlayers(SPELL_PHEROMONES_CLOUD);
                     events.ScheduleEvent(EVENT_PULL_RAID, 7000);
                 }
@@ -922,7 +925,9 @@ class boss_zorlok : public CreatureScript
                             if (!inhale || inhale->GetStackAmount() < 3 || !urand((inhale->GetStackAmount() < 4 ? 0 : 1), 1))
                             {
                                 Talk(TALK_INHALE);
-                                me->TextEmote("Imperial Vizier Zor'lok |cFFFF0000|Hspell:122852|h[Inhale]|h|r a big air breath!", 0, true);
+                                std::ostringstream str;
+                                str << "Imperial Vizier Zor'lok |cFFFF0000|Hspell:122852|h[Inhale]|h|r a big air breath!";
+                                me->TextEmote(str.str().c_str(), 0, true);
                                 me->CastSpell(me, SPELL_INHALE, false);
                             }
                             // Exhale
@@ -977,7 +982,9 @@ class boss_zorlok : public CreatureScript
                             return;
                         }
 
-                        me->TextEmote("Imperial Vizier Zor'lok is using is voice to |cFFFF0000|Hspell:122740|h[Convert]|h|r members of the raid and to call them by his side !", 0, true);
+                        std::ostringstream str;
+                        str << "Imperial Vizier Zor'lok is using is voice to |cFFFF0000|Hspell:122740|h[Convert]|h|r members of the raid and to call them by his side !";
+                        me->TextEmote(str.str().c_str(), 0, true);
 
                         // Creating target list
                         Talk(TALK_CONVERT);

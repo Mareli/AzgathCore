@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
+ * 
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -405,7 +405,7 @@ public:
         {
             status = STATUS_ATTACK_PLAYER;
             me->SetReactState(REACT_AGGRESSIVE);
-            me->setFaction(16);
+            me->SetFaction(16);
         }
         EventMap events;
         uint8 status;
@@ -550,7 +550,7 @@ public:
             if (sum)
             {
                 pet_guid = sum->GetGUID();
-                sum->setFaction(me->getFaction());
+                sum->SetFaction(me->GetFaction());
             }
         }
 
@@ -596,7 +596,7 @@ public:
         void DamageTaken(Unit* /*killer*/, uint32 &damage) override
         {
             //We need to retire Ming and let the next boss enter combat.
-            if (int(me->GetHealth()) - int(damage) <= 0)
+           // if (int(me->GetHealth()) - int(damage) <= 0)
             {
                 Talk(TALK_DEFEATED);
                 damage = 0;

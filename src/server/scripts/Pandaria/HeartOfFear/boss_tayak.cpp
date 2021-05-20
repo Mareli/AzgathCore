@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -810,7 +809,7 @@ class npc_tempest_slash_tornado : public CreatureScript
                 if (events.ExecuteEvent() == EVENT_STORM_MOVE)
                 {
                     float x, y, z;
-                    me->GetClosePoint(x, y, z, me->GetCombatReach() / 3, frand(5.0f, 30.0f));
+                    me->GetClosePoint(x, y, z, me->GetObjectSize() / 3, frand(5.0f, 30.0f));
                     me->GetMotionMaster()->MovePoint(8, x, y, z);
                 }
             }
@@ -1492,7 +1491,7 @@ void AddSC_boss_tayak()
     new mob_gale_winds_stalker();           // 63292
     new spell_wind_step();                  // 123175
     new spell_tayak_wind_step();            // 123459
-    new spell_tayak_storms_vehicle();       // 124258
+    //new spell_tayak_storms_vehicle();       // 124258
     new spell_tayak_storm_unleashed_dmg();  // 124783
     new spell_tempest_slash();              // 122853
     new spell_unseen_strike_aura();         // 122982
