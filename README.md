@@ -1,4 +1,4 @@
-# ![logo](https://azgath.com/download/img/AZCC.png) Az'gathCore 8.3.7
+# ![logo](https://azgath.eu/img/githubaz.png) Az'gathCore 8.3.7
 
 * [Introduction](#introduction)
 * [Requirements](#requirements)
