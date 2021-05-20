@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,6 +38,11 @@ class mob_ik_ik_the_nimble : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+
+            }
+
+            void EnterCombat(Unit*)
+            {
 
                 events.ScheduleEvent(EVENT_BANANARANG, 10000);
                 events.ScheduleEvent(EVENT_GOING_BANANAS, 17000);
@@ -117,6 +121,11 @@ class mob_adjunct_kree_zot : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
+
                 events.ScheduleEvent(EVENT_SHA_SPIT, 10000);
                 events.ScheduleEvent(EVENT_SHA_SPIT_2, 20000);
                 events.ScheduleEvent(EVENT_SLICING_STRIKE, 25000);
@@ -187,7 +196,10 @@ class mob_dread_fearbringer : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
 
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 10000);
             }
 
@@ -237,12 +249,13 @@ class mob_dread_kunchong : public CreatureScript
             {
                 events.Reset();
 
-                events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 10000);
-                events.ScheduleEvent(EVENT_DREAD_SLASH, 25000);
             }
 
             void EnterCombat(Unit* who) override
             {
+                events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 10000);
+                events.ScheduleEvent(EVENT_DREAD_SLASH, 25000);
+
                 Player* player = who->ToPlayer();
 
                 if (!player)
@@ -361,6 +374,12 @@ class mob_dread_matriarch : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
+
+
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 10000);
                 events.ScheduleEvent(EVENT_POUNCE, 17000);
                 events.ScheduleEvent(EVENT_RAVAGE, 23000);
@@ -428,6 +447,11 @@ class mob_elder_spindlegrin : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+
+            }
+
+            void EnterCombat(Unit*)
+            {
 
                 events.ScheduleEvent(EVENT_REND, 8000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
@@ -500,6 +524,11 @@ class mob_hulking_kor_thik_fleshrender : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
+
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
                 events.ScheduleEvent(EVENT_PINCH_LIMB, 17000);
                 events.ScheduleEvent(EVENT_VICIOUS_STRIKES, 23000);
@@ -564,6 +593,10 @@ class mob_ik_thik_amberstinger : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
+
+            void EnterCombat(Unit*)
+            {
 
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 15000);
                 events.ScheduleEvent(EVENT_CLAW, 20000);
@@ -636,6 +669,10 @@ class mob_ik_thik_kunchong : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 10000);
                 events.ScheduleEvent(EVENT_DREAD_SLASH_2, 17000);
             }
@@ -694,14 +731,14 @@ class mob_ik_thik_terrorclaw : public CreatureScript
             void Reset() override
             {
                 events.Reset();
-
-                events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 8000);
-                events.ScheduleEvent(EVENT_TAIL_STRIKE, 22000);
-                events.ScheduleEvent(EVENT_CLAW, 17000);
             }
 
             void EnterCombat(Unit* who) override
             {
+                events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 8000);
+                events.ScheduleEvent(EVENT_TAIL_STRIKE, 22000);
+                events.ScheduleEvent(EVENT_CLAW, 17000);
+
                 Player* player = who->ToPlayer();
 
                 if (!player)
@@ -824,6 +861,10 @@ class mob_karanosh : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
+
+            void EnterCombat(Unit*)
+            {
 
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
                 events.ScheduleEvent(EVENT_CORROSIVE_RESIN, 17000);
@@ -883,7 +924,10 @@ class mob_kypa_rak : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
 
+            void EnterCombat(Unit* at)
+            {
                 events.ScheduleEvent(EVENT_BURROW, 8000);
                 events.ScheduleEvent(EVENT_RAISE_EARTH, 12000);
                 events.ScheduleEvent(EVENT_UNAURA_BURROW, 26000);
@@ -960,6 +1004,10 @@ class mob_manifestation_of_terror : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_DREAD_CLAW, 8000);
                 events.ScheduleEvent(EVENT_LASH_OUT_IN_FEAR, 12000);
                 events.ScheduleEvent(EVENT_SHA_BOLT, 17000);
@@ -1031,6 +1079,10 @@ class mob_shox_tik : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_RAPID_SHOT, 8000);
                 events.ScheduleEvent(EVENT_SHOOT, 12000);
                 events.ScheduleEvent(EVENT_TOXIC_SHOT, 17000);
@@ -1101,13 +1153,14 @@ class mob_wake_of_horror : public CreatureScript
             void Reset() override
             {
                 events.Reset();
-
-                events.ScheduleEvent(EVENT_SHA_CORRUPTION, 10000);
-                events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 20000);
             }
 
             void EnterCombat(Unit* who) override
             {
+
+                events.ScheduleEvent(EVENT_SHA_CORRUPTION, 10000);
+            events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 20000);
+           
                 Player* player = who->ToPlayer();
 
                 if (!player)
@@ -1226,6 +1279,10 @@ class mob_warlord_gurthan : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_CRUSHING_SHADOWS, 8000);
                 events.ScheduleEvent(EVENT_RUNE_OF_SHADOWS, 12000);
                 events.ScheduleEvent(EVENT_SHADOW_POWER, 17000);
@@ -1296,7 +1353,10 @@ class mob_ai_li_skymirror : public CreatureScript
              void Reset() override
              {
                  events.Reset();
+             }
 
+             void EnterCombat(Unit*)
+             {
                  events.ScheduleEvent(EVENT_CHI_BURST, 8000);
                  events.ScheduleEvent(EVENT_HEALING_MISTS, 12000);
                  events.ScheduleEvent(EVENT_SPINNING_CRANE_KICK, 17000);
@@ -1366,7 +1426,10 @@ class mob_overgrown_seacarp : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
 
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_SNAPJAW, 8000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
             }
@@ -1425,7 +1488,10 @@ class mob_gar_lok : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
 
+            void EnterCombat(Unit*)
+            {
                 events.ScheduleEvent(EVENT_SNAPJAW, 8000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
                 events.ScheduleEvent(EVENT_BLADE_FURRY, 20000);
@@ -1508,7 +1574,10 @@ class mob_dak_the_breaker : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
 
+            void EnterCombat(Unit* t)
+            {
                 events.ScheduleEvent(EVENT_RUSHING_RAGE, 5000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
                 events.ScheduleEvent(EVENT_YAUNGOL_STOMP, 20000);
@@ -1585,6 +1654,11 @@ class mob_nalash_verdantis : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit* t)
+            {
+
                 events.ScheduleEvent(EVENT_RUSHING_RAGE, 5000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
                 events.ScheduleEvent(EVENT_YAUNGOL_STOMP, 20000);
@@ -1660,6 +1734,11 @@ class mob_vengeful_spirit : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+
+            }
+
+            void EnterCombat(Unit* t)
+            {
 
                 events.ScheduleEvent(EVENT_ICE_TRAP, 5000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
@@ -1793,10 +1872,12 @@ class mob_hisek_the_swarmkeeper_two : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
+                events.Update(diff);
+
                 std::list<Creature*> traitorList;
                 me->GetCreatureListWithEntryInGrid(traitorList, MOB_KLAXXI_TRAITOR, 15.0f);
-
-                events.Update(diff);
+                if (traitorList.empty())
+                    return; // list empty ? close and continue
 
                 while (uint32 eventId = events.ExecuteEvent())
                 {
@@ -1904,7 +1985,7 @@ class mob_klaxxi_traitor : public CreatureScript
             {
                 if (action == ACTION_START_COMBAT)
                 {
-                    me->setFaction(14);
+                    me->SetFaction(14);
 
                     if (Player* player = ObjectAccessor::GetPlayer(*me, playerGUID))
                         AttackStart(player);
@@ -1957,10 +2038,10 @@ class mob_discover_amberglow_bunny : public CreatureScript
             {
                 std::list<Player*> playerList;
                 GetPlayerListInGrid(playerList, me, 10.0f);
-
-                for (auto player: playerList)
-                    if (player->GetQuestStatus(QUEST_EXTENDING_OUR_COVERAGE) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(31679) == QUEST_STATUS_INCOMPLETE)
-                        player->KilledMonsterCredit(MOB_DISCOVER_AMBERGLOW_BUNNY);
+                if(!playerList.empty())
+                    for (auto player: playerList)
+                        if (player->GetQuestStatus(QUEST_EXTENDING_OUR_COVERAGE) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(31679) == QUEST_STATUS_INCOMPLETE)
+                            player->KilledMonsterCredit(MOB_DISCOVER_AMBERGLOW_BUNNY);
             }
         };
 
@@ -1998,6 +2079,11 @@ class mob_kaz_tik_the_manipulator : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
+
+            void EnterCombat(Unit* t)
+            {
+
                 events.ScheduleEvent(EVENT_CHECK_PLAYERS, 2000);
             }
 
@@ -2005,18 +2091,23 @@ class mob_kaz_tik_the_manipulator : public CreatureScript
             {
                 events.Update(diff);
 
-                if (uint32 eventId = events.ExecuteEvent())
+                while (uint32 eventId = events.ExecuteEvent())
                 {
-                    if (eventId == EVENT_CHECK_PLAYERS)
+                    switch (eventId)
+                    {
+                    case EVENT_CHECK_PLAYERS:
                     {
                         std::list<Player*> playerList;
                         GetPlayerListInGrid(playerList, me, 5.0f);
-
-                        for (auto player: playerList)
-                            if (player->GetQuestStatus(QUEST_BY_THE_SEA_NEVERMORE) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_BY_THE_SEA_NEVERMORE_2) == QUEST_STATUS_INCOMPLETE)
-                                player->KilledMonsterCredit(MOB_SECOND_KAZ_TIK_THE_MANIPULATOR);
-
+                        if (!playerList.empty())
+                        {
+                            for (auto player : playerList)
+                                if (player->GetQuestStatus(QUEST_BY_THE_SEA_NEVERMORE) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_BY_THE_SEA_NEVERMORE_2) == QUEST_STATUS_INCOMPLETE)
+                                    player->KilledMonsterCredit(MOB_SECOND_KAZ_TIK_THE_MANIPULATOR);
+                        }
                         events.ScheduleEvent(EVENT_CHECK_PLAYERS, 2000);
+                        break;
+                    }
                     }
                 }
             }
@@ -2058,9 +2149,9 @@ class mob_second_kaz_tik_the_manipulator : public CreatureScript
             return true;
         }
 
-        struct mob_second_kaz_tik_the_manipulatorAI : public npc_escortAI
+        struct mob_second_kaz_tik_the_manipulatorAI : public EscortAI
         {
-            mob_second_kaz_tik_the_manipulatorAI(Creature* creature) : npc_escortAI(creature)
+            mob_second_kaz_tik_the_manipulatorAI(Creature* creature) : EscortAI(creature)
             {
                 playerGUID = ObjectGuid::Empty;
             }
@@ -2097,34 +2188,39 @@ class mob_second_kaz_tik_the_manipulator : public CreatureScript
 
                         std::list<Creature*> muckscaleList;
                         GetCreatureListWithEntryInGrid(muckscaleList, me, MOB_MUCKSCALE_RIPPER, 40.0f);
-
-                        if (Player* player = ObjectAccessor::GetPlayer(*me, playerGUID))
-                            for (auto muckscale: muckscaleList)
-                                muckscale->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    }
+                        if (!muckscaleList.empty())
+                        {
+                            if (Player* player = ObjectAccessor::GetPlayer(*me, playerGUID))
+                                for (auto muckscale : muckscaleList)
+                                    muckscale->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
+                        }
                         break;
+                    }
                     case 11:
                     {
                         SetEscortPaused(true);
                         me->SummonCreature(MOB_MUCKSCALE_RIPPER, -1062.049f, 3918.263f, -0.076f);
                         me->SummonCreature(MOB_MUCKSCALE_RIPPER, -1071.315f, 3948.803f, -0.048f);
-                    }
+
                         break;
+                    }
                     case 12:
                     {
                         SetEscortPaused(true);
                         me->SummonCreature(MOB_MUCKSCALE_RIPPER, -1117.472f, 3952.810f, 0.356f);
                         me->SummonCreature(MOB_MUCKSCALE_RIPPER, -1115.047f, 3919.017f, 0.489f);
-                    }
+
                         break;
+                    }
                     case 14:
                     {
                         player->KilledMonsterCredit(MOB_KAZ_TIK_THE_MANIPULATOR);
                         player->KilledMonsterCredit(MOB_KOVOK);
 
                         me->AddNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
-                    }
+
                         break;
+                    }
                 }
             }
 
@@ -2141,7 +2237,7 @@ class mob_second_kaz_tik_the_manipulator : public CreatureScript
                 {
                     if (player->GetQuestStatus(QUEST_REUNITED) == QUEST_STATUS_INCOMPLETE)
                     {
-                        npc_escortAI::UpdateAI(diff);
+                        EscortAI::UpdateAI(diff);
 
                         events.Update(diff);
 
@@ -2210,6 +2306,11 @@ class mob_muckscale_ripper : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+
+            }
+
+            void EnterCombat(Unit* t)
+            {
 
                 events.ScheduleEvent(EVENT_RUPTURE, 5000);
                 events.ScheduleEvent(EVENT_SPRINT, 12000);
@@ -2462,6 +2563,10 @@ class mob_muckscale_flesheater : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit* t)
+            {
                 events.ScheduleEvent(EVENT_CONSUME_FLESH, 5000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 12000);
             }
@@ -2540,6 +2645,11 @@ class mob_muckscale_serpentus : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+
+            }
+
+            void EnterCombat(Unit* t)
+            {
 
                 events.ScheduleEvent(EVENT_FLAME_SHOCK, 5000);
                 events.ScheduleEvent(EVENT_LIGHTNING_BOLT, 12000);
@@ -2622,6 +2732,11 @@ class mob_oracle_hiss_ir : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit* t)
+            {
+
                 events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 5000);
                 events.ScheduleEvent(EVENT_CRY_OF_THE_SKY, 12000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 18000);
@@ -2686,6 +2801,11 @@ class mob_muckscale_flesh_hunter : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+
+            }
+
+            void EnterCombat(Unit* t)
+            {
 
                 events.ScheduleEvent(EVENT_LIGHTNING_BOLT_2, 5000);
                 events.ScheduleEvent(EVENT_WATER_SHIELD, 12000);
@@ -2758,6 +2878,11 @@ class mob_muckscale_slayer : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit* t)
+            {
+
                 events.ScheduleEvent(EVENT_BLOODY_RAGE, 5000);
                 events.ScheduleEvent(EVENT_SKIN_FLAY, 12000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 18000);
@@ -2823,6 +2948,11 @@ class mob_muckscale_shaman : public CreatureScript
             {
                 events.Reset();
 
+            }
+
+            void EnterCombat(Unit* t)
+            {
+
                 events.ScheduleEvent(EVENT_BLOODY_RAGE, 5000);
                 events.ScheduleEvent(EVENT_SKIN_FLAY, 12000);
                 events.ScheduleEvent(EVENT_UNSTABLE_SERUM, 18000);
@@ -2887,6 +3017,10 @@ class mob_zandalari_warbringer : public CreatureScript
             void Reset() override
             {
                 events.Reset();
+            }
+
+            void EnterCombat(Unit* t)
+            {
                 me->AddAura(138046, me);
                 me->AddAura(138047, me);
                 me->AddAura(138048, me);
@@ -3015,4 +3149,3 @@ void AddSC_dread_wastes()
     new go_ancient_amber_chunk();
     new go_kunchong_cage();
 }
-

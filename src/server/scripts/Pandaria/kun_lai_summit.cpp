@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1148,7 +1147,7 @@ class mob_lun_chi : public CreatureScript
                 if (player->GetQuestStatus(30880) == QUEST_STATUS_INCOMPLETE)
                 {
                     creature->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    creature->setFaction(14);
+                    creature->SetFaction(14);
 
                     if (creature->GetAI())
                     {
@@ -1217,7 +1216,7 @@ class mob_lun_chi : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -1309,7 +1308,7 @@ class mob_brewmaster_chani : public CreatureScript
                 if (player->GetQuestStatus(30879) == QUEST_STATUS_INCOMPLETE)
                 {
                     creature->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    creature->setFaction(14);
+                    creature->SetFaction(14);
 
                     if (creature->GetAI())
                     {
@@ -1377,7 +1376,7 @@ class mob_brewmaster_chani : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -1464,7 +1463,7 @@ class mob_kang_bramblestaff : public CreatureScript
                 if (player->GetQuestStatus(30882) == QUEST_STATUS_INCOMPLETE)
                 {
                     creature->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    creature->setFaction(14);
+                    creature->SetFaction(14);
 
                     if (creature->GetAI())
                     {
@@ -1533,7 +1532,7 @@ class mob_kang_bramblestaff : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -1626,8 +1625,8 @@ class mob_clever_ashyo : public CreatureScript
                 {
                     if (Creature* kenKen = GetClosestCreatureWithEntry(creature, 60979, 20.0f, true))
                     {
-                        creature->setFaction(14);
-                        kenKen->setFaction(14);
+                        creature->SetFaction(14);
+                        kenKen->SetFaction(14);
 
                         if (creature->GetAI())
                         {
@@ -1704,7 +1703,7 @@ class mob_clever_ashyo : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -1802,8 +1801,8 @@ class mob_ken_ken : public CreatureScript
                 {
                     if (Creature* ashyo = GetClosestCreatureWithEntry(creature, 60980, 20.0f, true))
                     {
-                        creature->setFaction(14);
-                        ashyo->setFaction(14);
+                        creature->SetFaction(14);
+                        ashyo->SetFaction(14);
 
                         if (creature->GetAI())
                         {
@@ -1891,7 +1890,7 @@ class mob_ken_ken : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -1977,7 +1976,7 @@ class mob_the_wrestler : public CreatureScript
                 if (player->GetQuestStatus(30883) == QUEST_STATUS_INCOMPLETE)
                 {
                     creature->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    creature->setFaction(14);
+                    creature->SetFaction(14);
 
                     if (creature->GetAI())
                     {
@@ -2046,7 +2045,7 @@ class mob_the_wrestler : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -2138,7 +2137,7 @@ class mob_master_boom_boom : public CreatureScript
                 if (player->GetQuestStatus(30885) == QUEST_STATUS_INCOMPLETE)
                 {
                     creature->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    creature->setFaction(14);
+                    creature->SetFaction(14);
 
                     if (creature->GetAI())
                     {
@@ -2206,7 +2205,7 @@ class mob_master_boom_boom : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -2293,7 +2292,7 @@ class mob_master_windfur : public CreatureScript
                 if (player->GetQuestStatus(30902) == QUEST_STATUS_INCOMPLETE)
                 {
                     creature->AI()->SetGUID(player ? player->GetGUID() : ObjectGuid::Empty);
-                    creature->setFaction(14);
+                    creature->SetFaction(14);
 
                     if (creature->GetAI())
                     {
@@ -2361,7 +2360,7 @@ class mob_master_windfur : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -2451,9 +2450,9 @@ class mob_tankiss : public CreatureScript
                     {
                         if (Creature* hackiss = GetClosestCreatureWithEntry(creature, 61007, 20.0f, true))
                         {
-                            creature->setFaction(14);
-                            healiss->setFaction(14);
-                            hackiss->setFaction(14);
+                            creature->SetFaction(14);
+                            healiss->SetFaction(14);
+                            hackiss->SetFaction(14);
 
                             if (creature->GetAI())
                             {
@@ -2539,7 +2538,7 @@ class mob_tankiss : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -2645,9 +2644,9 @@ class mob_healiss : public CreatureScript
                     {
                         if (Creature* hackiss = GetClosestCreatureWithEntry(creature, 61007, 20.0f, true))
                         {
-                            creature->setFaction(14);
-                            tankiss->setFaction(14);
-                            hackiss->setFaction(14);
+                            creature->SetFaction(14);
+                            tankiss->SetFaction(14);
+                            hackiss->SetFaction(14);
 
                             if (creature->GetAI())
                             {
@@ -2733,7 +2732,7 @@ class mob_healiss : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -2839,9 +2838,9 @@ class mob_hackiss : public CreatureScript
                     {
                         if (Creature* tankiss = GetClosestCreatureWithEntry(creature, 61006, 20.0f, true))
                         {
-                            creature->setFaction(14);
-                            healiss->setFaction(14);
-                            tankiss->setFaction(14);
+                            creature->SetFaction(14);
+                            healiss->SetFaction(14);
+                            tankiss->SetFaction(14);
 
                             if (creature->GetAI())
                             {
@@ -2927,7 +2926,7 @@ class mob_hackiss : public CreatureScript
 
                 else if (action == ACTION_REINITIALIZE)
                 {
-                    me->setFaction(35);
+                    me->SetFaction(35);
                     me->CombatStop();
                     me->AddNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                 }
@@ -3006,8 +3005,10 @@ class mob_hackiss : public CreatureScript
         }
 };
 
+
 void AddSC_kun_lai_summit()
 {
+    //NPC
     new mob_nessos_the_oracle();
     new mob_ski_thik();
     new mob_havak();
@@ -3033,4 +3034,7 @@ void AddSC_kun_lai_summit()
     new mob_tankiss();
     new mob_healiss();
     new mob_hackiss();
+
+    //spells
+
 }

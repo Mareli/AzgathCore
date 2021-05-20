@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -74,9 +73,9 @@ class npc_wrathion_mason : public CreatureScript
             return true;
         }
 
-        struct npc_wrathion_masonAI : public npc_escortAI
+        struct npc_wrathion_masonAI : public EscortAI
         {
-            npc_wrathion_masonAI(Creature* creature) : npc_escortAI(creature)
+            npc_wrathion_masonAI(Creature* creature) : EscortAI(creature)
             {
                 playerGUID = ObjectGuid::Empty;
             }
@@ -130,7 +129,7 @@ class npc_wrathion_mason : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
                 events.Update(diff);
 
                 if (Player* player = ObjectAccessor::GetPlayer(*me, playerGUID))
