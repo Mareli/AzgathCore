@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,13 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AreaBoundary.h"
+ //Missing scripts
+
 #include "GameObject.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
 #include "the_motherlode.h"
-
 
 struct instance_the_motherlode : public InstanceScript
 {
@@ -37,45 +37,55 @@ struct instance_the_motherlode : public InstanceScript
 
         switch (creature->GetEntry())
         {
-            case NPC_AZEROKK:
-            {
-                    AddObject(creature, DATA_AZEROKK, true);
-                break;
-            }
-            default:
-                break;
+        case NPC_COIN_OPERATED_CROWD_PUMMELER:
+            CoinoperatedcrowdpummelerGUID = creature->GetGUID();
+            break;
+			
+		case NPC_AZEROKK:
+            AzerokkGUID = creature->GetGUID();
+            break;
+			
+		case NPC_RIXXA_FLUXFLAME:
+            RixxafluxflameGUID = creature->GetGUID();
+            break;
+			
+		case NPC_MOGUL_RAZDUNK:
+            MogulrazdunkGUID = creature->GetGUID();
+            break;
+			
+        default:
+            break;
         }
-    }
+    };
 
-    void OnUnitDeath(Unit* unit) override
-    {
-        switch (unit->GetEntry())
-        {
-            case NPC_AZEROKK:
-            {
-
-            }
-            default:
-                break;
-        }
-    }
-
-    void SetData(uint32 type, uint32 data) override
+    ObjectGuid GetGuidData(uint32 type) const override
     {
         switch (type)
         {
-            case DATA_AZEROKK:
-            {
-
-                break;
-            }
-
+        case DATA_COIN_OPERATED_CROWD_PUMMELER:
+            return CoinoperatedcrowdpummelerGUID;
+			
+		case DATA_AZEROKK:
+			return AzerokkGUID;
+		
+		case DATA_RIXXA_FLUXFLAME:
+			return RixxafluxflameGUID;
+		
+		case DATA_MOGUL_RAZDUNK:
+			return MogulrazdunkGUID;
+			
+        default:
+            break;
         }
-
-        InstanceScript::SetData(type, data);
+        return ObjectGuid::Empty;
     }
-};
 
+protected:
+    ObjectGuid CoinoperatedcrowdpummelerGUID;
+	ObjectGuid AzerokkGUID;
+	ObjectGuid RixxafluxflameGUID;
+	ObjectGuid MogulrazdunkGUID;
+};
 void AddSC_instance_the_motherlode()
 {
     RegisterInstanceScript(instance_the_motherlode, 1594);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,9 +44,58 @@ void AddSC_boss_dunegorger_kraulok();
 void AddSC_boss_jiarak();
 void AddSC_boss_tzane();
 
+void AddSC_boss_Coin_operated_crowd_pummeler();
 void AddSC_boss_azerokk();
+void AddSC_boss_rixxafluxflame();
+void AddSC_boss_mogulrazdunk();
 void AddSC_the_motherlode();
 void AddSC_instance_the_motherlode();
+
+//King's Rest
+void AddSC_instance_kings_rest();
+void AddSC_boss_the_golden_serpent();
+void AddSC_boss_mchimba_the_embalmber();
+void AddSC_boss_council_of_tribes();
+void AddSC_boss_dazar_the_first_king();
+
+//Uldir
+void AddSC_uldir();
+void AddSC_instance_uldir();
+void AddSC_boss_fetid_devourer();
+void AddSC_boss_ghuun();
+void AddSC_boss_mother();
+void AddSC_boss_mythrax();
+void AddSC_boss_taloc();
+void AddSC_boss_vectis();
+void AddSC_boss_zekvoz();
+void AddSC_boss_zul();
+
+//Battle of Dazaralor
+void AddSC_instance_battle_of_dazaralor();
+void AddSC_instance_battle_of_dazaralor();
+void AddSC_battle_of_dazaralor();
+void AddSC_boss_frida_ironbellows();
+void AddSC_boss_grong();
+void AddSC_boss_high_tinker_mekkatorque();
+void AddSC_boss_conclave_of_the_chosen();
+void AddSC_boss_jadefire_masters();
+void AddSC_boss_jadefire_masters_horde();
+void AddSC_boss_opulence();
+void AddSC_boss_king_rastakhan();
+void AddSC_boss_rawani_kanae();
+
+// The Eternal Palace
+void AddSC_eternal_palace();
+void AddSC_instance_eternal_palace();
+void AddSC_blackwater_behemoth();
+void AddSC_boss_queen_azshara_ep();
+void AddSC_boss_radiance_of_azshara();
+void AddSC_boss_orgozoa();
+void AddSC_boss_zaqul();
+void AddSC_boss_queens_court();
+
+
+void AddSC_nazjatar();
 
 void AddZandalarScripts()
 {
@@ -79,7 +128,54 @@ void AddZandalarScripts()
     AddSC_boss_jiarak();
     AddSC_boss_tzane();
 	
+	AddSC_boss_Coin_operated_crowd_pummeler();
 	AddSC_boss_azerokk();
+	AddSC_boss_rixxafluxflame();
+	AddSC_boss_mogulrazdunk();
 	AddSC_the_motherlode();
 	AddSC_instance_the_motherlode();
+
+    //King's Rest
+    AddSC_instance_kings_rest();
+    AddSC_boss_the_golden_serpent();
+    AddSC_boss_mchimba_the_embalmber();
+    AddSC_boss_council_of_tribes();
+    AddSC_boss_dazar_the_first_king();
+    
+    //Uldir
+    AddSC_uldir();
+    AddSC_instance_uldir();
+    AddSC_boss_fetid_devourer();
+    AddSC_boss_ghuun();
+    AddSC_boss_mother();
+    AddSC_boss_mythrax();
+    AddSC_boss_taloc();
+    AddSC_boss_vectis();
+    AddSC_boss_zekvoz();
+    AddSC_boss_zul();
+
+    //Battle of Dazaralor
+    AddSC_instance_battle_of_dazaralor();
+    AddSC_battle_of_dazaralor();
+    AddSC_boss_frida_ironbellows();
+    AddSC_boss_grong();
+    AddSC_boss_high_tinker_mekkatorque();
+    AddSC_boss_conclave_of_the_chosen();
+    AddSC_boss_jadefire_masters();
+    AddSC_boss_jadefire_masters_horde();
+    AddSC_boss_opulence();
+    AddSC_boss_king_rastakhan();
+    AddSC_boss_rawani_kanae();
+    
+    // The Eternal Palace
+    AddSC_eternal_palace();
+    AddSC_instance_eternal_palace();
+    AddSC_blackwater_behemoth();
+    AddSC_boss_queen_azshara_ep();
+    AddSC_boss_radiance_of_azshara();
+    AddSC_boss_orgozoa();
+    AddSC_boss_zaqul();
+    AddSC_boss_queens_court();
+
+    AddSC_nazjatar();
 }

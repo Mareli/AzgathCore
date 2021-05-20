@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 WoWLegacy <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +19,18 @@
 #include "AreaTriggerAI.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
+#include "SpellScript.h"
+#include "SpellAuras.h"
+#include "SpellAuraEffects.h"
+#include "GameObject.h"
+#include "InstanceScript.h"
+#include "Map.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include "SpellInfo.h"
+#include "TemporarySummon.h"
+#include "Conversation.h"
 #include "atal_dazar.h"
 
 enum Spells {
@@ -104,9 +116,19 @@ enum Events {
     EVENT_DISMOUNT,
 };
 
+enum
+{
+  CONVERSATION_REZAN_DEATH = 6322,
+};
+
+///122963
 struct boss_ataldazar_rezan : public BossAI
 {
-    boss_ataldazar_rezan(Creature* creature) : BossAI(creature, DATA_REZAN) { }
+    boss_ataldazar_rezan(Creature* creature) : BossAI(creature, DATA_REZAN) {
+
+        for (Position point : AreatriggerPositions)
+            me->CastSpell(point, SPELL_PILE_OF_BONES_AREATRIGGER);
+    }
 
     void InitializeAI() override
     {
@@ -185,6 +207,7 @@ struct boss_ataldazar_rezan : public BossAI
             }
             case EVENT_PURSUIT:
             {
+                events.DelayEvents(18000);
                 Talk(TALK_PURSUIT);
                 if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
                 {
@@ -237,9 +260,22 @@ struct boss_ataldazar_rezan : public BossAI
         DoMeleeAttackIfReady();
     }
 
-
-    void JustDied(Unit* /*killer*/) override
+    void JustDied(Unit* killer) override
     {
+        _JustDied();
+        instance->SetBossState(DATA_REZAN, DONE);
+        std::list<Player*> playerList;
+        me->GetPlayerListInGrid(playerList, 100.0f);
+        for (auto player : playerList)
+        {
+			Conversation::CreateConversation(CONVERSATION_REZAN_DEATH, player, player->GetPosition(), { player->GetGUID() });
+            if (player->HasAura(SPELL_UNSTABLE_HEX))
+            {
+                int cont = instance->GetData(DATA_ACHIEVEMENT_COUNT);
+                instance->SetData(DATA_ACHIEVEMENT_COUNT, cont++);
+                break;
+            }
+        }
     }
 
 private:
@@ -252,22 +288,21 @@ struct areatrigger_ancient_bones : AreaTriggerAI
 
     void OnUnitEnter(Unit* unit)
     {
-        if (unit->IsPlayer())
+        if (unit)
         {
             if (Creature* rezan = unit->FindNearestCreature(NPC_REZAN, 100, true))
                 if(rezan->IsInCombat() == true)
                 {
-                    unit->AddAura(SPELL_PILE_OF_BONES_SLOW);
+                    if (!rezan->GetMap()->IsHeroic() && !rezan->GetMap()->IsMythic())
+                        if (unit == rezan)
+                            return;
+                    if (unit != rezan && unit->IsPlayer())
+                        unit->AddAura(SPELL_PILE_OF_BONES_SLOW);
                     rezan->GetAI()->DoAction(ACTION_AREATRIGGER_ACTIVATED);
-                   // at->SummonCreature(NPC_REANIMATED_RAPTOR, unit->GetPosition(), TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                  //  if (!rezan->GetMap()->IsHeroic() && !rezan->GetMap()->IsMythic())
-                  //  {
-                    rezan->CastSpell(at->GetPosition(), SPELL_PILE_OF_BONES_SPAWN_NORMAL, TRIGGERED_CAN_CAST_WHILE_CASTING_MASK);
-                   // }
-                    /*else
-                    {
+                    if (rezan->GetMap()->IsMythic())
                         rezan->CastSpell(at->GetPosition(), SPELL_PILE_OF_BONES_SPAWN_HEROIC, TRIGGERED_CAN_CAST_WHILE_CASTING_MASK);
-                    }*/
+                    else
+                        rezan->CastSpell(at->GetPosition(), SPELL_PILE_OF_BONES_SPAWN_NORMAL, TRIGGERED_CAN_CAST_WHILE_CASTING_MASK);
                     at->Remove();
                 }
         }

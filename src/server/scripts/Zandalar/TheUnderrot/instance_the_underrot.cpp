@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,23 +61,6 @@ struct instance_the_underrot : public InstanceScript
         }
     }
 
-    void OnUnitDeath(Unit* unit) override
-    {
-        switch (unit->GetEntry())
-        {
-            case NPC_BLOODSWORN_DEFILER:
-            {
-                if (IsCreatureGroupWiped(SUMMON_GROUP_BLOODSWORN_DEFILER))
-                    if (Creature* zancha = GetCreature(NPC_SPORECALLER_ZANCHA))
-                        zancha->RemoveUnitFlag(UnitFlags(UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE));
-
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
     void SetData(uint32 type, uint32 data) override
     {
         switch (type)
@@ -87,8 +70,7 @@ struct instance_the_underrot : public InstanceScript
                 if (data == DONE)
                 {
                     if (GameObject* web = GetGameObject(GOB_PYRAMID_WEB))
-                        web->DestroyForNearbyPlayers();
-
+                        web->RemoveFromWorld();
                     HandleGameObject(ObjectGuid::Empty, true, GetGameObject(GOB_PYRAMID_DOOR));
                 }
                 break;

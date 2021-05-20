@@ -1,19 +1,19 @@
 /*
-* Copyright (C) 2017-2020 WoWLegacy <https://github.com/AshamaneProject>
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms of the GNU General Public License as published by the
-* Free Software Foundation; either version 2 of the License, or (at your
-* option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License along
-* with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright 2021 AzgathCore
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "Creature.h"
 #include "ScriptMgr.h"
@@ -24,6 +24,14 @@
 #include "SpellMgr.h"
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
+#include "GameObject.h"
+#include "InstanceScript.h"
+#include "Map.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include "SpellInfo.h"
+#include "TemporarySummon.h"
 #include "atal_dazar.h"
 
 enum spell
@@ -42,8 +50,8 @@ enum spell
     //Rapid Decay
     SPELL_RAPID_DECAY_BOSS_AURA                 = 250241, //Added to the boss after the totems get destroyed
     SPELL_RAPID_DECAY_AREATRIGGER               = 250696, //also creates an areatrigger
-    SPELL_RAPID_DECAY_AREATRIGGER_MISSLE        = 250697, //creates an areatrigger
-    SPELL_RAPID_DECAY_AREATRIGGER_MISSLE2       = 250694, // creates an areatrigger
+    SPELL_RAPID_DECAY_AREATRIGGER_MISSLE        = 250697, //creates an areatrigger random
+    SPELL_RAPID_DECAY_AREATRIGGER_MISSLE2       = 250694, // creates an areatrigger at target
 
     SPELL_CREATE_TOXI_POOL_AREATRIGGER          = 263922, //Creates the areatrigger for the toxic pool
 
@@ -75,6 +83,7 @@ enum Events : uint32
     EVENT_TOXIC_POOLS_AURA,
     EVENT_JUMP_DAMAGE,
     EVENT_TOXIC_POOL,
+    EVENT_CLOSE_DOOR,
 };
 
 enum Talks
@@ -94,6 +103,29 @@ Position totemSpawns[] =
     { -636.18f, 2316.12f, 709.963f },
     { -591.24f, 2292.44f, 709.968f },
     { -636.028f, 2269.22f, 709.974f }
+};
+
+void OpenBossGate(InstanceScript* instance)
+{
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_005)))
+        go->SetGoState(GO_STATE_ACTIVE);
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_006)))
+        go->SetGoState(GO_STATE_ACTIVE);
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_007)))
+        go->SetGoState(GO_STATE_ACTIVE);
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_008)))
+        go->SetGoState(GO_STATE_ACTIVE);
+};
+void CloseBossGate(InstanceScript* instance)
+{
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_005)))
+        go->SetGoState(GO_STATE_READY);
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_006)))
+        go->SetGoState(GO_STATE_READY);
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_007)))
+        go->SetGoState(GO_STATE_READY);
+    if (GameObject* go = instance->instance->GetGameObject(instance->GetGuidData(GO_GATE_008)))
+        go->SetGoState(GO_STATE_READY);
 };
 
 struct boss_ataldazar_volkaal : public BossAI
@@ -120,7 +152,7 @@ struct boss_ataldazar_volkaal : public BossAI
 
         events.Reset();
         summons.DespawnAll();
-
+        OpenBossGate(instance);
         totemsDead = 0;
 
         if (me->HasAura(SPELL_BAD_VODOO))
@@ -144,6 +176,7 @@ struct boss_ataldazar_volkaal : public BossAI
     {
         Talk(TALK_AGGRO);
         // Events
+        events.ScheduleEvent(EVENT_CLOSE_DOOR, 1800);
         events.ScheduleEvent(EVENT_TOXIC_LEAP, 2000);
         events.ScheduleEvent(EVENT_NOXIOUS_STENCH, 6000);
 
@@ -195,10 +228,12 @@ struct boss_ataldazar_volkaal : public BossAI
             {
                 if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
                     me->CastSpell(target, SPELL_RAPID_DECAY_AREATRIGGER_MISSLE2, TRIGGERED_CAN_CAST_WHILE_CASTING_MASK);
-                //me->CastSpell(me, SPELL_RAPID_DECAY_AREATRIGGER_MISSLE, TRIGGERED_CAN_CAST_WHILE_CASTING_MASK);
-                events.ScheduleEvent(EVENT_TOXIC_POOL, 800);
+                me->CastSpell(me, SPELL_RAPID_DECAY_AREATRIGGER_MISSLE, TRIGGERED_CAN_CAST_WHILE_CASTING_MASK);
+                events.ScheduleEvent(EVENT_TOXIC_POOL, 1000);
                 break;
             }
+            case EVENT_CLOSE_DOOR:
+                CloseBossGate(instance);
             default:
                 break;
             }
@@ -206,9 +241,6 @@ struct boss_ataldazar_volkaal : public BossAI
 
         DoMeleeAttackIfReady();
     }
-
-
-
 
     void DoAction(int32 action) override
     {
@@ -227,14 +259,14 @@ struct boss_ataldazar_volkaal : public BossAI
             {
                 Talk(TALK_PHASE_TWO);
 
-                summons.DespawnAll();
-
                 phase = 2;
 
                 me->AddAura(SPELL_RAPID_DECAY_BOSS_AURA);
 
                 if (me->HasUnitState(UNIT_STATE_CASTING))
                     me->InterruptNonMeleeSpells(0);
+
+                summons.DespawnAll();
 
                 events.CancelEvent(EVENT_TOXIC_LEAP);
                 events.CancelEvent(EVENT_TOXIC_POOL);
@@ -255,7 +287,20 @@ struct boss_ataldazar_volkaal : public BossAI
     void JustDied(Unit* killer) override
     {
         Talk(TALK_DEATH);
-        BossAI::JustDied(killer);
+        _JustDied();
+        instance->SetBossState(DATA_VOLKAAL, DONE);
+        std::list<Player*> playerList;
+        me->GetPlayerListInGrid(playerList, 100.0f);
+        for (auto player : playerList)
+        {
+            if (player->HasAura(SPELL_UNSTABLE_HEX))
+            {
+                int cont = instance->GetData(DATA_ACHIEVEMENT_COUNT);
+                instance->SetData(DATA_ACHIEVEMENT_COUNT, cont++);
+                break;
+            }
+        }
+        //DoPlayConversation();
     }
 
 private:
@@ -301,6 +346,7 @@ struct npc_ataldazar_reanimation_totem : public ScriptedAI
             {
                 if (Creature* boss = me->FindNearestCreature(NPC_VOLKAAL, 100.f))
                     boss->AI()->DoAction(ACTION_TOTEM_DIED);
+                me->DespawnOrUnsummon();
             }
         }
     }
@@ -313,7 +359,6 @@ struct npc_ataldazar_reanimation_totem : public ScriptedAI
 
     void EnterCombat(Unit* attacker) override
     {
-        //todo fix boss agroing if you attack a totem
         if (Unit* boss = me->FindNearestCreature(NPC_VOLKAAL, 50, true))
         {
             if (!boss->IsInCombat())
@@ -322,7 +367,7 @@ struct npc_ataldazar_reanimation_totem : public ScriptedAI
                 boss->SetInCombatWith(attacker);
                 attacker->SetInCombatWith(boss);
                 boss->AddThreat(attacker, 0.1f);
-                boss->GetAI()->AttackStart(attacker);
+                boss->Attack(attacker, true);
             }
         }
     }

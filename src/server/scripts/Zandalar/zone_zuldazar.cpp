@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 WoWLegacy <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,11 +34,11 @@ enum ZuldazarQuests
 {
     QUEST_WELCOME_ZULDAZAR      = 46957,
     QUEST_RASTAKHAN             = 46930,
-
     QUEST_SPEAKER_OF_THE_HORDE  = 46931,
     OBJECTIVE_SUMMON_THE_HORDE  = 291969,
-
     QUEST_NEED_EACH_OTHER       = 52131,
+    QUEST_SEND_THE_FLEET_HORDE = 56044,
+    QUEST_RIDE_OF_THE_ZANDALARI = 54140,
 };
 
 enum ZuldazarSpells
@@ -63,39 +63,63 @@ struct npc_talanji_arrival : public ScriptedAI
 {
     npc_talanji_arrival(Creature* creature) : ScriptedAI(creature) { }
 
-    void sQuestAccept(Player* player, Quest const* /*quest*/) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
-        me->DestroyForPlayer(player);
+        if (quest->ID == QUEST_WELCOME_ZULDAZAR)
+        {
+            me->DestroyForPlayer(player);
+            player->SummonCreature(132661, me->GetPosition());
+        }
     }
 };
 
 // 132661
-struct npc_talanji_arrival_escort : public npc_escortAI
+struct npc_talanji_arrival_escort : public EscortAI
 {
-    npc_talanji_arrival_escort(Creature* creature) : npc_escortAI(creature) { }
+    npc_talanji_arrival_escort(Creature* creature) : EscortAI(creature) { }
+
+    void Reset() override
+    {
+        if (Player* player = me->ToPlayer())
+        {
+            if (!player->HasQuest(QUEST_WELCOME_ZULDAZAR))
+            {
+                if (player->HasAura(261486))
+                    player->RemoveAura(261486);
+
+                me->DespawnOrUnsummon();
+            }            
+        }
+    }
 
     void IsSummonedBy(Unit* summoner) override
     {
-        me->Mount(80358);
-        Start(false, true, summoner->GetGUID());
-        SetDespawnAtEnd(false);
-        summoner->CastSpell(summoner, SPELL_TALANJI_EXPOSITION_CONVERSATION_1, true);
-    }
-
-    void LastWaypointReached() override
-    {
-        me->SetFacingTo(0.f);
-        me->CastSpell(me, SPELL_TALANJI_EXPOSITION_KILL_CREDIT, true);
-
-        if (Player* player = GetPlayerForEscort())
-            player->CastSpell(player, SPELL_TALANJI_EXPOSITION_CONVERSATION_2, true);
+        if (Player* player = summoner->ToPlayer())
+        {
+            if (player->GetQuestStatus(QUEST_WELCOME_ZULDAZAR) == QUEST_STATUS_INCOMPLETE)
+            {
+                me->Mount(80358);
+                Start(false, true, summoner->GetGUID());
+                SetDespawnAtEnd(false);
+                summoner->CastSpell(summoner, SPELL_TALANJI_EXPOSITION_CONVERSATION_1, true);
+                summoner->GetScheduler().Schedule(50s, [this, summoner] (TaskContext context)
+                {
+                    if (Player* player = summoner->ToPlayer())
+                    {
+                        player->KilledMonsterCredit(132661);
+                    }
+                });
+                me->DespawnOrUnsummon(55s);
+            }
+        }
     }
 };
 
+
 // 138912
-struct npc_enforcer_pterrordax : public npc_escortAI
+struct npc_enforcer_pterrordax : public EscortAI
 {
-    npc_enforcer_pterrordax(Creature* creature) : npc_escortAI(creature) { }
+    npc_enforcer_pterrordax(Creature* creature) : EscortAI(creature) { }
 
     void IsSummonedBy(Unit* summoner) override
     {
@@ -105,17 +129,26 @@ struct npc_enforcer_pterrordax : public npc_escortAI
             me->ForcedDespawn();
             return;
         }
-
-        KillCreditMe(player);
         me->SetSpeed(MOVE_RUN, 21.f);
         player->EnterVehicle(me);
+        player->KilledMonsterCredit(135438);
         Start(false, true, player->GetGUID());
     }
+};
 
-    void LastWaypointReached() override
+struct npc_talanji_135440 : public ScriptedAI
+{
+    npc_talanji_135440(Creature* c) : ScriptedAI(c) { }
+
+    bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
     {
-        if (Player* player = GetPlayerForEscort())
-            player->CastSpell(player, SPELL_RASTAKHAN_GREETINGS_SCENE, true);
+        if (player->GetQuestStatus(QUEST_RASTAKHAN) == QUEST_STATUS_INCOMPLETE)
+        {            
+            player->KilledMonsterCredit(135440);
+            player->GetSceneMgr().PlaySceneByPackageId(1895);
+        }
+
+        return true;
     }
 };
 
@@ -124,36 +157,64 @@ struct npc_rastakhan_zuldazar_arrival : public ScriptedAI
 {
     npc_rastakhan_zuldazar_arrival(Creature* creature) : ScriptedAI(creature) { }
 
-    void sQuestAccept(Player* player, Quest const* quest) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
-        if (quest->GetQuestId() == QUEST_SPEAKER_OF_THE_HORDE)
+        if (quest->ID == QUEST_SPEAKER_OF_THE_HORDE)
             player->SummonCreature(NPC_ZOLANI, -1100.689941f, 817.934021f, 497.243011f, 6.062160f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 120000, true);
     }
 };
 
-// 135441
-struct npc_soth_zolani : public npc_escortAI
+struct npc_soth_zolani : public EscortAI
 {
-    npc_soth_zolani(Creature* creature) : npc_escortAI(creature) { }
+    npc_soth_zolani(Creature* creature) : EscortAI(creature) { }
 
-    void sGossipHello(Player* player) override
-    {
-        //Zolani at the beginning shouldn't start running through the air
-        if (player->hasQuest(46931))
-        {
-            SetDespawnAtEnd(false);
-            Start(false, false, player->GetGUID());
+    bool GossipHello(Player* player) override
+    {        
+        if (player->HasQuest(QUEST_SPEAKER_OF_THE_HORDE))
+        {            
+            CloseGossipMenuFor(player);
+            me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+            me->SetWalk(true);
             Talk(0);
+            me->GetMotionMaster()->MovePoint(1, -1129.335f, 845.836f, 487.865f, true);            
+            player->GetScheduler().Schedule(27s, [this, player] (TaskContext context)
+            {
+                player->KilledMonsterCredit(120169);
+                Talk(1);
+                me->ForcedDespawn(10000);
+            });
         }
+
+        return true;
+    }
+};
+
+//121000
+struct npc_horde_banner : public ScriptedAI
+{
+    npc_horde_banner(Creature* creature) : ScriptedAI(creature) { }
+
+    void Reset() override
+    {
+        ScriptedAI::Reset();
     }
 
-    void LastWaypointReached() override
+    void MoveInLineOfSight(Unit* unit) override
     {
-        if (Player* player = GetPlayerForEscort())
+        if (unit->IsPlayer() && unit->GetDistance2d(me) <= 3.0f)
         {
-            Talk(1);
-            player->KilledMonsterCredit(NPC_FOLLOW_ZOLANI_KILL_CREDIT);
-            me->ForcedDespawn(10000);
+            Player* player = unit->ToPlayer();
+
+            if (player->GetQuestStatus(QUEST_SPEAKER_OF_THE_HORDE) == QUEST_STATUS_INCOMPLETE)
+            {
+                if (!player->GetQuestObjectiveData(QUEST_SPEAKER_OF_THE_HORDE, 0))
+                {
+                    me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
+                    player->AddAura(241211);
+                    player->KilledMonsterCredit(121000);
+                    me->ForcedDespawn(0, 3s);
+                }
+            }
         }
     }
 };
@@ -208,18 +269,18 @@ struct npc_talanji_great_seal : public ScriptedAI
 {
     npc_talanji_great_seal(Creature* creature) : ScriptedAI(creature) { }
 
-    void sQuestAccept(Player* player, Quest const* quest) override
+    void QuestAccept(Player* player, Quest const* quest) override
     {
-        if (quest->GetQuestId() == QUEST_NEED_EACH_OTHER)
+        if (quest->ID == QUEST_NEED_EACH_OTHER)
             player->CastSpell(player, SPELL_PREVIEW_TO_ZANDALAR, true);
     }
 };
 
 //
-class npc_ata_the_winglord_offensively_defence : public npc_escortAI
+class npc_ata_the_winglord_offensively_defence : public EscortAI
 {
 public:
-    npc_ata_the_winglord_offensively_defence(Creature* creature) : npc_escortAI(creature)
+    npc_ata_the_winglord_offensively_defence(Creature* creature) : EscortAI(creature)
     {
         me->SetCanFly(true);
         me->SetSpeed(MOVE_FLIGHT, 26);
@@ -253,10 +314,10 @@ public:
     }
 };
 
-class npc_ata_the_winglord_paku_master_of_winds : public npc_escortAI
+class npc_ata_the_winglord_paku_master_of_winds : public EscortAI
 {
 public:
-    npc_ata_the_winglord_paku_master_of_winds(Creature* creature) : npc_escortAI(creature)
+    npc_ata_the_winglord_paku_master_of_winds(Creature* creature) : EscortAI(creature)
     {
         me->SetCanFly(true);
         me->SetSpeed(MOVE_FLIGHT, 26);
@@ -288,10 +349,10 @@ public:
     }
 };
 
-class npc_pterrordax_paku_master_of_winds : public npc_escortAI
+class npc_pterrordax_paku_master_of_winds : public EscortAI
 {
 public:
-    npc_pterrordax_paku_master_of_winds(Creature* creature) : npc_escortAI(creature)
+    npc_pterrordax_paku_master_of_winds(Creature* creature) : EscortAI(creature)
     {
         me->SetCanFly(true);
         me->SetReactState(REACT_PASSIVE);
@@ -339,9 +400,11 @@ struct npc_paku : public ScriptedAI
     {
     }
 
-    void sGossipHello(Player* player) override
+    bool GossipHello(Player* player) override
     {
         player->KilledMonsterCredit(127377);
+
+        return true;
     }
 
     void UpdateAI(uint32 /*diff*/) override
@@ -670,31 +733,144 @@ public:
     }
 };
 
+//123000
+class npc_captain_rezokon_123000 : public CreatureScript
+{
+public:
+    npc_captain_rezokon_123000() : CreatureScript("npc_captain_rezokon_123000") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Let's go.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 0);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "The Kul Tiran fleet is off the coast of Nazmir, get the fleet mobilized and attack them", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+        SendGossipMenuFor(player, 22557, creature->GetGUID());
+
+        player->PrepareQuestMenu(creature->GetGUID());
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+    {
+        if (action == GOSSIP_ACTION_INFO_DEF + 0 && player->HasQuest(QUEST_SEND_THE_FLEET_HORDE))  //Let's go.
+        {
+            player->SendMovieStart(919);
+            player->TeleportTo(1718, 107.0f, 29.0f, -30.0f, 0.33f);
+        }
+        if (action == GOSSIP_ACTION_INFO_DEF + 1 && !player->GetQuestObjectiveData(QUEST_RIDE_OF_THE_ZANDALARI, 0))
+        {
+            player->KilledMonsterCredit(146830);
+        }
+        return true;
+    }
+};
+
+//146812
+struct npc_rakera_146812 : public ScriptedAI
+{
+    npc_rakera_146812(Creature* c) : ScriptedAI(c) { }
+
+    bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+    {
+        if (!player->GetQuestObjectiveData(QUEST_RIDE_OF_THE_ZANDALARI, 1))
+            player->KilledMonsterCredit(146812);
+
+        return true;
+    }
+};
+
+//146851
+struct npc_hexlord_146851 : public ScriptedAI
+{
+    npc_hexlord_146851(Creature* c) : ScriptedAI(c) { }
+
+    bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+    {
+        if (!player->GetQuestObjectiveData(QUEST_RIDE_OF_THE_ZANDALARI, 2))
+        {
+            player->KilledMonsterCredit(146851);
+            me->AI()->Talk(0);
+        }
+
+        return true;
+    }
+};
+
+//135690
+class npc_dread_admiral_tattersail_135690 : public CreatureScript
+{
+public:
+    npc_dread_admiral_tattersail_135690() : CreatureScript("npc_dread_admiral_tattersail_135690") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {       
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Set sail for Drustvar.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 0);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Set sail for Stormsong Valley.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Set sail for Tiragarde Sound.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+
+        SendGossipMenuFor(player, 34711, creature->GetGUID());
+
+        player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetAreaId() == 9699)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Take us back to Zuldazar.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+            SendGossipMenuFor(player, 34711, creature->GetGUID());
+            player->PrepareQuestMenu(creature->GetGUID());
+        }
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+    {
+        if (action == GOSSIP_ACTION_INFO_DEF + 0)   //Set sail for Drustvar.
+        {
+            player->TeleportTo(1643, -406.0f, 4122.0f, 4.08f, 4.24f);
+        }
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)   //Set sail for Stormsong Valley.
+        {            
+            player->TeleportTo(1643, 4246.0f, 406.0f, 0.58f, 2.51f);
+        }
+        if (action == GOSSIP_ACTION_INFO_DEF + 2)   //Set sail for Tiragarde Sound.
+        {            
+            player->TeleportTo(1643, -218.0f, -1554.0f, 2.83f, 0.76f);
+        }
+        if (action == GOSSIP_ACTION_INFO_DEF + 3)   //Take us back to Zuldazar.
+        {
+            player->TeleportTo(1642, -2141.0f, 775.0f, 9.0f, 1.59f);
+        }
+        return true;
+    }
+};
+
 void AddSC_zone_zuldazar()
 {
     RegisterCreatureAI(npc_talanji_arrival);
     RegisterCreatureAI(npc_talanji_arrival_escort);
     RegisterCreatureAI(npc_enforcer_pterrordax);
+    RegisterCreatureAI(npc_talanji_135440);
     RegisterCreatureAI(npc_rastakhan_zuldazar_arrival);
     RegisterCreatureAI(npc_soth_zolani);
     RegisterCreatureAI(npc_brillin_the_beauty);
+    RegisterCreatureAI(npc_horde_banner);
     RegisterCreatureAI(npc_natal_hakata);
     RegisterCreatureAI(npc_telemancer_oculeth_zuldazar);
     RegisterCreatureAI(npc_talanji_great_seal);
-
     RegisterCreatureAI(npc_ata_the_winglord_offensively_defence);
-
     RegisterCreatureAI(npc_ata_the_winglord_paku_master_of_winds);
     RegisterCreatureAI(npc_pterrordax_paku_master_of_winds);
     RegisterCreatureAI(npc_paku);
-
     RegisterSpellScript(spell_rastari_skull_whistle);
     RegisterSpellScript(spell_quest_revitalize_spirit_obelisk);
     RegisterSpellScript(spell_call_the_storm);
     new spell_lightning_rod();
-
     RegisterCreatureAI(npc_voljamba);
     RegisterSpellScript(spell_soul_jaunt);
-
     new scene_warpack();
+    new npc_captain_rezokon_123000();
+    RegisterCreatureAI(npc_rakera_146812);
+    RegisterCreatureAI(npc_hexlord_146851);
+    new npc_dread_admiral_tattersail_135690();
 }

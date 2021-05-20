@@ -1,28 +1,18 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
 #include "ScriptMgr.h"
 #include "the_underrot.h"
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellAuraEffects.h"
+#include "SpellHistory.h"
+#include "SpellMgr.h"
+#include "CreatureAI.h"
+#include "SpellScript.h"
 
 enum Spells
 {
-    SPELL_TAINT_OF_GHUUN = 260685, // applied with all abilities except melee hit
+    SPELL_TAINT_OF_GHUUN = 260685,
     SPELL_BLOOD_BOLT = 260879,
 
     SPELL_CREEPING_ROT = 260894,
@@ -31,8 +21,8 @@ enum Spells
     SPELL_CREEPING_ROT_DOT = 261498,
     SPELL_CREEPING_ROT_VISUAL = 260891,
 
-    SPELL_SANGUINE_FEAST = 264753,
     SPELL_SANGUINE_FEAST_TARGET_SELECTOR = 264747,
+    SPELL_SANGUINE_FEAST_CAST = 264757,
     SPELL_SANGUINE_FEAST_JUMP = 264753,
 
     SPELL_BLOOD_MIRROR = 264603,
@@ -48,381 +38,486 @@ enum Events
     EVENT_SANGUINE_FEAST = 4,
 };
 
-enum Yells
+enum Timers
 {
-    YELL_ENTER_COMBAT = 0,
-    YELL_CREEPING_ROT = 1,
-    YELL_FEAST = 2,
-    YELL_BLOOD_MIRROR_EMOTE = 3,
-    YELL_BLOOD_MIRROR_CAST = 6,
-    YELL_KILLED = 4,
-    YELL_KILL = 5,
+    TIMER_BLOOD_BOLT = 4 * IN_MILLISECONDS,
+
+    TIMER_BLOOD_MIRROR = 16 * IN_MILLISECONDS,
+    TIMER_BLOOD_MIRROR_AFTER = 30 * IN_MILLISECONDS,
+
+    TIMER_CREEPING_ROT = 15 * IN_MILLISECONDS,
+
+    TIMER_SANGUINE_FEAST = 10 * IN_MILLISECONDS,
+    TIMER_SANGUINE_FEAST_AFTER = 30 * IN_MILLISECONDS,
 };
 
-enum AnimKit
+enum Sounds
 {
-    AnimKitPreFight = 13325
+    SOUND_ROT = 101026,
+    SOUND_AGGRO = 101028,
+    SOUND_KILL = 101029,
+    SOUND_DEATH = 101030,
+    SOUND_MIRROR = 101025,
+    SOUND_FEAST = 101028,
 };
 
-struct boss_elder_leaxa : public BossAI
+enum Creatures
+{
+    BOSS_ELDER_LEAXA = 131318,
+
+    NPC_CREEPING_ROG_TRIGGER = 132398,
+    NPC_BLOOD_EFFIGY = 134701,
+};
+
+const Position centerPlatform = { 868.98f, 1230.07f, 56.30f }; //cheaters 23y
+
+#define AGGRO_TEXT "For de glory of G'huun!"
+#define ROT_TEXT "Rot and wither!"
+#define KILL_TEXT "Time for de sacrifice!"
+#define DEATH_TEXT "My blood for G'huun..."
+#define MIRROR_TEXT "G'huun be everywhere!"
+#define FEAST_TEXT "For de glory of G'huun!"
+
+class bfa_boss_elder_leaxa : public CreatureScript
 {
 public:
-    boss_elder_leaxa(Creature* creature) : BossAI(creature, DATA_ELDER_LEAXA)
+    bfa_boss_elder_leaxa() : CreatureScript("bfa_boss_elder_leaxa")
+    {}
+
+    struct bfa_boss_elder_leaxa_AI : public BossAI
     {
-        Initialize();
-    }
-
-    int32 mirrorCount;
-
-    void Initialize()
-    {
-        events.ScheduleEvent(EVENT_BLOOD_BOLT, 1000);
-        events.ScheduleEvent(EVENT_CREEPING_ROT, 12200);
-        events.ScheduleEvent(EVENT_BLOOD_MIRROR, 15800);
-        if (IsHeroic() || IsMythic())
-            events.ScheduleEvent(EVENT_SANGUINE_FEAST, 6800);
-    }
-
-    void Reset() override
-    {
-        //me->SetAIAnimKitId(AnimKit::AnimKitPreFight);
-        mirrorCount = 1;
-        BossAI::Reset();
-        events.Reset();
-        Initialize();
-        instance->SetBossState(DATA_ELDER_LEAXA, FAIL);
-    }
-
-    void EnterCombat(Unit* who) override
-    {
-        //me->SetAIAnimKitId(0);
-        BossAI::EnterCombat(who);
-        Talk(YELL_ENTER_COMBAT);
-        instance->SetBossState(DATA_ELDER_LEAXA, IN_PROGRESS);
-        me->SetAIAnimKitId(0);
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        BossAI::JustDied(killer);
-        Talk(YELL_KILLED);
-        instance->SetBossState(DATA_ELDER_LEAXA, DONE);
-    }
-
-    void KilledUnit(Unit* victim) override
-    {
-        if (victim->GetTypeId() == TYPEID_PLAYER)
-            Talk(YELL_KILL);
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (!UpdateVictim())
-            return;
-
-        events.Update(diff);
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
-
-        while (uint32 eventID = events.ExecuteEvent())
+        bfa_boss_elder_leaxa_AI(Creature* creature) : BossAI(creature, DATA_ELDER_LEAXA), summons(me)
         {
-            switch (eventID)
+            instance = me->GetInstanceScript();
+        }
+
+        EventMap events;
+        InstanceScript* instance;
+        SummonList summons;
+
+        void Reset() override
+        {
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+
+            events.Reset();
+            summons.DespawnAll();
+            me->RemoveAllAreaTriggers();
+        }
+
+        void JustDied(Unit*) override
+        {
+            SelectSoundAndText(me, 4);
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+            me->RemoveAllAreaTriggers();
+            summons.DespawnAll();
+        }
+
+        void JustSummoned(Creature* summon) override
+        {
+            summons.Summon(summon);
+
+            switch (summon->GetEntry())
             {
-            case EVENT_SANGUINE_FEAST:
-                Talk(YELL_FEAST);
-                events.DelayEvents(1000);
-                DoCastAOE(SPELL_SANGUINE_FEAST_TARGET_SELECTOR);
-                events.ScheduleEvent(EVENT_SANGUINE_FEAST, 30000);
-                break;
-            case EVENT_BLOOD_BOLT:
-                DoCastVictim(SPELL_BLOOD_BOLT);
-                events.ScheduleEvent(EVENT_BLOOD_BOLT, 6100);
-                break;
-            case EVENT_CREEPING_ROT:
-                // me->StopMovingAndAttacking(1000);  Might be needed because of buggy movement core side
-                Talk(YELL_CREEPING_ROT);
-                DoCastAOE(SPELL_CREEPING_ROT_TARGET_SELECTOR);
-                events.ScheduleEvent(EVENT_CREEPING_ROT, 15800);
-                break;
-            case EVENT_BLOOD_MIRROR:
-                Talk(YELL_BLOOD_MIRROR_EMOTE);
-                Talk(YELL_BLOOD_MIRROR_CAST);
-                me->CastCustomSpell(SPELL_BLOOD_MIRROR, SPELLVALUE_BASE_POINT0, std::min(mirrorCount, 3), me);
-                if (IsMythic())
-                    ++mirrorCount;
-                events.ScheduleEvent(EVENT_BLOOD_MIRROR, 47400);
-                break;
-            default:
+            case NPC_BLOOD_EFFIGY:
+                summon->SetInCombatWithZone();
+                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, summon);
                 break;
             }
         }
 
-        DoMeleeAttackIfReady();
-    }
-};
-
-// 132398 Blood Wave Stalker
-struct npc_blood_wave_stalker : public ScriptedAI
-{
-    npc_blood_wave_stalker(Creature* creature) : ScriptedAI(creature) { }
-
-    void Reset() override
-    {
-        me->SetReactState(REACT_PASSIVE);
-        me->CastSpell(me, SPELL_CREEPING_ROT_TRIGGER, true);
-        MoveForward(40.0f);
-    }
-
-    void MoveForward(float distance)
-    {
-        Position movePos;
-        float ori = me->GetOrientation();
-        float x = me->GetPositionX() + distance * cos(ori);
-        float y = me->GetPositionY() + distance * sin(ori);
-        float z = me->GetPositionZ();
-        me->GetNearPoint2D(x, y, distance, ori);
-        movePos = { x, y, z };
-        me->GetMotionMaster()->MovePoint(1, movePos, false);
-    }
-
-    void UpdateAI(uint32 /*diff*/) override { }
-};
-
-// 134701 Blood Effigy
-struct npc_blood_effigy : public ScriptedAI
-{
-    npc_blood_effigy(Creature* creature) : ScriptedAI(creature) { }
-
-    void Reset() override
-    {
-        events.ScheduleEvent(EVENT_BLOOD_BOLT, 0);
-        events.ScheduleEvent(EVENT_CREEPING_ROT, urand(3200, 5200));
-        if (IsHeroic() || IsMythic())
-            events.ScheduleEvent(EVENT_SANGUINE_FEAST, urand(6800, 8800));
-
-        me->CastSpell(me, SPELL_BLOOD_MIRROR_VISUAL, true);
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (!UpdateVictim())
-            return;
-
-        events.Update(diff);
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
-
-        while (uint32 eventID = events.ExecuteEvent())
+        void EnterEvadeMode(EvadeReason why) override
         {
-            switch (eventID)
+            _DespawnAtEvade(15);
+        }
+
+        void SelectSoundAndText(Creature* me, uint32  selectedTextSound = 0)
+        {
+            if (!me)
+                return;
+
+            if (me)
             {
-            case EVENT_SANGUINE_FEAST:
-                events.DelayEvents(1000);
-                DoCastAOE(SPELL_SANGUINE_FEAST_TARGET_SELECTOR);
-                events.ScheduleEvent(EVENT_SANGUINE_FEAST, 30000);
+                switch (selectedTextSound)
+                {
+                case 1:
+                    me->Yell(AGGRO_TEXT, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_AGGRO);
+                    break;
+                case 2:
+                    me->Yell(ROT_TEXT, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_ROT);
+                    break;
+                case 3:
+                    me->Yell(KILL_TEXT, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_KILL);
+                    break;
+                case 4:
+                    me->Yell(DEATH_TEXT, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_DEATH);
+                    break;
+                case 5:
+                    me->Yell(MIRROR_TEXT, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_MIRROR);
+                    break;
+                case 6:
+                    me->Yell(FEAST_TEXT, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_FEAST);
+                    break;
+                }
+            }
+        }
+
+        void KilledUnit(Unit*) override
+        {
+            SelectSoundAndText(me, 3);
+        }
+
+        void OnSpellFinished(SpellInfo const* spellInfo) override
+        {
+            switch (spellInfo->Id)
+            {
+            case SPELL_BLOOD_MIRROR:
+                HandleBloodMirrorSpawns();
                 break;
-            case EVENT_BLOOD_BOLT:
-                DoCastVictim(SPELL_BLOOD_BOLT);
-                events.ScheduleEvent(EVENT_BLOOD_BOLT, 2000);
+            case SPELL_CREEPING_ROT:
+                HandleCreepingRoot();
                 break;
-            case EVENT_CREEPING_ROT:
-                DoCastAOE(SPELL_CREEPING_ROT_TARGET_SELECTOR);
-                events.ScheduleEvent(EVENT_CREEPING_ROT, 15800);
-                break;
-            default:
+            case SPELL_BLOOD_BOLT:
+                me->CastSpell(me->GetVictim(), SPELL_TAINT_OF_GHUUN, true);
                 break;
             }
         }
 
-        DoMeleeAttackIfReady();
-    }
-};
-
-// 17135
-class at_creeping_rot : public AreaTriggerEntityScript
-{
-public:
-    at_creeping_rot() : AreaTriggerEntityScript("at_creeping_rot") { }
-
-    struct at_creeping_rotAI : AreaTriggerAI
-    {
-        at_creeping_rotAI(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
-
-        void OnUnitEnter(Unit* unit) override
+        void HandleBloodMirrorSpawns()
         {
-            if (unit && unit->GetTypeId() == TYPEID_PLAYER)
-                unit->CastSpell(unit, SPELL_CREEPING_ROT_DOT, true);
+            float x;
+            float y;
+
+            switch (rand() % 3)
+            {
+            case 1:
+                x = 875.113159f;
+                y = 1240.381958f;
+                break;
+            case 2:
+                x = 879.703979f;
+                y = 1224.49646f;
+                break;
+            case 3:
+                x = 858.541931f;
+                y = 1221.745239f;
+                break;
+            }
+
+            me->CastSpell(x, y, me->GetPositionZ(), SPELL_BLOOD_MIRROR_MISSILE);
+            me->SummonCreature(NPC_BLOOD_EFFIGY, x, y, me->GetPositionZ(), TEMPSUMMON_CORPSE_DESPAWN);
         }
 
-        void OnUnitExit(Unit* unit) override
+        void EnterCombat(Unit*) override
         {
-            if (unit && unit->HasAura(SPELL_CREEPING_ROT_DOT))
-                unit->RemoveAura(SPELL_CREEPING_ROT_DOT);
-        }
-    };
+            SelectSoundAndText(me, 1);
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
 
-    AreaTriggerAI* GetAI(AreaTrigger* areatrigger) const override
-    {
-        return new at_creeping_rotAI(areatrigger);
-    }
-};
+            events.ScheduleEvent(EVENT_BLOOD_BOLT, TIMER_BLOOD_BOLT);
+            events.ScheduleEvent(EVENT_BLOOD_MIRROR, TIMER_BLOOD_MIRROR);
+            events.ScheduleEvent(EVENT_CREEPING_ROT, TIMER_CREEPING_ROT);
 
-// 260889 - Creeping Rot Target Selector
-class spell_creeping_rot_target_selector : public SpellScript
-{
-    PrepareSpellScript(spell_creeping_rot_target_selector);
-
-    void DoEffectHitTarget(SpellEffIndex /*effIndex*/)
-    {
-        if (Unit* target = GetHitUnit())
-            GetCaster()->CastSpell(target, SPELL_CREEPING_ROT);
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_creeping_rot_target_selector::DoEffectHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
-    }
-};
-
-// 264747 - Sanguine Feast Target Selector
-class spell_sanguine_feast_target_selector : public SpellScript
-{
-    PrepareSpellScript(spell_sanguine_feast_target_selector);
-
-    void DoEffectHitTarget(SpellEffIndex /*effIndex*/)
-    {
-        if (Unit* target = GetHitUnit())
-            GetCaster()->CastSpell(target, GetEffectValue());
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_sanguine_feast_target_selector::DoEffectHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
-    }
-};
-
-// 260894 - Creeping Rot Summon
-class spell_creeping_rot_summon : public SpellScript
-{
-    PrepareSpellScript(spell_creeping_rot_summon);
-
-    void DoCast()
-    {
-        GetCaster()->CastSpell(GetCaster(), SPELL_CREEPING_ROT_VISUAL, true);
-    }
-
-    void Register() override
-    {
-        OnPrepare += SpellOnPrepareFn(spell_creeping_rot_summon::DoCast);
-    }
-};
-
-// 264603 - Blood Mirror
-class spell_blood_mirror : public SpellScriptLoader
-{
-public:
-    spell_blood_mirror() : SpellScriptLoader("spell_blood_mirror") { }
-
-    class spell_blood_mirror_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_blood_mirror_SpellScript);
-
-        // Guessed values from videos
-        const Position spawnPoints[3] =
-        {
-            {875.113159f, 1240.381958f, 56.332645f},
-            {879.703979f, 1224.49646f, 56.33368f},
-            {858.541931f, 1221.745239f, 56.347778f}
-        };
-
-        void HandleDummy(SpellEffIndex /*effIndex*/)
-        {
-            int32 spawnPointsIndex = irand(0, 2);
-            for (int32 i = 0; i < GetEffectValue(); ++i)
-                GetCaster()->CastSpell(spawnPoints[(spawnPointsIndex + i) % 3], SPELL_BLOOD_MIRROR_MISSILE, true);
+            if(me->GetMap()->IsHeroic() || me->GetMap()->IsMythic())
+                events.ScheduleEvent(EVENT_SANGUINE_FEAST, TIMER_SANGUINE_FEAST);
         }
 
-        void Register() override
+        void HandleCreepingRoot()
         {
-            OnEffectHit += SpellEffectFn(spell_blood_mirror_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+            events.DelayEvents(3 * IN_MILLISECONDS);
+
+            std::list<Unit*> targets;
+            SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+            if (!targets.empty())
+                if (targets.size() >= 1)
+                    targets.resize(1);
+
+            for (auto target : targets)
+            {
+                me->SetFacingToObject(target);
+
+                float orientation = me->GetOrientation();
+                Position pos;
+
+                if (Creature* trigger = me->SummonCreature(NPC_CREEPING_ROG_TRIGGER, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), TEMPSUMMON_MANUAL_DESPAWN))
+                {
+                    trigger->DespawnOrUnsummon(30 * IN_MILLISECONDS);
+
+                    trigger->SetReactState(REACT_PASSIVE);
+                    trigger->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+                    trigger->SetFlying(true);
+
+                    trigger->CastSpell(trigger, SPELL_CREEPING_ROT_VISUAL, true);
+                    //trigger->CastSpell(trigger, SPELL_CREEPING_ROT_TRIGGER, true);
+
+                    trigger->GetNearPoint(NULL, pos.m_positionX, pos.m_positionY, pos.m_positionZ, DEFAULT_WORLD_OBJECT_SIZE, 250, orientation);
+                    trigger->GetMotionMaster()->MovePoint(0, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
+                }
+            }
         }
-    };
 
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_blood_mirror_SpellScript();
-    }
-};
-
-// 260879 - Blood Bolt
-class spell_blood_bolt : public SpellScriptLoader
-{
-public:
-    spell_blood_bolt() : SpellScriptLoader("spell_blood_bolt") { }
-
-    class spell_blood_bolt_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_blood_bolt_SpellScript);
-
-        void HandleDummy(SpellEffIndex /*effIndex*/)
+        void HandleFeast()
         {
-            if (Unit* target = GetExplTargetUnit())
-                GetCaster()->CastSpell(target, SPELL_TAINT_OF_GHUUN, true);
+            events.DelayEvents(3 * IN_MILLISECONDS);
+
+            std::list<Unit*> targets;
+            SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+            if (!targets.empty())
+                if (targets.size() >= 1)
+                    targets.resize(1);
+
+            for (auto target : targets)
+            {
+                me->GetMotionMaster()->MoveJump(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), me->GetOrientation(), 20.0f, 10.0f);
+                me->GetScheduler().Schedule(1s, [this](TaskContext /*context*/)
+                    {
+                        me->CastSpell(me->GetVictim(), SPELL_SANGUINE_FEAST_CAST);
+                    });
+            }
         }
 
-        void Register() override
+        void UpdateAI(uint32 diff) override
         {
-            OnEffectHit += SpellEffectFn(spell_blood_bolt_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+            events.Update(diff);
+
+            if (!UpdateVictim())
+                return;
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            while (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_BLOOD_BOLT:
+                    me->CastSpell(me->GetVictim(), SPELL_BLOOD_BOLT);
+                    events.ScheduleEvent(EVENT_BLOOD_BOLT, TIMER_BLOOD_BOLT);
+                    break;
+                case EVENT_BLOOD_MIRROR:
+                {
+                    SelectSoundAndText(me, 5);
+
+                    std::ostringstream str;
+                    str << "Elder Leaxa begins to cast |cFFF00000|h[Blood Mirror]|h|r!";
+                    me->TextEmote(str.str().c_str(), 0, true);
+
+                    me->CastSpell(me->GetVictim(), SPELL_BLOOD_MIRROR);
+                    events.ScheduleEvent(EVENT_BLOOD_MIRROR, TIMER_BLOOD_MIRROR_AFTER);
+                    break;
+                }
+                case EVENT_CREEPING_ROT:
+                    SelectSoundAndText(me, 2);
+                    me->CastSpell(me, SPELL_CREEPING_ROT);
+                    events.ScheduleEvent(EVENT_CREEPING_ROT, TIMER_CREEPING_ROT);
+                    break;
+                case EVENT_SANGUINE_FEAST:
+                    SelectSoundAndText(me, 6);
+                    HandleFeast();
+                    events.ScheduleEvent(EVENT_SANGUINE_FEAST, TIMER_SANGUINE_FEAST_AFTER);
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
         }
     };
 
-    SpellScript* GetSpellScript() const override
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        return new spell_blood_bolt_SpellScript();
+        return new bfa_boss_elder_leaxa_AI(creature);
     }
 };
 
-// 261498 - Creeping Rot
-class spell_creeping_rot : public SpellScriptLoader
+class bfa_npc_creeping_rot_trigger : public CreatureScript
 {
 public:
-    spell_creeping_rot() : SpellScriptLoader("spell_creeping_rot") { }
+    bfa_npc_creeping_rot_trigger() : CreatureScript("bfa_npc_creeping_rot_trigger")
+    {}
 
-    class spell_creeping_rot_AuraScript : public AuraScript
+    struct bfa_npc_creeping_rot_trigger_AI : public ScriptedAI
     {
-        PrepareAuraScript(spell_creeping_rot_AuraScript);
+        bfa_npc_creeping_rot_trigger_AI(Creature* creature) : ScriptedAI(creature)
+        {
+        }
+        uint32 damageTimer;
+
+        void Reset() override
+        {
+            damageTimer = 0;
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            damageTimer += diff;
+            if (damageTimer >= 500)
+            {
+                me->CastSpell(me, SPELL_CREEPING_ROT_VISUAL, true);
+
+                Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+                for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                    if (Player* player = i->GetSource())
+                    {
+                        if (!player->IsGameMaster()) //gm check
+                        {
+                            if (me->GetDistance(player) <= 3.0f)
+                                me->AddAura(SPELL_CREEPING_ROT_DOT, player);
+                            else
+                                player->RemoveAura(SPELL_CREEPING_ROT_DOT);
+                        }
+                    }
+                damageTimer = 0;
+            }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new bfa_npc_creeping_rot_trigger_AI(creature);
+    }
+};
+
+class bfa_npc_blood_effigy : public CreatureScript
+{
+public:
+    bfa_npc_blood_effigy() : CreatureScript("bfa_npc_blood_effigy")
+    {}
+
+    struct bfa_npc_blood_effigy_AI : public ScriptedAI
+    {
+        bfa_npc_blood_effigy_AI(Creature* creature) : ScriptedAI(creature)
+        {
+            me->AddUnitState(UNIT_STATE_ROOT);
+        }
+
+        EventMap events;
+
+        void Reset() override
+        {
+            events.Reset();
+        }
+
+        void EnterCombat(Unit*) override
+        {
+            events.ScheduleEvent(EVENT_BLOOD_BOLT, TIMER_BLOOD_BOLT);
+
+            if (me->GetMap()->IsHeroic() || me->GetMap()->IsMythic())
+                events.ScheduleEvent(EVENT_SANGUINE_FEAST, TIMER_SANGUINE_FEAST);
+        }
+
+        void HandleFeast()
+        {
+            std::list<Unit*> targets;
+            SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+            if (!targets.empty())
+                if (targets.size() >= 1)
+                    targets.resize(1);
+
+            for (auto target : targets)
+            {
+                me->GetMotionMaster()->MoveJump(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), me->GetOrientation(), 20.0f, 10.0f);
+                me->GetScheduler().Schedule(2s, [this](TaskContext /*context*/)
+                    {
+                        me->CastSpell(me->GetVictim(), SPELL_SANGUINE_FEAST_CAST);
+                    });
+            }
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            if (!UpdateVictim())
+                return;
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            while (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_BLOOD_BOLT:
+                    me->CastSpell(me->GetVictim(), SPELL_BLOOD_BOLT);
+                    events.ScheduleEvent(EVENT_BLOOD_BOLT, TIMER_BLOOD_BOLT);
+                    break;
+                case EVENT_SANGUINE_FEAST:
+                    HandleFeast();
+                    events.ScheduleEvent(EVENT_SANGUINE_FEAST, TIMER_SANGUINE_FEAST_AFTER);
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new bfa_npc_blood_effigy_AI(creature);
+    }
+};
+
+// 260685 Taint of G'huun
+class bfa_spell_taint_of_ghunn : public SpellScriptLoader
+{
+public:
+    bfa_spell_taint_of_ghunn() : SpellScriptLoader("bfa_spell_taint_of_ghunn") { }
+
+    class bfa_spell_taint_of_ghunn_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(bfa_spell_taint_of_ghunn_AuraScript);
+
+        void HandleAbsorb(AuraEffect* aurEff, HealInfo& healInfo, uint32& absorbAmount)
+        {
+            uint32 heal = healInfo.GetHeal();
+            int32 maxPct = GetAura()->GetEffect(EFFECT_0)->GetAmount();
+            uint64 maxHp = GetTarget()->GetMaxHealth() * maxPct / 100;
+            uint64 hp = GetTarget()->GetHealth();
+            uint64 maxHeal = maxHp - hp;
+
+            if (hp >= maxHp)
+                absorbAmount = heal;
+            else if (heal >= maxHeal)
+                absorbAmount = heal - maxHeal;
+            else
+                absorbAmount = 0;
+        }
+
 
         void OnTick(AuraEffect const* /*aurEff*/)
         {
-            if (Unit* target = GetTarget())
-                if (Creature* leaxa = target->GetInstanceScript()->GetCreature(DATA_ELDER_LEAXA))
-                    leaxa->CastSpell(target, SPELL_TAINT_OF_GHUUN, true);
+            if (Unit* caster = GetTarget())
+            {
+                if (AuraEffect* aurEff = GetAura()->GetEffect(EFFECT_1))
+                    if (AuraEffect* aurEff = GetAura()->GetEffect(EFFECT_1))
+                        aurEff->SetDamage(caster->SpellDamageBonusDone(GetTarget(), GetSpellInfo(), 0, DOT, aurEff->GetSpellEffectInfo(), GetStackAmount()) * aurEff->GetDonePct());
+            }
         }
+
 
         void Register() override
         {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_creeping_rot_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
+            OnEffectHealAbsorb += AuraEffectHealAbsorbFn(bfa_spell_taint_of_ghunn_AuraScript::HandleAbsorb, EFFECT_0);
+            OnEffectPeriodic += AuraEffectPeriodicFn(bfa_spell_taint_of_ghunn_AuraScript::OnTick, EFFECT_1, SPELL_AURA_PERIODIC_DAMAGE);
         }
     };
 
     AuraScript* GetAuraScript() const override
     {
-        return new spell_creeping_rot_AuraScript();
+        return new bfa_spell_taint_of_ghunn_AuraScript();
     }
 };
 
+
+
 void AddSC_boss_elder_leaxa()
 {
-    RegisterCreatureAI(boss_elder_leaxa);
-    RegisterCreatureAI(npc_blood_wave_stalker);
-    RegisterCreatureAI(npc_blood_effigy);
-    RegisterSpellScript(spell_creeping_rot_target_selector);
-    RegisterSpellScript(spell_creeping_rot_summon);
-    RegisterSpellScript(spell_sanguine_feast_target_selector);
-    new at_creeping_rot();
-    new spell_blood_mirror();
-    new spell_blood_bolt();
-    new spell_creeping_rot();
+    new bfa_boss_elder_leaxa();
+    new bfa_npc_blood_effigy();
+    new bfa_npc_creeping_rot_trigger();
+
+    new bfa_spell_taint_of_ghunn();
 }

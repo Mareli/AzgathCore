@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,41 +14,40 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
 #include "SpellAuraEffects.h"
+#include "Creature.h"
+#include "ScriptedGossip.h"
+#include "CreatureAI.h"
 #include "the_underrot.h"
 
-enum UnboundAbominationSpells
+enum Spells
 {
-    // Unbound Abomination
     SPELL_BLOOD_BARRIER                     = 269185,
     SPELL_PUTRID_BLOOD_AURA                 = 269303,
+    SPELL_PUTRID_BLOOD = 269301,
     SPELL_VILE_EXPULSION                    = 269843,
     SPELL_VILE_EXPULSION_SPORE_DEATH_DAMAGE = 250950,
     SPELL_VILE_EXPULSION_AT_DAMAGE          = 269838,
-    SPELL_VILE_EXPULSION_MISSILE_SPAWN      = 269813,
+    SPELL_VILE_EXPULSION_MISSILE_SPAWN      = 269813, // 5 YARDS
     SPELL_VILE_EXPULSION_SPAWN              = 269836,
     SPELL_DISOLVE_CORPSE                    = 265640,
     SPELL_CORPSE_TRANSFORM                  = 265635,
     SPELL_ROTTING_SPORE_SPAWN               = 270104,
     SPELL_ROTTING_SPORE_FIXATE              = 270107,
     SPELL_ROTTING_SPORE_DAMAGE              = 270108,
-
     // Blood Visage
     SPELL_BLOOD_CLONE_COSMETIC              = 272663,
     SPELL_FATAL_LINK                        = 269692,
-
     // Titan Keeper Hezrel
     // Pre-boss event
     SPELL_SHADOW_VISUAL                     = 279551,
     SPELL_HOLY_CHANNEL                      = 279250,
     SPELL_OPEN_WEB_DOOR                     = 279271,
     SPELL_UPDATE_INTERACTIONS               = 187114,
-
     // Boss fight
     SPELL_HOLY_BOLT                         = 269312,
     SPELL_CLEANSING_LIGHT                   = 269310,
@@ -56,429 +55,785 @@ enum UnboundAbominationSpells
     SPELL_PERMANENT_FEIGN_DEATH             = 29266,
 };
 
-// 133007
-struct boss_unbound_abomination : public BossAI
+enum Events
 {
-    boss_unbound_abomination(Creature* creature) : BossAI(creature, DATA_UNBOUND_ABOMINATION) { }
+    EVENT_PUTRID_BLOOD = 1,
+    EVENT_VILE_EXPULSION,
 
-    void Reset() override
-    {
-        _Reset();
+    EVENT_CHECK_ENERGY,
 
-        me->RemoveAurasDueToSpell(SPELL_PUTRID_BLOOD_AURA);
+    EVENT_CLEANSING_LIGHT,
+    EVENT_HOLY_BOLT,
+    EVENT_PURGE_CORRUPTION,
 
-        me->CastSpell(me, SPELL_BLOOD_BARRIER, false);
-        me->SetPowerType(POWER_ENERGY);
-        me->SetPower(POWER_ENERGY, 0);
-
-        if (Creature* hezrel = GetHezrel())
-        {
-            if (hezrel->isDead())
-                hezrel->Respawn(true);
-
-            hezrel->AI()->SetData(DATA_UNBOUND_ABOMINATION, NOT_STARTED);
-        }
-    }
-
-    void EnterCombat(Unit* /*unit*/) override
-    {
-        _EnterCombat();
-
-        me->CastSpell(me, SPELL_PUTRID_BLOOD_AURA, false);
-
-        if (Creature* hezrel = GetHezrel())
-            hezrel->AI()->SetData(DATA_UNBOUND_ABOMINATION, IN_PROGRESS);
-
-        events.ScheduleEvent(SPELL_VILE_EXPULSION, 15s);
-    }
-
-    void ExecuteEvent(uint32 eventId) override
-    {
-        switch (eventId)
-        {
-            case SPELL_VILE_EXPULSION:
-            {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
-                    me->CastSpell(target, SPELL_VILE_EXPULSION, false);
-
-                events.Repeat(15s);
-                break;
-            }
-
-        }
-    }
-
-    void JustDied(Unit* /*killer*/) override
-    {
-        _JustDied();
-
-        if (Creature* hezrel = GetHezrel())
-            hezrel->AI()->SetData(DATA_UNBOUND_ABOMINATION, DONE);
-    }
-
-    void DoAction(int32 action) override
-    {
-        if (action == NPC_BLOOD_VISAGE)
-        {
-            Position centerPosition = { 1199.420044f, 1481.939941f, -181.505997f };
-            Position summonPosition = centerPosition;
-            GetRandPosFromCenterInDist(&centerPosition, 40.f, summonPosition);
-
-            me->SetPower(POWER_ENERGY, 0);
-            me->SummonCreature(NPC_BLOOD_VISAGE, summonPosition, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 2000);
-
-            me->RemoveAurasDueToSpell(SPELL_BLOOD_BARRIER);
-            me->CastSpell(me, SPELL_BLOOD_BARRIER, true);
-        }
-    }
-
-private:
-    Creature* GetHezrel() const { return instance->GetCreature(DATA_BOSS_HERZEL); }
+    EVENT_FIXATE_FOLLOW,
+    EVENT_CHECK_DIST_PLAYER,
+    EVENT_FIXATE,
 };
 
-// 134419
-struct npc_underrot_titan_keeper_hezrel : public ScriptedAI
+enum Timers
 {
-    npc_underrot_titan_keeper_hezrel(Creature* creature) : ScriptedAI(creature) { }
+    TIMER_FIXATE_PLAYER = 1500,
+    TIMER_CHECK_ENERGY = 5 * IN_MILLISECONDS,
+    TIMER_VILE_EXPULSION = 15 *IN_MILLISECONDS,
+    TIMER_PUTRID_BLOOD = 10 * IN_MILLISECONDS,
 
-    Position firstWaypoints[8] =
+    TIMER_CLEANSING_LIGHT = 20 * IN_MILLISECONDS,
+    TIMER_PURGE_CORRUPTION = 7 * IN_MILLISECONDS,
+    TIMER_HOLY_BOLT = 5 * IN_MILLISECONDS,
+
+};
+
+enum Actions
+{
+    ACTION_COUNT_VISAGE = 1,
+    ACTION_COMBAT,
+    ACTION_RP_EVENT,
+    ACTION_RP_EVENT_2,
+    ACTION_RP_EVENT_3,
+    ACTION_RP_EVENT_4,
+    ACTION_RP_EVENT_5,
+    ACTION_RP_EVENT_6,
+};
+
+enum Creatures
+{
+    BOSS_UNBOUND_ABOMINATION = 133007,
+}; 
+
+const Position centerPosition = { 1199.420044f, 1481.939941f, -181.505997f };
+
+enum Sounds
+{
+    SOUND_AGGRO_TITAN = 104794,
+    SOUND_AGGRO_UNBOUND = 102970,
+    SOUND_UNBOUND_VILE = 102967,
+    SOUND_UNBOUND_DEATH = 102966,
+    SOUND_TITAN_CLEANSING = 104788,
+    SOUND_TITAN_PURGE_CORRUPTION = 104790,
+};
+
+enum Points
+{
+    POINT_1 = 1,
+    POINT_2,
+    POINT_3,
+    POINT_4,
+    POINT_5,
+    POINT_6,
+};
+
+const Position MovementPos[6] =
+{
+    { 1032.63f, 1144.16f, 14.60f },
+    { 981.74f, 1152.87f, 14.34f },
+    { 992.49f, 1192.83f, 17.36f },
+    { 982.83f, 1235.51f, 14.39f },
+    { 1045.11f, 1260.05f, 12.48f },
+    { 1097.59f, 1330.80f, 5.81f },
+};
+
+#define TITAN_AGGRO "Virulent specimen Detected. Containment priority one."
+#define UNBOUND_AGGRO "Devour! Consume! Spread!"
+#define UNBOUND_VILE "Infected!"
+#define UNBOUND_DEATH "Must... spread..."
+#define TITAN_CLEANSING "Cleansing area."
+#define TITAN_PURGE_CORRUPTION "Contagion detected. Sanitize."
+
+class bfa_boss_unbound_abomination : public CreatureScript
+{
+public:
+    bfa_boss_unbound_abomination() : CreatureScript("bfa_boss_unbound_abomination")
+    {}
+
+    struct bfa_boss_unbound_abomination_AI : public BossAI
     {
-        { 1034.255737f, 1169.260742f, 12.140393f },
-        { 1034.920898f, 1164.862305f, 14.614284f },
-        { 1042.535156f, 1145.444458f, 14.607360f },
-        { 1063.567749f, 1144.828491f, 14.760351f },
-        { 1077.910767f, 1157.091553f, 14.991093f },
-        { 1077.984619f, 1160.333862f, 17.224142f },
-        { 1077.937378f, 1188.073486f, 20.141348f },
-        { 1075.895142f, 1226.188599f, 15.822451f },
-    };
-
-    Position secondWaypoints[3] =
-    {
-        { 1056.437012f, 1260.391968f, 11.439587f },
-        { 1068.353882f, 1286.912842f,  9.131060f },
-        { 1100.847412f, 1331.036255f,  5.608679f },
-    };
-
-    enum Talks
-    {
-        TALK_BREACH_DETECTED        = 0,
-        TALK_MOTHER_NO_RESPONDING   = 1,
-        TALK_PLANETARY_INFECTION    = 2,
-        TALK_SPECIMEN_DETECTED      = 3,
-
-        TALK_CLEANSING_LIGHT        = 4,
-        TALK_CLEANSING_AREA         = 5,
-        TALK_PURGE_PROTOCOL_ENGAGED = 6,
-        TALK_CONTAGION_DETECTED     = 7,
-        TALK_DEATH                  = 8,
-    };
-
-    void Reset() override
-    {
-        if (me->GetPositionZ() > -100.f)
-            me->CastSpell(me, SPELL_SHADOW_VISUAL, true);
-        else
-            me->CastSpell(me, SPELL_HOLY_CHANNEL, true);
-    }
-
-    void SetData(uint32 type, uint32 action) override
-    {
-        if (type == DATA_EVENT_HERZEL)
+        bfa_boss_unbound_abomination_AI(Creature* creature) : BossAI(creature, DATA_UNBOUND_ABOMINATION), summons(me)
         {
-            if (action == 1)
+            me->SetPowerType(POWER_ENERGY);
+            me->SetMaxPower(POWER_ENERGY, 100);
+            me->SetPower(POWER_ENERGY, 0);
+            instance = me->GetInstanceScript();
+        }
+
+        EventMap events;
+        InstanceScript* instance;
+        SummonList summons;
+        uint8 visage;
+
+        void SelectSoundAndText(Creature* me, uint32  selectedTextSound = 0)
+        {
+            if (!me)
+                return;
+
+            if (me)
             {
-                Talk(TALK_BREACH_DETECTED);
-                me->GetMotionMaster()->MoveSmoothPath(1, firstWaypoints, 8);
-                me->RemoveAurasDueToSpell(SPELL_SHADOW_VISUAL);
-                me->SetAIAnimKitId(0);
-            }
-            else
-            {
-                Talk(TALK_PLANETARY_INFECTION);
-                me->GetMotionMaster()->MoveSmoothPath(2, secondWaypoints, 3);
+                switch (selectedTextSound)
+                {
+                case 1:
+                    me->Yell(UNBOUND_AGGRO, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_AGGRO_UNBOUND);
+                    break;
+                case 2:
+                    me->Yell(UNBOUND_DEATH, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_UNBOUND_DEATH);
+                    break;
+                case 3:
+                    me->Yell(UNBOUND_VILE, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_UNBOUND_VILE);
+                    break;
+                }
             }
         }
-        else if (type == DATA_UNBOUND_ABOMINATION)
+
+        void HardResetCheck()
+        {
+            Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+            for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                if (Player* player = i->GetSource())
+                {
+                    if (!player->IsGameMaster()) //gm check
+                    {
+                        if (!player->IsAlive())
+                        {
+                            if (Creature* titan = GetTitan())
+                            {
+                                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, titan);
+                                me->Kill(titan);
+                            }
+                            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                        }
+                    }
+                }
+        }
+
+        void Reset()
+        {
+            events.Reset();
+            summons.DespawnAll();
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+            me->RemoveAllAreaTriggers();
+        }
+        
+        void JustSummoned(Creature* summon)
+        {
+            summons.Summon(summon);
+
+            switch (summon->GetEntry())
+            {
+            case NPC_BLOOD_VISAGE:
+            case NPC_ROTTING_SPORE:
+                summon->SetInCombatWithZone();
+                break;
+            case NPC_TITAN_KEEPER_HEZREL:
+                summon->SetInCombatWithZone();
+                instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, summon);
+                break;
+            }
+        }
+
+        void JustDied(Unit*)
+        {
+            SelectSoundAndText(me, 2);
+            if (Creature* titan = GetTitan())
+            {
+                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, titan);
+                titan->DespawnOrUnsummon();
+            }
+            summons.DespawnAll();
+            me->RemoveAllAreaTriggers();
+
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+        }
+
+        void EnterEvadeMode(EvadeReason why)
+        {
+            if (Creature* titan = GetTitan())
+                titan->DespawnOrUnsummon();
+            _DespawnAtEvade(15);
+        }
+
+        void DoAction(int32 action)
         {
             switch (action)
             {
-                case NOT_STARTED:
-                case FAIL:
-                    events.Reset();
-                    me->GetMotionMaster()->MoveTargetedHome();
-                    break;
-                case IN_PROGRESS:
-                    Talk(TALK_PURGE_PROTOCOL_ENGAGED);
-                    events.ScheduleEvent(SPELL_HOLY_BOLT,           5s);
-                    events.ScheduleEvent(SPELL_PURGE_CORRUPTION,    15s);
-                    events.ScheduleEvent(SPELL_CLEANSING_LIGHT,     20s);
-                    break;
-                case DONE:
-                    events.Reset();
-                    Talk(TALK_DEATH);
-                    me->CastSpell(me, SPELL_PERMANENT_FEIGN_DEATH, true);
-                    break;
+            case ACTION_COUNT_VISAGE:
+                ++visage;
+
+                if (visage >= 6)
+                {
+                    //select player to kill boss
+                    Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                        if (Player* player = i->GetSource())
+                        {
+                            if (!player->IsGameMaster()) //gm check
+                            {
+                                me->RemoveAura(SPELL_BLOOD_BARRIER);
+                                player->Kill(me, false);
+                            }
+                        }
+                }
             }
         }
-    }
 
-    void MovementInform(uint32 /*type*/, uint32 pointId) override
-    {
-        if (pointId == 1)
-            Talk(TALK_MOTHER_NO_RESPONDING);
-
-        else if (pointId == 2)
+        void DamageTaken(Unit* at, uint32& damage)
         {
-            Talk(TALK_SPECIMEN_DETECTED);
-            me->CastSpell(nullptr, SPELL_OPEN_WEB_DOOR, false);
+            if (me->HasAura(SPELL_BLOOD_BARRIER))
+            {
+                damage = 0;
+                me->SetPower(POWER_ENERGY, me->GetPower(POWER_ENERGY) + 1);
+            }
         }
-        else if (pointId == SPELL_PURGE_CORRUPTION)
+
+        Creature* GetTitan()
         {
-            if (Creature* bloodVisage = me->FindNearestCreature(NPC_BLOOD_VISAGE, 25.f, true))
-                me->CastSpell(bloodVisage, SPELL_PURGE_CORRUPTION, true);
+            return me->FindNearestCreature(NPC_TITAN_KEEPER_HEZREL, 500.0f, true);
         }
-    }
 
-    void UpdateAI(uint32 diff) override
-    {
-        events.Update(diff);
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
-
-        switch (events.ExecuteEvent())
+        void EnterCombat(Unit*)
         {
-            case SPELL_HOLY_BOLT:
-                me->CastSpell(nullptr, SPELL_HOLY_BOLT, false);
-                events.Repeat(5s);
-                break;
-            case SPELL_PURGE_CORRUPTION:
-                if (Creature* bloodVisage = me->FindNearestCreature(NPC_BLOOD_VISAGE, 25.f, true))
+            SelectSoundAndText(me, 1);
+            visage = 0;
+
+            me->RemoveAllAreaTriggers();
+            me->AddAura(SPELL_BLOOD_BARRIER, me);
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+
+            if (Creature* titan = me->SummonCreature(NPC_TITAN_KEEPER_HEZREL, centerPosition.GetPositionX(), centerPosition.GetPositionY(), centerPosition.GetPositionZ(), TEMPSUMMON_MANUAL_DESPAWN))
+                titan->AI()->DoAction(ACTION_COMBAT);
+
+            events.ScheduleEvent(EVENT_PUTRID_BLOOD, TIMER_PUTRID_BLOOD);
+            events.ScheduleEvent(EVENT_VILE_EXPULSION, TIMER_VILE_EXPULSION);
+            events.ScheduleEvent(EVENT_CHECK_ENERGY, TIMER_CHECK_ENERGY);
+        }
+
+
+        void OnSpellFinished(SpellInfo const* spellInfo) override
+        {
+            switch (spellInfo->Id)
+            {
+            case SPELL_VILE_EXPULSION:
+            {
+                std::list<Unit*> targets;
+                SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+
+                if (!targets.empty())
+                    if (targets.size() >= 1)
+                        targets.resize(1);
+                for (auto target : targets)
                 {
-                    if (me->GetDistance(bloodVisage) < 10.f)
+                    for (uint8 i = 0; i < 5; ++i)
+                        me->CastSpell(me->GetPositionX() + 2 * i, me->GetPositionY(), me->GetPositionZ(), SPELL_VILE_EXPULSION_MISSILE_SPAWN);
+                }
+                break;
+            }
+            }
+        }
+
+        void UpdateAI(uint32 diff)
+        {
+            events.Update(diff);
+
+            if (me->IsInCombat())
+                HardResetCheck();
+
+            if (!UpdateVictim())
+                return;
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            while (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_PUTRID_BLOOD:
+                {
+                    Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                        if (Player* player = i->GetSource())
+                        {
+                            if (!player->IsGameMaster()) //gm check
+                            {
+                                me->CastSpell(player, SPELL_PUTRID_BLOOD, true);
+                            }
+                        }
+                    events.ScheduleEvent(EVENT_PUTRID_BLOOD, TIMER_PUTRID_BLOOD);
+                    break;
+                }
+                case EVENT_VILE_EXPULSION:
+                {
+                    SelectSoundAndText(me, 3);
+                    me->CastSpell(me, SPELL_VILE_EXPULSION);
+                    events.RescheduleEvent(EVENT_VILE_EXPULSION, TIMER_VILE_EXPULSION);
+                    break;
+                }
+                case EVENT_CHECK_ENERGY:
+                    if (me->GetPower(POWER_ENERGY) == 100)
                     {
-                        Talk(TALK_CONTAGION_DETECTED);
-                        me->CastSpell(bloodVisage, SPELL_PURGE_CORRUPTION, true);
-                        events.Repeat(15s);
+                        if (Creature* visage1 = me->SummonCreature(NPC_BLOOD_VISAGE, 1228.46f, 1459.84f, -181.44f, TEMPSUMMON_CORPSE_DESPAWN))
+                            visage1->SetInCombatWithZone();
+                        if (Creature* visage2 = me->SummonCreature(NPC_BLOOD_VISAGE, 1168.01f, 1499.57f, -181.48f, TEMPSUMMON_CORPSE_DESPAWN))
+                            visage2->SetInCombatWithZone();
+
+                        me->SetPower(POWER_ENERGY, 0);
                     }
                     else
-                    {
-                        float x, y, z;
-                        me->GetContactPoint(bloodVisage, x, y, z, 5.f);
-                        me->GetMotionMaster()->MovePoint(SPELL_PURGE_CORRUPTION, x, y, z);
-
-                        events.Repeat(20s);
-                    }
+                        me->SetPower(POWER_ENERGY, me->GetPower(POWER_ENERGY) - urand(5, 10));
+                    events.ScheduleEvent(EVENT_CHECK_ENERGY, TIMER_CHECK_ENERGY);
+                    break;
                 }
-                else
-                    events.Repeat(5s);
-                break;
-            case SPELL_CLEANSING_LIGHT:
-                if (Creature* abomination = instance->GetCreature(NPC_UNBOUND_ABOMINATION))
-                {
-                    if (Unit* player = abomination->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 0.f, true))
-                    {
-                        Talk(TALK_CLEANSING_LIGHT);
-                        me->CastSpell(player, SPELL_CLEANSING_LIGHT, false);
-                    }
-                }
-
-                events.Repeat(20s);
-                break;
-            default:
-                break;
-        }
-    }
-};
-
-// 137103
-struct npc_underrot_blood_visage : public ScriptedAI
-{
-    npc_underrot_blood_visage(Creature* creature) : ScriptedAI(creature) { }
-
-    void Reset() override
-    {
-        me->SetInCombatWithZone();
-        me->CastSpell(me, SPELL_BLOOD_CLONE_COSMETIC, true);
-    }
-
-    void JustDied(Unit* /*killer*/) override
-    {
-        me->CastSpell(me, SPELL_FATAL_LINK, true);
-    }
-};
-
-// 137458
-struct npc_underrot_rotting_spore : public ScriptedAI
-{
-    npc_underrot_rotting_spore(Creature* creature) : ScriptedAI(creature) { }
-
-    void Reset() override
-    {
-        me->CastSpell(me, SPELL_ROTTING_SPORE_SPAWN, true);
-
-        FixateNearPlayer();
-
-        me->GetScheduler().Schedule(1s, [this](TaskContext context)
-        {
-            if (Player* player = me->SelectNearestPlayer(3.f))
-            {
-                me->CastSpell(player, SPELL_ROTTING_SPORE_DAMAGE, true);
-                me->KillSelf();
             }
-            else
-                context.Repeat();
-
-            if (me->GetMotionMaster()->empty())
-                FixateNearPlayer();
-        });
-    }
-
-    void JustDied(Unit* /*killer*/) override
-    {
-        me->CastSpell(nullptr, SPELL_VILE_EXPULSION_SPORE_DEATH_DAMAGE, true);
-
-        if (Creature* abomination = instance->GetCreature(NPC_UNBOUND_ABOMINATION))
-            abomination->CastSpell(me->GetPosition(), SPELL_VILE_EXPULSION_SPAWN, true);
-    }
-
-private:
-    void FixateNearPlayer()
-    {
-        if (Player* player = me->SelectNearestPlayer(50.f))
-        {
-            me->CastSpell(player, SPELL_ROTTING_SPORE_FIXATE, false);
-            me->GetMotionMaster()->MoveChase(player);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new bfa_boss_unbound_abomination_AI(creature);
     }
 };
 
-// Blood Barrier - 269185
-class aura_unbound_abomination_blood_barrier : public AuraScript
+class bfa_npc_titan_keeper_hezrel : public CreatureScript
 {
-    PrepareAuraScript(aura_unbound_abomination_blood_barrier);
+public:
+    bfa_npc_titan_keeper_hezrel() : CreatureScript("bfa_npc_titan_keeper_hezrel")
+    {}
 
-    void HandleAbsorb(AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
+
+    bool OnGossipHello(Player* player, Creature* me)
     {
-        if (dmgInfo.GetSpellInfo() && dmgInfo.GetSpellInfo()->Id == SPELL_FATAL_LINK)
+        if (!me || !player)
+            return false;
+
+        AddGossipItemFor(player, 0, "Show me the abomination.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+        SendGossipMenuFor(player, 1, me);
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* pPlayer, Creature* pCreature, uint32 /*sender*/, uint32 action) override
+    {
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)
         {
-            absorbAmount = 0;
-            return;
+            pPlayer->TeleportTo(1841, 1221.52f, 1525.49f, -181.81f, 4.39f, 0,0);
+            pCreature->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         }
 
-        int32 absorbLeft = aurEff->GetAmount();
-        int32 totalAbsorb = aurEff->CalculateAmount(GetTarget());
-
-        if (!totalAbsorb)
-            return;
-
-        int32 energy = (int32)std::ceil(float(totalAbsorb - absorbLeft) / float(totalAbsorb) * 100.f);
-        GetTarget()->SetPower(POWER_ENERGY, energy);
-
-        absorbAmount = dmgInfo.GetDamage();
+        return true;
     }
 
-    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_DEATH)
-            return;
 
-        if (Creature* targetCreature = GetTarget()->ToCreature())
-            if (targetCreature->IsAIEnabled)
-                targetCreature->AI()->DoAction(NPC_BLOOD_VISAGE);
-    }
-
-    void Register() override
+    struct bfa_npc_titan_keeper_hezrel_AI : public ScriptedAI
     {
-        OnEffectAbsorb += AuraEffectAbsorbFn(aura_unbound_abomination_blood_barrier::HandleAbsorb, EFFECT_0);
-        AfterEffectRemove += AuraEffectRemoveFn(aura_unbound_abomination_blood_barrier::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        bfa_npc_titan_keeper_hezrel_AI(Creature* creature) : ScriptedAI(creature)
+        {
+            me->AddUnitState(UNIT_STATE_ROOT);
+        }
+
+        EventMap events;
+        bool combat;
+        EventMap rpevents;
+        
+        void Reset()
+        {
+            combat = false;
+            events.Reset();
+            rpevents.Reset();
+        }
+
+        Creature* GetAbomination()
+        {
+            return me->FindNearestCreature(BOSS_UNBOUND_ABOMINATION, 500.0f, true);
+        }
+
+        void MovementInform(uint32 type, uint32 pointId)
+        {
+            switch (pointId)
+            {
+            case POINT_1:
+                rpevents.ScheduleEvent(ACTION_RP_EVENT_2, 500);
+                break;
+            case POINT_2:
+                rpevents.ScheduleEvent(ACTION_RP_EVENT_3, 500);
+                break;
+            case POINT_3:
+                rpevents.ScheduleEvent(ACTION_RP_EVENT_4, 500);
+                break;
+            case POINT_4:
+                rpevents.ScheduleEvent(ACTION_RP_EVENT_5, 500);
+                break;
+            case POINT_5:
+                rpevents.ScheduleEvent(ACTION_RP_EVENT_6, 500);
+                break;
+            case POINT_6:
+                me->SetNpcFlags(UNIT_NPC_FLAG_GOSSIP);
+                break;
+            }
+        }
+
+        void DoAction(int32 action)
+        {
+            switch (action)
+            {
+            case ACTION_RP_EVENT:
+            {
+                me->GetScheduler().Schedule(2s, [this](TaskContext /*context*/)
+                {
+                    me->GetMotionMaster()->MovePoint(POINT_1, MovementPos[0], false);
+                });
+                break;
+            }
+            case ACTION_COMBAT:
+                if (Creature* abo = GetAbomination())
+                    me->Attack(abo, false);
+                combat = true;
+                SelectSoundAndText(me, 1);
+                events.ScheduleEvent(EVENT_HOLY_BOLT, TIMER_HOLY_BOLT);
+                events.ScheduleEvent(EVENT_CLEANSING_LIGHT, TIMER_CLEANSING_LIGHT);
+                break;
+            }
+        }
+
+        void SelectSoundAndText(Creature* me, uint32  selectedTextSound = 0)
+        {
+            if (!me)
+                return;
+
+            if (me)
+            {
+                switch (selectedTextSound)
+                {
+                case 1:
+                    me->Yell(TITAN_AGGRO, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_AGGRO_TITAN);
+                    break;
+                case 2:
+                    me->Yell(TITAN_CLEANSING, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_TITAN_CLEANSING);
+                    break;
+                case 3:
+                    me->Yell(TITAN_PURGE_CORRUPTION, LANG_UNIVERSAL, NULL);
+                    me->PlayDirectSound(SOUND_TITAN_PURGE_CORRUPTION);
+                    break;
+                }
+            }
+        }
+
+        void UpdateAI(uint32 diff)
+        {
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (!combat)
+            {
+                while (uint32 eventId = rpevents.ExecuteEvent())
+                {
+                    switch (eventId)
+                    {
+                    case ACTION_RP_EVENT_2:
+                        me->GetMotionMaster()->MovePoint(POINT_2, MovementPos[1]);
+                        break;
+                    case ACTION_RP_EVENT_3:
+                        me->GetMotionMaster()->MovePoint(POINT_3, MovementPos[2]);
+                        break;
+                    case ACTION_RP_EVENT_4:
+                        me->GetMotionMaster()->MovePoint(POINT_4, MovementPos[3]);
+                        break;
+                    case ACTION_RP_EVENT_5:
+                        me->GetMotionMaster()->MovePoint(POINT_5, MovementPos[4]);
+                        break;
+                    case ACTION_RP_EVENT_6:
+                        me->GetMotionMaster()->MovePoint(POINT_6, MovementPos[5]);
+                        break;
+                    }
+                }
+            }
+
+            if(combat)
+            { 
+                while (uint32 eventId = events.ExecuteEvent())
+                {
+                    switch (eventId)
+                    {
+                    case EVENT_HOLY_BOLT:
+                    {
+                        std::list<Creature*> cList;
+                        me->GetCreatureListWithEntryInGrid(cList, BOSS_UNBOUND_ABOMINATION, 100.0f);
+                        if (!cList.empty())
+                        {
+                            if (cList.size() >= 1)
+                                cList.resize(1);
+
+                            for (auto visage : cList)
+                            {
+                                me->CastSpell(visage, SPELL_HOLY_BOLT);
+                            }
+                        }
+                        events.ScheduleEvent(EVENT_PURGE_CORRUPTION, TIMER_PURGE_CORRUPTION);
+                        break;
+                    }
+                    case EVENT_PURGE_CORRUPTION:
+                    {
+                        std::list<Creature*> cList;
+                        me->GetCreatureListWithEntryInGrid(cList, NPC_BLOOD_VISAGE, 100.0f);
+                        if (!cList.empty())
+                        {
+                            if (cList.size() >= 1)
+                                cList.resize(1);
+
+                            for (auto visage : cList)
+                            {
+                                SelectSoundAndText(me, 3);
+                                me->CastSpell(visage, SPELL_PURGE_CORRUPTION);
+                            }
+                        }
+                        events.ScheduleEvent(EVENT_HOLY_BOLT, TIMER_HOLY_BOLT);
+                        break;
+                    }
+                    case EVENT_CLEANSING_LIGHT:
+                    {
+                        SelectSoundAndText(me, 2);
+                        std::ostringstream str;
+                        str << "Titan Keeper Hazrel begins to cast |cFFF00000|h[Cleansing Light]|h|r !";
+                        me->TextEmote(str.str().c_str(), 0, true);
+
+                        std::list<Unit*> targets;
+                        SelectTargetList(targets, 1, SELECT_TARGET_RANDOM, 500.0f, true);
+
+                        if (!targets.empty())
+                            if (targets.size() >= 1)
+                                targets.resize(1);
+                        for (auto target : targets)
+                        {
+                            me->CastSpell(target, SPELL_CLEANSING_LIGHT);
+                            std::list<AreaTrigger*> areatriggers = target->SelectNearestAreaTriggers(SPELL_VILE_EXPULSION_SPAWN, 100.f);
+                            for (AreaTrigger* at : areatriggers)
+                                if (at->GetDistance(target) < 10.f)
+                                    at->SetDuration(0);
+
+                        }
+
+                        events.ScheduleEvent(EVENT_CLEANSING_LIGHT, TIMER_CLEANSING_LIGHT);
+                        break;
+                    }
+                    }
+                }
+            }
+            DoMeleeAttackIfReady();
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new bfa_npc_titan_keeper_hezrel_AI(creature);
     }
 };
 
-// Vile Expulsion - 269843
-class spell_underrot_vile_expulsion : public SpellScript
+class bfa_npc_blood_visage : public CreatureScript
 {
-    PrepareSpellScript(spell_underrot_vile_expulsion);
+public:
+    bfa_npc_blood_visage() : CreatureScript("bfa_npc_blood_visage")
+    {}
 
-    void HandleAfterCast()
+    struct bfa_npc_blood_visage_AI : public ScriptedAI
     {
-        for (uint8 i = 0; i < 5; ++i)
-            GetCaster()->CastSpell(nullptr, SPELL_VILE_EXPULSION_MISSILE_SPAWN, true);
-    }
+        bfa_npc_blood_visage_AI(Creature* creature) : ScriptedAI(creature)
+        {
+        }
 
-    void Register() override
+        Creature* GetUnbound()
+        {
+            return me->FindNearestCreature(BOSS_UNBOUND_ABOMINATION, 500.0f, true);
+        }
+
+        void DamageTaken(Unit* at, uint32& damage)
+        {
+            if (damage >= me->GetHealth())
+            {
+                if (Creature* unbound = GetUnbound())
+                {
+                    unbound->AI()->DoAction(ACTION_COUNT_VISAGE);
+                    me->CastSpell(unbound, SPELL_FATAL_LINK, true);
+                }
+            }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        AfterCast += SpellCastFn(spell_underrot_vile_expulsion::HandleAfterCast);
+        return new bfa_npc_blood_visage_AI(creature);
     }
 };
 
-// Cleansing Light - 269310
-class spell_underrot_cleansing_light : public SpellScript
+class bfa_npc_rotting_spore : public CreatureScript
 {
-    PrepareSpellScript(spell_underrot_cleansing_light);
+public:
+    bfa_npc_rotting_spore() : CreatureScript("bfa_npc_rotting_spore")
+    {}
 
-    void HandleDummy(SpellEffIndex /*effIndex*/)
+    struct bfa_npc_rotting_spore_AI : public ScriptedAI
     {
-        WorldLocation* dest = GetHitDest();
-        if (!dest)
-            return;
+        bfa_npc_rotting_spore_AI(Creature* creature) : ScriptedAI(creature)
+        {
+            me->SetWalk(true);
+        }
 
-        std::list<AreaTrigger*> areatriggers = GetCaster()->SelectNearestAreaTriggers(SPELL_VILE_EXPULSION_SPAWN, 100.f);
-        for (AreaTrigger* at : areatriggers)
-            if (at->GetDistance(*dest) < 10.f)
-                at->SetDuration(0);
-    }
+        EventMap events;
 
-    void Register() override
+        void Reset()
+        {
+            events.Reset();
+        }
+
+        void EnterCombat(Unit*)
+        {
+            me->SetReactState(REACT_AGGRESSIVE);
+
+            events.ScheduleEvent(EVENT_FIXATE, TIMER_FIXATE_PLAYER);
+            events.ScheduleEvent(EVENT_CHECK_DIST_PLAYER, 3000);
+        }
+
+        Creature* GetUnbound()
+        {
+            return me->FindNearestCreature(BOSS_UNBOUND_ABOMINATION, 500.0f, true);
+        }
+
+        void DamageTaken(Unit* a, uint32& damage)
+        {
+            if (damage >= me->GetHealth())
+            {
+                if(Creature* boss = GetUnbound())
+                    boss->CastSpell(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), SPELL_VILE_EXPULSION_MISSILE_SPAWN, true);
+                me->DespawnOrUnsummon();
+            }
+        }
+
+        void CheckNearbyPlayers()
+        {
+            Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+            for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                if (Player* player = i->GetSource())
+                {
+                    if (!player->IsGameMaster()) //gm check
+                    {
+                        if (me->GetDistance(player) <= 1.5f)
+                        {
+                            me->CastSpell(player, SPELL_ROTTING_SPORE_DAMAGE);
+                            if (Creature* boss = GetUnbound())
+                                boss->CastSpell(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), SPELL_VILE_EXPULSION_MISSILE_SPAWN, true);
+                            me->DespawnOrUnsummon();
+                        }
+                    }
+                }
+        }
+
+        void UpdateAI(uint32 diff)
+        {
+            events.Update(diff);
+
+            while (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_FIXATE:
+                {
+                    std::list<Unit*> targets;
+                    SelectTargetList(targets, 1, SELECT_TARGET_RANDOM, 500.0f, true);
+
+                    if (!targets.empty())
+                        if (targets.size() >= 1)
+                            targets.resize(1);
+
+                    for (auto target : targets)
+                    {
+                        me->AddThreat(target, 9999999999.9f);
+                        me->AI()->AttackStart(target);
+                    }
+                    events.ScheduleEvent(EVENT_FIXATE_FOLLOW, 2000);
+                    break;
+                }
+                case EVENT_FIXATE_FOLLOW:
+                    if (Unit* victim = me->GetVictim())
+                    {
+                        me->GetMotionMaster()->MoveFollow(victim, 0.0f, 0.0f);
+
+                    }
+                    events.ScheduleEvent(EVENT_FIXATE_FOLLOW, 1000);
+                    break;
+                case EVENT_CHECK_DIST_PLAYER:
+                {
+                    CheckNearbyPlayers();
+                    events.ScheduleEvent(EVENT_CHECK_DIST_PLAYER, 2000);
+                    break;
+                }
+                }
+            }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        OnEffectHit += SpellEffectFn(spell_underrot_cleansing_light::HandleDummy, EFFECT_0, SPELL_EFFECT_REMOVE_AURA);
+        return new bfa_npc_rotting_spore_AI(creature);
     }
 };
 
-// Vile Expulsion - 269836
-// AT 17928
-struct at_underrot_vile_expulsion : AreaTriggerAI
+// 17928
+class bfa_at_vile_expulsion : public AreaTriggerEntityScript
 {
-    at_underrot_vile_expulsion(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+public:
+    bfa_at_vile_expulsion() : AreaTriggerEntityScript("bfa_at_vile_expulsion")
+    {}
 
-    void OnInitialize() override
+    struct bfa_at_vile_expulsion_AI : public AreaTriggerAI
     {
-        at->SetPeriodicProcTimer(urand(20000, 40000));
-    }
+        bfa_at_vile_expulsion_AI(AreaTrigger* at) : AreaTriggerAI(at)
+        {}
+        void OnInitialize() override
+        {
+            at->SetPeriodicProcTimer(30 * IN_MILLISECONDS);
+        }
 
-    void OnUnitEnter(Unit* unit) override
+        void OnUnitEnter(Unit* unit) override
+        {
+            if (Unit* caster = at->GetCaster())
+                if (caster->IsValidAttackTarget(unit))
+                    unit->CastSpell(unit, SPELL_VILE_EXPULSION_AT_DAMAGE, true);
+        }
+
+        void OnUnitExit(Unit* unit) override
+        {
+            unit->RemoveAurasDueToSpell(SPELL_VILE_EXPULSION_AT_DAMAGE);
+        }
+
+        void OnPeriodicProc() override
+        {
+            at->SetDuration(110 * IN_MILLISECONDS);
+
+            if (Unit* caster = at->GetCaster())
+                if (caster->GetMap()->IsHeroic() || caster->GetMap()->IsMythic())
+                    caster->SummonCreature(NPC_ROTTING_SPORE, at->GetPosition(), TEMPSUMMON_CORPSE_DESPAWN);
+        }
+
+    };
+
+    AreaTriggerAI* GetAI(AreaTrigger* at) const override
     {
-        if (Unit* caster = at->GetCaster())
-            if (caster->IsValidAttackTarget(unit))
-                unit->CastSpell(unit, SPELL_VILE_EXPULSION_AT_DAMAGE, true);
-    }
-
-    void OnUnitExit(Unit* unit) override
-    {
-        unit->RemoveAurasDueToSpell(SPELL_VILE_EXPULSION_AT_DAMAGE);
-    }
-
-    void OnPeriodicProc() override
-    {
-        at->SetDuration(0);
-
-        if (Unit* caster = at->GetCaster())
-            if (caster->GetMap()->IsHeroic())
-                caster->SummonCreature(NPC_ROTTING_SPORE, at->GetPosition(), TEMPSUMMON_CORPSE_DESPAWN);
+        return new bfa_at_vile_expulsion_AI(at);
     }
 };
+
 
 void AddSC_boss_unbound_abomination()
 {
-    RegisterCreatureAI(boss_unbound_abomination);
-    RegisterCreatureAI(npc_underrot_titan_keeper_hezrel);
-    RegisterCreatureAI(npc_underrot_blood_visage);
-    RegisterCreatureAI(npc_underrot_rotting_spore);
+    new bfa_boss_unbound_abomination();
+    new bfa_npc_blood_visage();
+    new bfa_npc_rotting_spore();
+    new bfa_npc_titan_keeper_hezrel();
 
-    RegisterAuraScript(aura_unbound_abomination_blood_barrier);
-    RegisterSpellScript(spell_underrot_vile_expulsion);
-    RegisterSpellScript(spell_underrot_cleansing_light);
-
-    RegisterAreaTriggerAI(at_underrot_vile_expulsion);
+    new bfa_at_vile_expulsion();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,17 +19,17 @@
 #include "world_bosses_zuldazar.h"
 
 enum Events{
-    EVENT_SHAKE_LOSE = 1,
-    EVENT_PRIMAL_RAGE = 2,
+    EVENT_SHAKE_LOSE   = 1,
+    EVENT_PRIMAL_RAGE  = 2,
     EVENT_SONIC_BELLOW = 3,
 };
 
 enum Spells {
-    SPELL_SHAKE_LOSE = 276046,
-    SPELL_PRIMAL_RAGE = 275200,
-    SPELL_SONIC_BELLOW = 275175,
-    SPELL_SHAKE_LOSE_DMG = 276055,
-    SPELL_SHAKE_LOSE_SUMMON = 276053,
+    SPELL_SHAKE_LOSE          = 276046,
+    SPELL_PRIMAL_RAGE         = 275200,
+    SPELL_SONIC_BELLOW        = 275175,
+    SPELL_SHAKE_LOSE_DMG      = 276055,
+    SPELL_SHAKE_LOSE_SUMMON   = 276053,
     SPELL_SONIC_BELLOW_VISUAL = 275177,
 };
 
