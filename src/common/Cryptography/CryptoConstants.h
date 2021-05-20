@@ -15,25 +15,21 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _VMAPFACTORY_H
-#define _VMAPFACTORY_H
+#ifndef TRINITY_CRYPTO_CONSTANTS_H
+#define TRINITY_CRYPTO_CONSTANTS_H
 
-#include "IVMapManager.h"
+#include "Define.h"
 
-/**
-This is the access point to the VMapManager.
-*/
-
-namespace VMAP
+namespace Trinity
 {
-    //===========================================================
-
-    class TC_COMMON_API VMapFactory
+namespace Crypto
+{
+    struct Constants
     {
-        public:
-            static IVMapManager* createOrGetVMapManager();
-            static void clear();
+        static constexpr size_t SHA1_DIGEST_LENGTH_BYTES = 20;
+        static constexpr size_t SHA256_DIGEST_LENGTH_BYTES = 32;
     };
-
 }
+}
+
 #endif

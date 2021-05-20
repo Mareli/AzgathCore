@@ -15,25 +15,12 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _VMAPFACTORY_H
-#define _VMAPFACTORY_H
+#include "CryptoRandom.h"
+#include "Errors.h"
+#include <openssl/rand.h>
 
-#include "IVMapManager.h"
-
-/**
-This is the access point to the VMapManager.
-*/
-
-namespace VMAP
+void Trinity::Crypto::GetRandomBytes(uint8* buf, size_t len)
 {
-    //===========================================================
-
-    class TC_COMMON_API VMapFactory
-    {
-        public:
-            static IVMapManager* createOrGetVMapManager();
-            static void clear();
-    };
-
+    int result = RAND_bytes(buf, len);
+    ASSERT(result == 1, "Not enough randomness in OpenSSL's entropy pool. What in the world are you running on?");
 }
-#endif

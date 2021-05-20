@@ -15,25 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _VMAPFACTORY_H
-#define _VMAPFACTORY_H
+#ifndef TRINITY_AUTHDEFINES_H
+#define TRINITY_AUTHDEFINES_H
 
-#include "IVMapManager.h"
+#include "Define.h"
+#include <array>
 
-/**
-This is the access point to the VMapManager.
-*/
+constexpr size_t SESSION_KEY_LENGTH = 40;
+using SessionKey = std::array<uint8, SESSION_KEY_LENGTH>;
 
-namespace VMAP
-{
-    //===========================================================
-
-    class TC_COMMON_API VMapFactory
-    {
-        public:
-            static IVMapManager* createOrGetVMapManager();
-            static void clear();
-    };
-
-}
 #endif

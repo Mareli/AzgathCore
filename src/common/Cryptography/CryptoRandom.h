@@ -15,25 +15,33 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _VMAPFACTORY_H
-#define _VMAPFACTORY_H
+#ifndef TRINITY_CRYPTORANDOM_H
+#define TRINITY_CRYPTORANDOM_H
 
-#include "IVMapManager.h"
+#include "Define.h"
+#include <array>
+#include "advstd.h"
 
-/**
-This is the access point to the VMapManager.
-*/
-
-namespace VMAP
+namespace Trinity
 {
-    //===========================================================
+namespace Crypto
+{
+    void TC_COMMON_API GetRandomBytes(uint8* buf, size_t len);
 
-    class TC_COMMON_API VMapFactory
+    template <typename Container>
+    void GetRandomBytes(Container& c)
     {
-        public:
-            static IVMapManager* createOrGetVMapManager();
-            static void clear();
-    };
+        GetRandomBytes(advstd::data(c), advstd::size(c));
+    }
 
+    template <size_t S>
+    std::array<uint8, S> GetRandomBytes()
+    {
+        std::array<uint8, S> arr;
+        GetRandomBytes(arr);
+        return arr;
+    }
 }
+}
+
 #endif
