@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,15 +23,15 @@
 
 #define PET_FOCUS_REGEN_INTERVAL 4 * IN_MILLISECONDS
 
-enum StableResultCode
+enum class StableResult : uint8
 {
-    STABLE_ERR_MONEY        = 0x01,                         // "you don't have enough money"
-    STABLE_ERR_INVALID_SLOT = 0x03,                         // "That slot is locked"
-    STABLE_SUCCESS_STABLE   = 0x08,                         // stable success
-    STABLE_SUCCESS_UNSTABLE = 0x09,                         // unstable/swap success
-    STABLE_SUCCESS_BUY_SLOT = 0x0A,                         // buy slot success
-    STABLE_ERR_EXOTIC       = 0x0B,                         // "you are unable to control exotic creatures"
-    STABLE_ERR_STABLE       = 0x0C                          // "Internal pet error"
+    NotEnoughMoney        = 1,                              // "you don't have enough money"
+    InvalidSlot           = 3,                              // "That slot is locked"
+    StableSuccess         = 8,                              // stable success
+    UnstableSuccess       = 9,                              // unstable/swap success
+    BuySlotSuccess        = 10,                             // buy slot success
+    CantControlExotic     = 11,                             // "you are unable to control exotic creatures"
+    InternalError         = 12,                             // "Internal pet error"
 };
 
 struct PetSpell
@@ -167,6 +166,7 @@ class TC_GAME_API Pet : public Guardian
         void SetActive(bool active) { m_petActive = active; }
 
     protected:
+        Player* m_owner;
         PetType m_petType;
         int32   m_duration;                                 // time until unsummon (used mostly for summoned guardians and not used for controlled pets)
         bool    m_loading;

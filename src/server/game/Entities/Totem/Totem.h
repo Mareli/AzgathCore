@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,7 +24,7 @@ enum TotemType
 {
     TOTEM_PASSIVE    = 0,
     TOTEM_ACTIVE     = 1,
-    TOTEM_STATUE     = 2 // copied straight from MaNGOS, may need more implementation to work
+    TOTEM_STATUE     = 2 // Might need more implementation to work
 };
 
 class TC_GAME_API Totem : public Minion

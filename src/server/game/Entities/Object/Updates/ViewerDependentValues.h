@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,28 +36,10 @@ class ViewerDependentValue
 };
 
 template<>
-class ViewerDependentValue<UF::ObjectData::EntryIDTag>
-{
-public:
-    using ValueType = UF::ObjectData::EntryIDTag::ValueType;
-
-    static ValueType GetValue(ValueType entryID, Object const* object, Player const* /*receiver*/)
-    {
-        if (Unit const* unit = object->ToUnit())
-            if (TempSummon const* tempSummon = unit->ToTempSummon())
-                if (tempSummon->GetSummonerGUID() == object->GetGUID())
-                    if (uint32 specificEntry = tempSummon->GetSummonerSpecificEntry())
-                        entryID = specificEntry;
-
-        return entryID;
-    }
-};
-
-template<>
 class ViewerDependentValue<UF::ObjectData::DynamicFlagsTag>
 {
 public:
-    using ValueType = UF::ObjectData::DynamicFlagsTag::ValueType;
+    using ValueType = UF::ObjectData::DynamicFlagsTag::value_type;
 
     static ValueType GetValue(ValueType dynamicFlags, Object const* object, Player const* receiver)
     {
@@ -67,7 +49,7 @@ public:
 
             if (Creature const* creature = object->ToCreature())
             {
-                if (creature->HasLootRecipients() && !creature->IsTappedBy(receiver))
+                if (creature->hasLootRecipient() && !creature->IsTappedBy(receiver))
                     dynamicFlags |= UNIT_DYNFLAG_TAPPED;
 
                 if (!receiver->isAllowedToLoot(creature))
@@ -125,7 +107,7 @@ template<>
 class ViewerDependentValue<UF::UnitData::DisplayIDTag>
 {
 public:
-    using ValueType = UF::UnitData::DisplayIDTag::ValueType;
+    using ValueType = UF::UnitData::DisplayIDTag::value_type;
 
     static ValueType GetValue(ValueType displayId, Unit const* unit, Player const* receiver)
     {
@@ -139,8 +121,8 @@ public:
             CreatureTemplate const* cinfo = unit->ToCreature()->GetCreatureTemplate();
 
             // this also applies for transform auras
-            if (SpellInfo const* transform = sSpellMgr->GetSpellInfo(unit->getTransForm()))
-                for (SpellEffectInfo const* effect : transform->GetEffectsForDifficulty(unit->GetMap()->GetDifficultyID()))
+            if (SpellInfo const* transform = sSpellMgr->GetSpellInfo(unit->getTransForm(), unit->GetMap()->GetDifficultyID()))
+                for (SpellEffectInfo const* effect : transform->GetEffects())
                     if (effect && effect->IsAura(SPELL_AURA_TRANSFORM))
                         if (CreatureTemplate const* transformInfo = sObjectMgr->GetCreatureTemplate(effect->MiscValue))
                         {
@@ -165,7 +147,7 @@ template<>
 class ViewerDependentValue<UF::UnitData::FactionTemplateTag>
 {
 public:
-    using ValueType = UF::UnitData::FactionTemplateTag::ValueType;
+    using ValueType = UF::UnitData::FactionTemplateTag::value_type;
 
     static ValueType GetValue(ValueType factionTemplate, Unit const* unit, Player const* receiver)
     {
@@ -175,7 +157,7 @@ public:
             FactionTemplateEntry const* ft2 = receiver->GetFactionTemplateEntry();
             if (ft1 && ft2 && !ft1->IsFriendlyTo(ft2))
                 // pretend that all other HOSTILE players have own faction, to allow follow, heal, rezz (trade wont work)
-                factionTemplate = receiver->getFaction();
+                factionTemplate = receiver->GetFaction();
         }
 
         return factionTemplate;
@@ -186,7 +168,7 @@ template<>
 class ViewerDependentValue<UF::UnitData::FlagsTag>
 {
 public:
-    using ValueType = UF::UnitData::FlagsTag::ValueType;
+    using ValueType = UF::UnitData::FlagsTag::value_type;
 
     static ValueType GetValue(ValueType flags, uint32 flagIndex, Unit const* /*unit*/, Player const* receiver)
     {
@@ -211,7 +193,7 @@ template<>
 class ViewerDependentValue<UF::UnitData::AuraStateTag>
 {
 public:
-    using ValueType = UF::UnitData::AuraStateTag::ValueType;
+    using ValueType = UF::UnitData::AuraStateTag::value_type;
 
     static ValueType GetValue(ValueType /*auraState*/, Unit const* unit, Player const* receiver)
     {
@@ -224,7 +206,7 @@ template<>
 class ViewerDependentValue<UF::UnitData::PvpFlagsTag>
 {
 public:
-    using ValueType = UF::UnitData::PvpFlagsTag::ValueType;
+    using ValueType = UF::UnitData::PvpFlagsTag::value_type;
 
     static ValueType GetValue(ValueType pvpFlags, Unit const* unit, Player const* receiver)
     {
@@ -245,7 +227,7 @@ template<>
 class ViewerDependentValue<UF::UnitData::NpcFlagsTag>
 {
 public:
-    using ValueType = UF::UnitData::NpcFlagsTag::ValueType;
+    using ValueType = UF::UnitData::NpcFlagsTag::value_type;
 
     static ValueType GetValue(ValueType npcFlag, uint32 i, Unit const* unit, Player const* receiver)
     {
@@ -260,7 +242,7 @@ template<>
 class ViewerDependentValue<UF::GameObjectData::FlagsTag>
 {
 public:
-    using ValueType = UF::GameObjectData::FlagsTag::ValueType;
+    using ValueType = UF::GameObjectData::FlagsTag::value_type;
 
     static ValueType GetValue(ValueType flags, GameObject const* gameObject, Player const* receiver)
     {
@@ -276,7 +258,7 @@ template<>
 class ViewerDependentValue<UF::GameObjectData::LevelTag>
 {
 public:
-    using ValueType = UF::GameObjectData::LevelTag::ValueType;
+    using ValueType = UF::GameObjectData::LevelTag::value_type;
 
     static ValueType GetValue(ValueType level, GameObject const* gameObject, Player const* /*receiver*/)
     {
@@ -289,7 +271,7 @@ template<>
 class ViewerDependentValue<UF::GameObjectData::StateTag>
 {
 public:
-    using ValueType = UF::GameObjectData::StateTag::ValueType;
+    using ValueType = UF::GameObjectData::StateTag::value_type;
 
     static ValueType GetValue(ValueType state, GameObject const* gameObject, Player const* /*receiver*/)
     {

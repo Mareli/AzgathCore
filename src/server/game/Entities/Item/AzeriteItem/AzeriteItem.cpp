@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,51 +61,51 @@ void AzeriteItem::SaveToDB(CharacterDatabaseTransaction& trans)
 
     switch (GetState())
     {
-        case ITEM_NEW:
-        case ITEM_CHANGED:
+    case ITEM_NEW:
+    case ITEM_CHANGED:
+    {
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_AZERITE);
+        stmt->setUInt64(0, GetGUID().GetCounter());
+        stmt->setUInt64(1, m_azeriteItemData->Xp);
+        stmt->setUInt32(2, m_azeriteItemData->Level);
+        stmt->setUInt32(3, m_azeriteItemData->KnowledgeLevel);
+        std::size_t specIndex = 0;
+        for (; specIndex < m_azeriteItemData->SelectedEssences.size(); ++specIndex)
         {
-            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_AZERITE);
-            stmt->setUInt64(0, GetGUID().GetCounter());
-            stmt->setUInt64(1, m_azeriteItemData->Xp);
-            stmt->setUInt32(2, m_azeriteItemData->Level);
-            stmt->setUInt32(3, m_azeriteItemData->KnowledgeLevel);
-            std::size_t specIndex = 0;
-            for (; specIndex < m_azeriteItemData->SelectedEssences.size(); ++specIndex)
-            {
-                stmt->setUInt32(4 + specIndex * 5, m_azeriteItemData->SelectedEssences[specIndex].SpecializationID);
-                for (std::size_t j = 0; j < MAX_AZERITE_ESSENCE_SLOT; ++j)
-                    stmt->setUInt32(5 + specIndex * 5 + j, m_azeriteItemData->SelectedEssences[specIndex].AzeriteEssenceID[j]);
-            }
-            for (; specIndex < MAX_SPECIALIZATIONS; ++specIndex)
-            {
-                stmt->setUInt32(4 + specIndex * 5, 0);
-                for (std::size_t j = 0; j < MAX_AZERITE_ESSENCE_SLOT; ++j)
-                    stmt->setUInt32(5 + specIndex * 5 + j, 0);
-            }
-
-            trans->Append(stmt);
-
-            for (uint32 azeriteItemMilestonePowerId : m_azeriteItemData->UnlockedEssenceMilestones)
-            {
-                stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_AZERITE_MILESTONE_POWER);
-                stmt->setUInt64(0, GetGUID().GetCounter());
-                stmt->setUInt32(1, azeriteItemMilestonePowerId);
-                trans->Append(stmt);
-            }
-
-            for (UF::UnlockedAzeriteEssence const& azeriteEssence : m_azeriteItemData->UnlockedEssences)
-            {
-                stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_AZERITE_UNLOCKED_ESSENCE);
-                stmt->setUInt64(0, GetGUID().GetCounter());
-                stmt->setUInt32(1, azeriteEssence.AzeriteEssenceID);
-                stmt->setUInt32(2, azeriteEssence.Rank);
-                trans->Append(stmt);
-            }
-            break;
+            stmt->setUInt32(4 + specIndex * 5, m_azeriteItemData->SelectedEssences[specIndex].SpecializationID);
+            for (std::size_t j = 0; j < MAX_AZERITE_ESSENCE_SLOT; ++j)
+                stmt->setUInt32(5 + specIndex * 5 + j, m_azeriteItemData->SelectedEssences[specIndex].AzeriteEssenceID[j]);
         }
-        case ITEM_REMOVED:
-        default:
-            break;
+        for (; specIndex < 4; ++specIndex)
+        {
+            stmt->setUInt32(4 + specIndex * 5, 0);
+            for (std::size_t j = 0; j < MAX_AZERITE_ESSENCE_SLOT; ++j)
+                stmt->setUInt32(5 + specIndex * 5 + j, 0);
+        }
+
+        trans->Append(stmt);
+
+        for (uint32 azeriteItemMilestonePowerId : m_azeriteItemData->UnlockedEssenceMilestones)
+        {
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_AZERITE_MILESTONE_POWER);
+            stmt->setUInt64(0, GetGUID().GetCounter());
+            stmt->setUInt32(1, azeriteItemMilestonePowerId);
+            trans->Append(stmt);
+        }
+
+        for (UF::UnlockedAzeriteEssence const& azeriteEssence : m_azeriteItemData->UnlockedEssences)
+        {
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_AZERITE_UNLOCKED_ESSENCE);
+            stmt->setUInt64(0, GetGUID().GetCounter());
+            stmt->setUInt32(1, azeriteEssence.AzeriteEssenceID);
+            stmt->setUInt32(2, azeriteEssence.Rank);
+            trans->Append(stmt);
+        }
+        break;
+    }
+    case ITEM_REMOVED:
+    default:
+        break;
     }
 
     Item::SaveToDB(trans);
@@ -212,9 +212,9 @@ void AzeriteItem::DeleteFromDB(CharacterDatabaseTransaction& trans)
 
 uint32 AzeriteItem::GetCurrentKnowledgeLevel()
 {
-    // count weeks from 26.06.2019
+    // count weeks from 14.01.2020
     boost::gregorian::date now = boost::posix_time::from_time_t(GameTime::GetGameTime()).date();
-    boost::gregorian::week_iterator itr(boost::gregorian::date(2019, boost::date_time::Jun, 26));
+    boost::gregorian::week_iterator itr(boost::gregorian::date(2020, boost::date_time::Jan, 14));
     uint32 knowledge = 0;
     while (*itr < now && knowledge < MAX_AZERITE_ITEM_KNOWLEDGE_LEVEL)
     {
@@ -277,7 +277,7 @@ void AzeriteItem::GiveXP(uint64 xp)
         SetState(ITEM_CHANGED, owner);
     }
 
-    WorldPackets::Azerite::AzeriteXpGain xpGain;
+    WorldPackets::Azerite::PlayerAzeriteItemGains xpGain;
     xpGain.ItemGUID = GetGUID();
     xpGain.XP = xp;
     owner->SendDirectMessage(xpGain.Write());

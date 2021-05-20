@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,7 +20,7 @@
 
 #include "Define.h"
 #include "DatabaseEnvFwd.h"
-#include "EnumClassFlag.h"
+#include "EnumFlag.h"
 #include "ObjectGuid.h"
 #include <boost/dynamic_bitset_fwd.hpp>
 #include <map>
@@ -62,7 +62,9 @@ enum class ToyFlags : uint32
     HasFanfare  = 0x02
 };
 
-typedef std::map<uint32, EnumClassFlag<ToyFlags>> ToyBoxContainer;
+DEFINE_ENUM_FLAG(ToyFlags);
+
+typedef std::map<uint32, EnumFlag<ToyFlags>> ToyBoxContainer;
 typedef std::map<uint32, HeirloomData> HeirloomContainer;
 
 enum MountStatusFlags : uint8

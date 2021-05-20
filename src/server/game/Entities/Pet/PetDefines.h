@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,7 +35,8 @@ enum PetSaveMode
     PET_SAVE_CURRENT_STATE     =  1,  // Saves everything like it is atm
     PET_SAVE_DISMISS           =  2,  // Saves everything like it is atm, but removes auras and sets unactive
     PET_SAVE_LOGOUT            =  3,  // Saves everything like it is atm, but removes auras
-    PET_SAVE_NEW_PET           =  4
+    PET_SAVE_NEW_PET           =  4,
+    PET_SAVE_NOT_IN_SLOT       = 100 // for avoid conflict with stable size grow will use 100
 };
 
 enum PetStableSlot
@@ -64,12 +64,13 @@ enum PetSpellType
     PETSPELL_TALENT = 2
 };
 
-enum ActionFeedback
+enum class PetActionFeedback : uint8
 {
-    FEEDBACK_NONE            = 0,
-    FEEDBACK_PET_DEAD        = 1,
-    FEEDBACK_NOTHING_TO_ATT  = 2,
-    FEEDBACK_CANT_ATT_TARGET = 3
+    None            = 0,
+    Dead            = 1,
+    NoTarget        = 2,
+    InvalidTarget   = 3,
+    NoPath          = 4
 };
 
 enum PetTalk

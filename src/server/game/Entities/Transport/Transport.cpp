@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,9 +33,10 @@
 #include <G3D/Vector3.h>
 
 Transport::Transport() : GameObject(),
-    _transportInfo(NULL), _isMoving(true), _pendingStop(false),
+    _transportInfo(nullptr), _isMoving(false), _pendingStop(false),
     _triggeredArrivalEvent(false), _triggeredDepartureEvent(false),
-    _passengerTeleportItr(_passengers.begin()), _delayedAddModel(false), _delayedTeleport(false)
+    _passengerTeleportItr(_passengers.begin()), _delayedAddModel(false), _delayedTeleport(false),
+    _hasStarted(false)
 {
     m_updateFlag.ServerTime = true;
     m_updateFlag.Stationary = true;
@@ -93,12 +93,16 @@ bool Transport::Create(ObjectGuid::LowType guidlow, uint32 entry, uint32 mapid, 
         SetFlags(GameObjectFlags(m_goTemplateAddon->flags));
     }
 
+    if (!goinfo->moTransport.InitStopped) {
+        StartMovement();
+    }
+
     m_goValue.Transport.PathProgress = 0;
     SetObjectScale(goinfo->size);
     SetPeriod(tInfo->pathTime);
     SetEntry(goinfo->entry);
     SetDisplayId(goinfo->displayId);
-    SetGoState(!goinfo->moTransport.allowstopping ? GO_STATE_READY : GO_STATE_ACTIVE);
+    SetGoState(goinfo->moTransport.allowstopping && HasStarted() ? GO_STATE_ACTIVE : GO_STATE_READY);
     SetGoType(GAMEOBJECT_TYPE_MAP_OBJ_TRANSPORT);
     SetGoAnimProgress(animprogress);
     SetName(goinfo->name);
@@ -145,6 +149,9 @@ void Transport::Update(uint32 diff)
     //      event /         event /
     for (;;)
     {
+        if (!HasStarted())
+            break;
+
         if (timer >= _currentFrame->ArriveTime)
         {
             if (!_triggeredArrivalEvent)
@@ -285,7 +292,7 @@ void Transport::RemovePassenger(WorldObject* passenger)
 
     if (erased || _staticPassengers.erase(passenger)) // static passenger can remove itself in case of grid unload
     {
-        passenger->SetTransport(NULL);
+        passenger->SetTransport(nullptr);
         passenger->m_movementInfo.transport.Reset();
         TC_LOG_DEBUG("entities.transport", "Object %s removed from transport %s.", passenger->GetName().c_str(), GetName().c_str());
 
@@ -389,11 +396,11 @@ GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectDat
     return go;
 }
 
-TempSummon* Transport::SummonPassenger(uint32 entry, Position const& pos, TempSummonType summonType, SummonPropertiesEntry const* properties /*= NULL*/, uint32 duration /*= 0*/, Unit* summoner /*= NULL*/, uint32 spellId /*= 0*/, uint32 vehId /*= 0*/)
+TempSummon* Transport::SummonPassenger(uint32 entry, Position const& pos, TempSummonType summonType, SummonPropertiesEntry const* properties /*= nullptr*/, uint32 duration /*= 0*/, Unit* summoner /*= nullptr*/, uint32 spellId /*= 0*/, uint32 vehId /*= 0*/)
 {
     Map* map = FindMap();
     if (!map)
-        return NULL;
+        return nullptr;
 
     uint32 mask = UNIT_MASK_SUMMON;
     if (properties)
@@ -415,20 +422,20 @@ TempSummon* Transport::SummonPassenger(uint32 entry, Position const& pos, TempSu
             {
                 switch (SummonTitle(properties->Title))
                 {
-                    case SummonTitle::Minion:
-                    case SummonTitle::Guardian:
-                    case SummonTitle::Runeblade:
+                case SummonTitle::Minion:
+                case SummonTitle::Guardian:
+                case SummonTitle::Runeblade:
                         mask = UNIT_MASK_GUARDIAN;
                         break;
-                    case SummonTitle::Totem:
-                    case SummonTitle::Lightwell:
+                case SummonTitle::Totem:
+                case SummonTitle::Lightwell:
                         mask = UNIT_MASK_TOTEM;
                         break;
-                    case SummonTitle::Vehicle:
-                    case SummonTitle::Mount:
+                case SummonTitle::Vehicle:
+                case SummonTitle::Mount:
                         mask = UNIT_MASK_SUMMON;
                         break;
-                    case SummonTitle::Companion:
+                case SummonTitle::Companion:
                         mask = UNIT_MASK_MINION;
                         break;
                     default:
@@ -439,7 +446,7 @@ TempSummon* Transport::SummonPassenger(uint32 entry, Position const& pos, TempSu
                 break;
             }
             default:
-                return NULL;
+                return nullptr;
         }
     }
 
@@ -560,6 +567,12 @@ void Transport::UnloadStaticPassengers()
     }
 }
 
+void Transport::StartMovement()
+{
+    _hasStarted = true;
+    _isMoving = true;
+}
+
 void Transport::EnableMovement(bool enabled)
 {
     if (!GetGOInfo()->moTransport.allowstopping)
@@ -660,7 +673,7 @@ void Transport::DelayedTeleportTransport()
     float x = _nextFrame->Node->Loc.X,
           y = _nextFrame->Node->Loc.Y,
           z = _nextFrame->Node->Loc.Z,
-          o =_nextFrame->InitialOrientation;
+          o = _nextFrame->InitialOrientation;
 
     for (_passengerTeleportItr = _passengers.begin(); _passengerTeleportItr != _passengers.end();)
     {

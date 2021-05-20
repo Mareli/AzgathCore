@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,7 +26,7 @@ namespace Trainer
 {
     bool Spell::IsCastable() const
     {
-        return sSpellMgr->AssertSpellInfo(SpellId)->HasEffect(SPELL_EFFECT_LEARN_SPELL);
+        return sSpellMgr->AssertSpellInfo(SpellId, DIFFICULTY_NONE)->HasEffect(SPELL_EFFECT_LEARN_SPELL);
     }
 
     Trainer::Trainer(uint32 id, Type type, std::string greeting, std::vector<Spell> spells) : _id(id), _type(type), _spells(std::move(spells))
@@ -111,7 +111,7 @@ namespace Trainer
         if (state != SpellState::Available)
             return false;
 
-        SpellInfo const* trainerSpellInfo = sSpellMgr->AssertSpellInfo(trainerSpell->SpellId);
+        SpellInfo const* trainerSpellInfo = sSpellMgr->AssertSpellInfo(trainerSpell->SpellId, DIFFICULTY_NONE);
         if (trainerSpellInfo->IsPrimaryProfessionFirstRank() && !player->GetFreePrimaryProfessionPoints())
             return false;
 
@@ -142,7 +142,7 @@ namespace Trainer
         // check ranks
         bool hasLearnSpellEffect = false;
         bool knowsAllLearnedSpells = true;
-        for (SpellEffectInfo const* spellEffect : sSpellMgr->AssertSpellInfo(trainerSpell->SpellId)->GetEffectsForDifficulty(DIFFICULTY_NONE))
+        for (SpellEffectInfo const* spellEffect : sSpellMgr->AssertSpellInfo(trainerSpell->SpellId, DIFFICULTY_NONE)->GetEffects())
         {
             if (!spellEffect || !spellEffect->IsEffect(SPELL_EFFECT_LEARN_SPELL))
                 continue;
@@ -151,24 +151,10 @@ namespace Trainer
             if (!player->HasSpell(spellEffect->TriggerSpell))
                 knowsAllLearnedSpells = false;
 
-            if (uint32 previousRankSpellId = sSpellMgr->GetPrevSpellInChain(spellEffect->TriggerSpell))
-                if (!player->HasSpell(previousRankSpellId))
-                    return SpellState::Unavailable;
         }
 
-        if (!hasLearnSpellEffect)
-        {
-            if (uint32 previousRankSpellId = sSpellMgr->GetPrevSpellInChain(trainerSpell->SpellId))
-                if (!player->HasSpell(previousRankSpellId))
-                    return SpellState::Unavailable;
-        }
-        else if (knowsAllLearnedSpells)
+        if (hasLearnSpellEffect && knowsAllLearnedSpells)
             return SpellState::Known;
-
-        // check additional spell requirement
-        for (auto const& requirePair : sSpellMgr->GetSpellsRequiredForSpellBounds(trainerSpell->SpellId))
-            if (!player->HasSpell(requirePair.second))
-                return SpellState::Unavailable;
 
         return SpellState::Available;
     }
@@ -178,7 +164,7 @@ namespace Trainer
         WorldPackets::NPC::TrainerBuyFailed trainerBuyFailed;
         trainerBuyFailed.TrainerGUID = npc->GetGUID();
         trainerBuyFailed.SpellID = spellId;
-        trainerBuyFailed.TrainerFailedReason = AsUnderlyingType(reason);
+        //trainerBuyFailed.TrainerFailedReason = AsUnderlyingType(reason); // Delete this
         player->SendDirectMessage(trainerBuyFailed.Write());
     }
 

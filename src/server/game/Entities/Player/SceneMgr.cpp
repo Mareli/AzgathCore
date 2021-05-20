@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -38,7 +38,7 @@ uint32 SceneMgr::PlayScene(uint32 sceneId, Position const* position /*= nullptr*
 
     return 0;
 }
-
+// TODO: change SceneMgr::PlaySceneByTemplate "const sceneTemplate" to "const* sceneTemplate".
 uint32 SceneMgr::PlaySceneByTemplate(SceneTemplate const sceneTemplate, Position const* position /*= nullptr*/, ObjectGuid const* transportGuid /*= nullptr*/)
 {
     SceneScriptPackageEntry const* entry = sSceneScriptPackageStore.LookupEntry(sceneTemplate.ScenePackageId);
@@ -65,7 +65,8 @@ uint32 SceneMgr::PlaySceneByTemplate(SceneTemplate const sceneTemplate, Position
     playScene.SceneInstanceID      = sceneInstanceID;
     playScene.SceneScriptPackageID = sceneTemplate.ScenePackageId;
     playScene.Location             = *position;
-    playScene.TransportGUID        = *transportGuid;
+    playScene.TransportGUID        = GetPlayer()->GetTransGUID();
+    playScene.Encrypted            = sceneTemplate.Encrypted;
 
     GetPlayer()->SendDirectMessage(playScene.Write());
 
@@ -85,6 +86,7 @@ uint32 SceneMgr::PlaySceneByPackageId(uint32 sceneScriptPackageId, uint32 playba
     sceneTemplate.SceneId           = 0;
     sceneTemplate.ScenePackageId    = sceneScriptPackageId;
     sceneTemplate.PlaybackFlags     = playbackflags;
+    sceneTemplate.Encrypted         = false;
     sceneTemplate.ScriptId          = 0;
 
     return PlaySceneByTemplate(sceneTemplate, position);

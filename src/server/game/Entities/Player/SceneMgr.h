@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,6 +28,9 @@ enum SceneFlags
     SCENEFLAG_NOT_CANCELABLE = 0x04,
     SCENEFLAG_UNK8           = 0x08,
     SCENEFLAG_UNK16          = 0x10, // 16, most common value
+    SCENEFLAG_UNK20          = 0x14, // 20, unknown from 9.0.2.37474 sniffs
+    SCENEFLAG_UNK26          = 0x1A, // 26, unknown from 9.0.2.37474 sniffs
+    SCENEFLAG_UNK27          = 0x1B, // 27, unknown from 9.0.2.37474 sniffs
     SCENEFLAG_UNK32          = 0x20,
 };
 

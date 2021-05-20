@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -166,11 +166,11 @@ inline void KillRewarder::_RewardXP(Player* player, float rate)
     }
 }
 
-inline void KillRewarder::_RewardReputation(Player* player, float rate)
+inline void KillRewarder::_RewardOnKill(Player* player, float rate)
 {
     // 4.3. Give reputation (player must not be on BG).
     // Even dead players and corpses are rewarded.
-    player->RewardReputation(_victim, rate);
+    player->RewardOnKill(_victim, rate);
 }
 
 inline void KillRewarder::_RewardKillCredit(Player* player)
@@ -208,7 +208,7 @@ void KillRewarder::_RewardPlayer(Player* player, bool isDungeon)
         if (!_isBattleGround)
         {
             // If killer is in dungeon then all members receive full reputation at kill.
-            _RewardReputation(player, isDungeon ? 1.0f : rate);
+            _RewardOnKill(player, isDungeon ? 1.0f : rate);
             _RewardKillCredit(player);
         }
     }

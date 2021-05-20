@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,6 +21,7 @@
 #include "Define.h"
 #include <string>
 
+#define DEFAULT_COMBAT_REACH        1.5f
 #define MIN_MELEE_REACH             2.0f
 #define NOMINAL_MELEE_RANGE         5.0f
 #define MELEE_RANGE                 (NOMINAL_MELEE_RANGE - MIN_MELEE_REACH * 2) //center to center for players
@@ -274,7 +275,7 @@ enum UnitFlags3 : uint32
 };
 
 /// Non Player Character flags
-enum NPCFlags : uint32
+enum NPCFlags : uint64
 {
     UNIT_NPC_FLAG_NONE                  = 0x00000000,
     UNIT_NPC_FLAG_GOSSIP                = 0x00000001,     // 100%
@@ -308,7 +309,17 @@ enum NPCFlags : uint32
     UNIT_NPC_FLAG_TRANSMOGRIFIER        = 0x10000000,     // transmogrification
     UNIT_NPC_FLAG_VAULTKEEPER           = 0x20000000,     // void storage
     UNIT_NPC_FLAG_WILD_BATTLE_PET       = 0x40000000,     // Pet that player can fight (Battle Pet)
-    UNIT_NPC_FLAG_BLACK_MARKET          = 0x80000000     // black market
+    UNIT_NPC_FLAG_GARRISON_ARCHITECT        = 0x00200000000,
+    UNIT_NPC_FLAG_STEERING                  = 0x00400000000,
+    UNIT_NPC_FLAG_SHIPYARD_MISSION_NPC      = 0x00800000000,
+    UNIT_NPC_FLAG_SHIPMENT_CRAFTER          = 0x01000000000,
+    UNIT_NPC_FLAG_GARRISON_MISSION_NPC      = 0x02000000000,
+    UNIT_NPC_FLAG_TRADESKILL_NPC            = 0x04000000000,
+    UNIT_NPC_FLAG_BLACK_MARKET_VIEW         = 0x08000000000,
+    UNIT_NPC_FLAG_CLASS_HALLS_RECRUITMENT   = 0x10000000000,
+    UNIT_NPC_FLAG_CLASS_HALLS_TALENT        = 0x20000000000,
+    UNIT_NPC_FLAG_CONTRIBUTION_COLLECTOR    = 0x40000000000,
+    UNIT_NPC_FLAG_BLACK_MARKET              = 0x80000000     // black market
 };
 
 enum NPCFlags2 : uint32

@@ -13,17 +13,33 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
-#ifndef _ITEM_ENCHANTMENT_MGR_H
-#define _ITEM_ENCHANTMENT_MGR_H
+
+#ifndef PlayerStorage_h__
+#define PlayerStorage_h__
 
 #include "Common.h"
 
-using ItemRandomBonusListId = uint32;
+class Player;
 
-TC_GAME_API void LoadItemRandomBonusListTemplates();
-TC_GAME_API ItemRandomBonusListId GenerateItemRandomBonusListId(uint32 item_id);
-TC_GAME_API uint32 GetRandomPropertyPoints(uint32 itemLevel, uint32 quality, uint32 inventoryType, uint32 subclass);
+typedef std::map<uint32, int32> StorageEntryByKey;
 
-#endif
+class TC_GAME_API PlayerStorage
+{
+public:
+    PlayerStorage(Player* player) : _owner(player) { };
+
+    bool const IsEntryExists(uint32 key);
+    int32 const GetEntry(uint32 key);
+    void SetEntry(uint32 key, int32 value, uint32 timeMs = 0);
+
+    bool ClearEntry(uint32 key) { return _container.erase(key) ? true : false; }
+    void Clear() { _container.clear(); };
+
+protected:
+    Player* _owner;
+    StorageEntryByKey _container;
+};
+
+#endif // PlayerStorage_h__

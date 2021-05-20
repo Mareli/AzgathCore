@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,8 +59,9 @@ void Conversation::RemoveFromWorld()
 
 bool Conversation::IsNeverVisibleFor(WorldObject const* seer) const
 {
-    if (_participants.find(seer->GetGUID()) == _participants.end())
-        return true;
+    if (!_global)
+        if (_participants.find(seer->GetGUID()) == _participants.end())
+            return true;
 
     return WorldObject::IsNeverVisibleFor(seer);
 }
@@ -191,7 +192,7 @@ bool Conversation::Create(ObjectGuid::LowType lowGuid, uint32 conversationEntry,
     for (uint16 actorIndex : actorIndices)
     {
         UF::ConversationActor const* actor = actorIndex < m_conversationData->Actors.size() ? &m_conversationData->Actors[actorIndex] : nullptr;
-        if (!actor || (!actor->CreatureID && actor->ActorGUID.IsEmpty()))
+        if (!actor || (!actor->CreatureID && actor->ActorGUID.IsEmpty() && !actor->NoActorObject))
         {
             TC_LOG_ERROR("entities.conversation", "Failed to create conversation (Id: %u) due to missing actor (Idx: %u).", conversationEntry, actorIndex);
             return false;

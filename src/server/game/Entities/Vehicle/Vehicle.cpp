@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -157,7 +156,8 @@ void Vehicle::Reset(bool evading /*= false*/)
     TC_LOG_DEBUG("entities.vehicle", "Vehicle::Reset (Entry: %u, %s, DBGuid: " UI64FMTD ")", GetCreatureEntry(), _me->GetGUID().ToString().c_str(), _me->ToCreature()->GetSpawnId());
 
     ApplyAllImmunities();
-    InstallAllAccessories(evading);
+    if (GetBase()->IsAlive())
+        InstallAllAccessories(evading);
 
     sScriptMgr->OnReset(this);
 }
@@ -244,7 +244,7 @@ void Vehicle::RemoveAllPassengers()
     /// This will properly "reset" the pending join process for the passenger.
     {
         /// Update vehicle pointer in every pending join event - Abort may be called after vehicle is deleted
-        Vehicle* eventVehicle = _status != STATUS_UNINSTALLING ? this : NULL;
+        Vehicle* eventVehicle = _status != STATUS_UNINSTALLING ? this : nullptr;
 
         while (!_pendingJoinEvents.empty())
         {
@@ -305,7 +305,7 @@ Unit* Vehicle::GetPassenger(int8 seatId) const
 {
     SeatMap::const_iterator seat = Seats.find(seatId);
     if (seat == Seats.end())
-        return NULL;
+        return nullptr;
 
     return ObjectAccessor::GetUnit(*GetBase(), seat->second.Passenger.Guid);
 }
@@ -400,7 +400,7 @@ bool Vehicle::AddPassenger(uint32 passengerEntry, int8 seatId /*= -1*/)
 {
     if (Unit* base = GetBase())
         if (Creature* summon = base->SummonCreature(passengerEntry, base->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN))
-            return summon->CastCustomSpell(VEHICLE_SPELL_RIDE_HARDCODED, SPELLVALUE_BASE_POINT0, seatId + 1, base, false);
+            summon->CastCustomSpell(VEHICLE_SPELL_RIDE_HARDCODED, SPELLVALUE_BASE_POINT0, seatId + 1, base, false);
 
     return false;
 }
@@ -494,7 +494,7 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
 Vehicle* Vehicle::RemovePassenger(Unit* unit)
 {
     if (unit->GetVehicle() != this)
-        return NULL;
+        return nullptr;
 
     SeatMap::iterator seat = GetSeatIteratorForPassenger(unit);
     ASSERT(seat != Seats.end());
@@ -536,7 +536,7 @@ Vehicle* Vehicle::RemovePassenger(Unit* unit)
     if (GetBase()->GetTypeId() == TYPEID_UNIT)
         sScriptMgr->OnRemovePassenger(this, unit);
 
-    unit->SetVehicle(NULL);
+    unit->SetVehicle(nullptr);
     return this;
 }
 
@@ -639,7 +639,7 @@ VehicleSeatEntry const* Vehicle::GetSeatForPassenger(Unit const* passenger) cons
         if (itr->second.Passenger.Guid == passenger->GetGUID())
             return itr->second.SeatInfo;
 
-    return NULL;
+    return nullptr;
 }
 
 /**

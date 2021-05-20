@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -38,20 +37,19 @@ class TC_GAME_API DynamicObject : public WorldObject, public GridObject<DynamicO
     public:
         DynamicObject(bool isWorldObject);
         ~DynamicObject();
+protected:
 
-    protected:
         void BuildValuesCreate(ByteBuffer* data, Player const* target) const override;
         void BuildValuesUpdate(ByteBuffer* data, Player const* target) const override;
         void ClearUpdateMask(bool remove) override;
-
-    public:
-        void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
-            UF::DynamicObjectData::Mask const& requestedDynamicObjectMask, Player const* target) const;
+public:
+    void BuildValuesUpdateForPlayerWithMask(UpdateData* data, UF::ObjectData::Mask const& requestedObjectMask,
+        UF::DynamicObjectData::Mask const& requestedDynamicObjectMask, Player const* target) const;
 
         void AddToWorld() override;
         void RemoveFromWorld() override;
 
-        bool CreateDynamicObject(ObjectGuid::LowType guidlow, Unit* caster, SpellInfo const* spell, Position const& pos, float radius, DynamicObjectType type, uint32 spellXSpellVisualId);
+        bool CreateDynamicObject(ObjectGuid::LowType guidlow, Unit* caster, SpellInfo const* spell, Position const& pos, float radius, DynamicObjectType type, SpellCastVisual spellVisual);
         void Update(uint32 p_time) override;
         void Remove();
         void SetDuration(int32 newDuration);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,9 +18,9 @@
 #include "UpdateField.h"
 #include "ByteBuffer.h"
 
-void UF::WriteDynamicFieldUpdateMask(std::size_t size, std::vector<uint32> const& updateMask, ByteBuffer& data)
+void UF::WriteDynamicFieldUpdateMask(std::size_t size, std::vector<uint32> const& updateMask, ByteBuffer& data, int32 bitsForSize /*= 32*/)
 {
-    data.WriteBits(size, 32);
+    data.WriteBits(size, bitsForSize);
     if (size > 32)
     {
         if (data.HasUnfinishedBitPack())
@@ -40,9 +40,9 @@ void UF::WriteDynamicFieldUpdateMask(std::size_t size, std::vector<uint32> const
         data.WriteBits(updateMask.back(), size % 32);
 }
 
-void UF::WriteCompleteDynamicFieldUpdateMask(std::size_t size, ByteBuffer& data)
+void UF::WriteCompleteDynamicFieldUpdateMask(std::size_t size, ByteBuffer& data, int32 bitsForSize /*= 32*/)
 {
-    data.WriteBits(size, 32);
+    data.WriteBits(size, bitsForSize);
     if (size > 32)
     {
         if (data.HasUnfinishedBitPack())

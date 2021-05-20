@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -255,7 +255,7 @@ enum CreatureDifficultyFlags7
     CREATURE_DIFFICULTYFLAGS_7_UNK1         = 0x00000008
 };
 
-enum CreatureFlagsExtra : uint32
+enum CreatureFlagsExtra
 {
     CREATURE_FLAG_EXTRA_INSTANCE_BIND        = 0x00000001,       // creature kill bind instance with killer and killer's group
     CREATURE_FLAG_EXTRA_CIVILIAN             = 0x00000002,       // not aggro (ignore faction/reputation hostility)
@@ -274,26 +274,19 @@ enum CreatureFlagsExtra : uint32
     CREATURE_FLAG_EXTRA_TAUNT_DIMINISH       = 0x00080000,       // Taunt is a subject to diminishing returns on this creautre
     CREATURE_FLAG_EXTRA_ALL_DIMINISH         = 0x00100000,       // creature is subject to all diminishing returns as player are
     CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ = 0x00200000,       // creature does not need to take player damage for kill credit
-    CREATURE_FLAG_EXTRA_UNUSED_22            = 0x00400000,
-    CREATURE_FLAG_EXTRA_UNUSED_23            = 0x00800000,
-    CREATURE_FLAG_EXTRA_UNUSED_24            = 0x01000000,
-    CREATURE_FLAG_EXTRA_UNUSED_25            = 0x02000000,
-    CREATURE_FLAG_EXTRA_UNUSED_26            = 0x04000000,
-    CREATURE_FLAG_EXTRA_UNUSED_27            = 0x08000000,
     CREATURE_FLAG_EXTRA_DUNGEON_BOSS         = 0x10000000,       // creature is a dungeon boss (SET DYNAMICALLY, DO NOT ADD IN DB)
     CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING   = 0x20000000,       // creature ignore pathfinding
-    CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK   = 0x40000000,       // creature is immune to knockback effects
-    CREATURE_FLAG_EXTRA_UNUSED_31            = 0x80000000,
-
-    // Masks
-    CREATURE_FLAG_EXTRA_UNUSED               = (CREATURE_FLAG_EXTRA_UNUSED_22 | CREATURE_FLAG_EXTRA_UNUSED_23 |
-                                                CREATURE_FLAG_EXTRA_UNUSED_24 | CREATURE_FLAG_EXTRA_UNUSED_25 | CREATURE_FLAG_EXTRA_UNUSED_26 |
-                                                CREATURE_FLAG_EXTRA_UNUSED_27 | CREATURE_FLAG_EXTRA_UNUSED_31),
-
-    CREATURE_FLAG_EXTRA_DB_ALLOWED           = (0xFFFFFFFF & ~(CREATURE_FLAG_EXTRA_UNUSED | CREATURE_FLAG_EXTRA_DUNGEON_BOSS))
+    CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK   = 0x40000000        // creature is immune to knockback effects
 };
 
-const uint32 CREATURE_REGEN_INTERVAL = 5 * IN_MILLISECONDS;
+#define CREATURE_FLAG_EXTRA_DB_ALLOWED (CREATURE_FLAG_EXTRA_INSTANCE_BIND | CREATURE_FLAG_EXTRA_CIVILIAN | \
+    CREATURE_FLAG_EXTRA_NO_PARRY | CREATURE_FLAG_EXTRA_NO_PARRY_HASTEN | CREATURE_FLAG_EXTRA_NO_BLOCK | \
+    CREATURE_FLAG_EXTRA_NO_CRUSH | CREATURE_FLAG_EXTRA_NO_XP_AT_KILL | CREATURE_FLAG_EXTRA_TRIGGER | \
+    CREATURE_FLAG_EXTRA_NO_TAUNT | CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE | CREATURE_FLAG_EXTRA_WORLDEVENT | CREATURE_FLAG_EXTRA_NO_CRIT | \
+    CREATURE_FLAG_EXTRA_NO_SKILLGAIN | CREATURE_FLAG_EXTRA_TAUNT_DIMINISH | CREATURE_FLAG_EXTRA_ALL_DIMINISH | \
+    CREATURE_FLAG_EXTRA_GUARD | CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING | CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ | CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK)
+
+const uint32 CREATURE_REGEN_INTERVAL = 2 * IN_MILLISECONDS;
 const uint32 PET_FOCUS_REGEN_INTERVAL = 4 * IN_MILLISECONDS;
 const uint32 CREATURE_NOPATH_EVADE_TIME = 5 * IN_MILLISECONDS;
 
@@ -343,10 +336,11 @@ struct TC_GAME_API CreatureTemplate
     uint32  GossipMenuId;
     int16   minlevel;
     int16   maxlevel;
-    std::unordered_map<Difficulty, CreatureLevelScaling> scalingStore;
+    std::unordered_map<uint8, CreatureLevelScaling> scalingStore;
     int32   HealthScalingExpansion;
     uint32  RequiredExpansion;
-    uint32  VignetteID;                                     /// @todo Read Vignette.db2
+    uint32  VignetteID;
+    uint32  TrackingQuestID;
     uint32  faction;
     uint64  npcflag;
     float   speed_walk;
@@ -389,7 +383,6 @@ struct TC_GAME_API CreatureTemplate
     float   ModExperience;
     bool    RacialLeader;
     uint32  movementId;
-    float   FadeRegionRadius;
     int32   WidgetSetID;
     int32   WidgetSetUnitConditionID;
     bool    RegenHealth;
@@ -405,7 +398,7 @@ struct TC_GAME_API CreatureTemplate
     CreatureModel const* GetFirstVisibleModel() const;
     std::pair<int16, int16> GetMinMaxLevel() const;
     int32 GetHealthScalingExpansion() const;
-    CreatureLevelScaling const* GetLevelScaling(Difficulty difficulty) const;
+    CreatureLevelScaling const* GetLevelScaling(uint8 difficulty) const;
 
     // helpers
     SkillType GetRequiredLootSkill() const
@@ -475,11 +468,20 @@ struct TC_GAME_API CreatureTemplate
 // Defines base stats for creatures (used to calculate HP/mana/armor/attackpower/rangedattackpower/all damage).
 struct TC_GAME_API CreatureBaseStats
 {
+    uint32 BaseHealth[MAX_EXPANSIONS];
     uint32 BaseMana;
+    uint32 BaseArmor;
     uint32 AttackPower;
     uint32 RangedAttackPower;
+    float BaseDamage[MAX_EXPANSIONS];
 
     // Helpers
+
+    uint32 GenerateHealth(CreatureTemplate const* info) const
+    {
+        return uint32(ceil(BaseHealth[info->HealthScalingExpansion] * info->ModHealth * info->ModHealthExtra));
+    }
+
     uint32 GenerateMana(CreatureTemplate const* info) const
     {
         // Mana can be 0.
@@ -487,6 +489,16 @@ struct TC_GAME_API CreatureBaseStats
             return 0;
 
         return uint32(ceil(BaseMana * info->ModMana * info->ModManaExtra));
+    }
+
+    uint32 GenerateArmor(CreatureTemplate const* info) const
+    {
+        return uint32(ceil(BaseArmor * info->ModArmor));
+    }
+
+    float GenerateBaseDamage(CreatureTemplate const* info) const
+    {
+        return BaseDamage[info->HealthScalingExpansion];
     }
 
     static CreatureBaseStats const* GetBaseStats(uint8 level, uint8 unitClass);
@@ -515,14 +527,13 @@ struct EquipmentInfo
 // from `creature` table
 struct CreatureData
 {
-    CreatureData() : id(0), mapid(0), areaId(0), displayid(0), equipmentId(0),
+    CreatureData() : id(0), mapid(0), displayid(0), equipmentId(0),
                      posX(0.0f), posY(0.0f), posZ(0.0f), orientation(0.0f), spawntimesecs(0),
                      spawndist(0.0f), currentwaypoint(0), curhealth(0), curmana(0), movementType(0),
                      spawnDifficulties(), npcflag(0), unit_flags(0), unit_flags2(0), unit_flags3(0), dynamicflags(0),
                      phaseUseFlags(0), phaseId(0), phaseGroup(0), terrainSwapMap(-1), ScriptId(0), dbData(true) { }
     uint32 id;                                              // entry in creature_template
     uint16 mapid;
-    uint32 areaId;
     uint32 displayid;
     int8 equipmentId;
     float posX;
@@ -628,42 +639,5 @@ struct VendorItemData
         m_items.clear();
     }
 };
-
-#define MAX_TRAINERSPELL_ABILITY_REQS 3
-
-struct TrainerSpell
-{
-    TrainerSpell() : SpellID(0), MoneyCost(0), ReqSkillLine(0), ReqSkillRank(0), ReqLevel(0), Index(0)
-    {
-        for (uint8 i = 0; i < MAX_TRAINERSPELL_ABILITY_REQS; ++i)
-            ReqAbility[i] = 0;
-    }
-
-    uint32 SpellID;
-    uint32 MoneyCost;
-    uint32 ReqSkillLine;
-    uint32 ReqSkillRank;
-    uint32 ReqLevel;
-    uint32 ReqAbility[MAX_TRAINERSPELL_ABILITY_REQS];
-    uint32 Index;
-
-    // helpers
-    bool IsCastable() const { return ReqAbility[0] != SpellID; }
-};
-
-typedef std::unordered_map<uint32 /*spellid*/, TrainerSpell> TrainerSpellMap;
-
-struct TC_GAME_API TrainerSpellData
-{
-    TrainerSpellData() : trainerType(0) { }
-    ~TrainerSpellData() { spellList.clear(); }
-
-    TrainerSpellMap spellList;
-    uint32 trainerType;                                     // trainer type based at trainer spells, can be different from creature_template value.
-                                                            // req. for correct show non-prof. trainers like weaponmaster, allowed values 0 and 2.
-    TrainerSpell const* Find(uint32 spell_id) const;
-};
-
-typedef std::unordered_map<uint32, float /*SparringHealthLimit*/> CreatureSparringTemplateMap;
 
 #endif // CreatureData_h__

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -54,6 +54,8 @@ struct EquipmentSetInfo
         std::array<ObjectGuid, EQUIPEMENT_SET_SLOTS> Pieces;
         std::array<int32, EQUIPEMENT_SET_SLOTS> Appearances;    ///< ItemModifiedAppearanceID
         std::array<int32, 2> Enchants;                          ///< SpellItemEnchantmentID
+        int32 Unknown901_1 = 0;
+        int32 Unknown901_2 = 0;
     } Data;
 
     /// Server-side data

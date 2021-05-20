@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -202,6 +202,10 @@ inline auto make_discover_vertex_dfs_visitor(T&& t)
 
 void TaxiPathGraph::GetReachableNodesMask(TaxiNodesEntry const* from, TaxiMask* mask)
 {
+    /* will cause crash if we continue without proper values, so lets prevent the crash. -Varjgard */
+    if (!from || !mask)
+        return;
+
     boost::vector_property_map<boost::default_color_type> color(boost::num_vertices(m_graph));
     std::fill(color.storage_begin(), color.storage_end(), boost::white_color);
     boost::depth_first_visit(m_graph, GetVertexIDFromNodeID(from), make_discover_vertex_dfs_visitor([this, mask](vertex_descriptor vertex)
