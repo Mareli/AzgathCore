@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,11 +16,20 @@
  */
 
 
-#include "ScriptMgr.h"
+#include "Creature.h"
+#include "GameObject.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "SceneMgr.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellScript.h"
 #include "SpellMgr.h"
+#include "TemporarySummon.h"
+#include "PhasingHandler.h"
 
-// Zone 8701
+ // Zone 8701
 class zone_argus_macaree : public ZoneScript
 {
 public:
