@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+# Copyright 2021 AzgathCore
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -17,15 +17,9 @@ if(WIN32)
     elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.10)
       set(BOOST_LIBRARYDIR ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.0)
     else()
-		if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.20)
-			list(APPEND BOOST_LIBRARYDIR
-			  ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.1
-			  ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.0 )
-		else()
-			list(APPEND BOOST_LIBRARYDIR
-			  ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.2
-			  ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.1 )
-		endif()
+      list(APPEND BOOST_LIBRARYDIR
+        ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.1
+        ${BOOST_ROOT}/lib${PLATFORM}-msvc-14.0)
     endif()
   elseif(NOT DEFINED Boost_DIR AND NOT DEFINED BOOST_ROOT AND NOT DEFINED BOOSTROOT)
     message(FATAL_ERROR "No BOOST_ROOT environment variable could be found! Please make sure it is set and the points to your Boost installation.")
@@ -43,11 +37,6 @@ endif()
 
 include (CheckCXXSourceCompiles)
 
-check_cxx_source_compiles("
-  #include <regex>
-  int main() { std::wregex r(L\".*\"); }"
-  STD_HAS_WORKING_WREGEX)
-
 if (WIN32)
   # On windows the requirements are higher according to the wiki.
   set(BOOST_REQUIRED_VERSION 1.66)
@@ -55,11 +44,7 @@ else()
   set(BOOST_REQUIRED_VERSION 1.58)
 endif()
 
-if (STD_HAS_WORKING_WREGEX)
-  find_package(Boost ${BOOST_REQUIRED_VERSION} REQUIRED system filesystem thread program_options iostreams)
-else()
-  find_package(Boost ${BOOST_REQUIRED_VERSION} REQUIRED system filesystem thread program_options iostreams regex)
-endif()
+find_package(Boost ${BOOST_REQUIRED_VERSION} REQUIRED system filesystem thread program_options iostreams regex)
 
 # Find if Boost was compiled in C++03 mode because it requires -DBOOST_NO_CXX11_SCOPED_ENUMS
 
@@ -104,8 +89,6 @@ if (NOT boost_filesystem_copy_links_without_NO_SCOPED_ENUM)
       -DBOOST_NO_CXX11_SCOPED_ENUMS)
 endif()
 
-if (NOT STD_HAS_WORKING_WREGEX)
-  target_compile_definitions(boost
-    INTERFACE
-      -DTC_HAS_BROKEN_WSTRING_REGEX)
-endif()
+target_compile_definitions(boost
+  INTERFACE
+    -DTC_HAS_BROKEN_WSTRING_REGEX)
