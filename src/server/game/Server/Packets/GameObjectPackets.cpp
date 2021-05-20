@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -70,7 +70,7 @@ WorldPacket const* WorldPackets::GameObject::GameObjectCustomAnim::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::GameObject::GameObjectUIAction::Write()
+WorldPacket const* WorldPackets::GameObject::GameObjectUILink::Write()
 {
     _worldPacket << ObjectGUID;
     _worldPacket << int32(UILink);

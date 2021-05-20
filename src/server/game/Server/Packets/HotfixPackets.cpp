@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,6 +17,7 @@
 
 #include "HotfixPackets.h"
 #include "PacketUtilities.h"
+#include "Util.h"
 
 namespace WorldPackets
 {
@@ -54,7 +55,7 @@ WorldPacket const* DBReply::Write()
     _worldPacket << uint32(TableHash);
     _worldPacket << uint32(RecordID);
     _worldPacket << uint32(Timestamp);
-    _worldPacket.WriteBit(Allow);
+    _worldPacket.WriteBits(AsUnderlyingType(Status), 2);
     _worldPacket << uint32(Data.size());
     _worldPacket.append(Data);
 
@@ -85,25 +86,17 @@ void HotfixRequest::Read()
         _worldPacket >> hotfixRecord;
 }
 
-ByteBuffer& operator<<(ByteBuffer& data, HotfixResponse::HotfixData const& hotfixData)
+ByteBuffer& operator<<(ByteBuffer& data, HotfixConnect::HotfixData const& hotfixData)
 {
     data << hotfixData.Record;
-    if (hotfixData.Size)
-    {
-        data << uint32(*hotfixData.Size);
-        data.WriteBit(true);
-    }
-    else
-    {
-        data << uint32(0);
-        data.WriteBit(false);
-    }
+    data << uint32(hotfixData.Size);
+    data.WriteBits(AsUnderlyingType(hotfixData.Record.HotfixStatus), 2);
     data.FlushBits();
 
     return data;
 }
 
-WorldPacket const* HotfixResponse::Write()
+WorldPacket const* HotfixConnect::Write()
 {
     _worldPacket << uint32(Hotfixes.size());
     for (HotfixData const& hotfix : Hotfixes)

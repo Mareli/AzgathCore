@@ -15,14 +15,5 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PacketUtilities.h"
-#include "Errors.h"
-#include <sstream>
-
-WorldPackets::PacketArrayMaxCapacityException::PacketArrayMaxCapacityException(std::size_t requestedSize, std::size_t sizeLimit)
-{
-    std::ostringstream builder;
-    builder << "Attempted to read more array elements from packet " << requestedSize << " than allowed " << sizeLimit;
-    message().assign(builder.str());
-}
+#include "ClubFinderPackets.h"
 

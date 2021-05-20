@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,9 +27,13 @@ namespace WorldPackets
     {
         enum class RideType : uint32
         {
-            None = 0,
-            Battlegrounds = 1,
-            Lfg = 2
+            None                = 0,
+            Battlegrounds       = 1,
+            Lfg                 = 2,
+            PvPPetBattle        = 3,
+            LfgListApplication  = 4, // LFGListParty
+            PetBattle           = 5,
+            LfgListApplicant    = 6, // LFGListPlayer
         };
 
         struct RideTicket

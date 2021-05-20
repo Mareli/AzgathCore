@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -188,7 +188,7 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildRosterMemberD
     return data;
 }
 
-WorldPacket const* WorldPackets::Guild::GuildEventAwayChange::Write()
+WorldPacket const* WorldPackets::Guild::GuildEventStatusChange::Write()
 {
     _worldPacket << Guid;
     _worldPacket.WriteBit(AFK);
@@ -494,9 +494,37 @@ void WorldPackets::Guild::GuildChangeNameRequest::Read()
     NewName = _worldPacket.ReadString(nameLen);
 }
 
+WorldPacket const* WorldPackets::Guild::GuildChangeNameResult::Write()
+{
+    _worldPacket.WriteBit(Success);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Guild::GuildNameChanged::Write()
+{
+    _worldPacket << GuildGUID;
+    _worldPacket.WriteBits(GuildName.length(), 7);
+    _worldPacket.FlushBits();
+    _worldPacket.WriteString(GuildName);
+
+    return &_worldPacket;
+}
+
 WorldPacket const* WorldPackets::Guild::GuildFlaggedForRename::Write()
 {
     _worldPacket.WriteBit(FlagSet);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Guild::GuildInviteDeclined::Write()
+{
+    _worldPacket.WriteBits(Name.length(), 6);
+    _worldPacket << AutoDecline;
+    _worldPacket.FlushBits();
+    _worldPacket << VirtualRealmAddress;
+    _worldPacket << Name;
 
     return &_worldPacket;
 }
@@ -517,6 +545,17 @@ WorldPacket const* WorldPackets::Guild::GuildPartyState::Write()
 
     return &_worldPacket;
 }
+
+WorldPacket const* WorldPackets::Guild::GuildChallengeCompleted::Write()
+{
+    _worldPacket << ChallengeType;
+    _worldPacket << CurrentCount;
+    _worldPacket << MaxCount;
+    _worldPacket << GoldAwarded;
+
+    return &_worldPacket;
+}
+
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildRewardItem const& rewardItem)
 {
@@ -650,20 +689,11 @@ void WorldPackets::Guild::GuildBankSwapItems::Read()
     _worldPacket >> BankSlot;
     _worldPacket >> PlayerSlot;
 
-    bool hasPlayerBag = _worldPacket.ReadBit();
+    HasBag = _worldPacket.ReadBit();
     _worldPacket.ResetBitPos();
 
-    if (hasPlayerBag)
+    if (HasBag)
         _worldPacket >> PlayerBag;
-}
-
-void WorldPackets::Guild::GuildBankSwapItemsBankBank::Read()
-{
-    _worldPacket >> Banker;
-    _worldPacket >> BankTab;
-    _worldPacket >> BankSlot;
-    _worldPacket >> NewBankTab;
-    _worldPacket >> NewBankSlot;
 }
 
 void WorldPackets::Guild::GuildBankSwapItemsAuto::Read()
@@ -681,11 +711,20 @@ void WorldPackets::Guild::GuildBankSwapItemsCount::Read()
     _worldPacket >> PlayerSlot;
     _worldPacket >> StackCount;
 
-    bool hasPlayerBag = _worldPacket.ReadBit();
+    HasBag = _worldPacket.ReadBit();
     _worldPacket.ResetBitPos();
 
-    if (hasPlayerBag)
+    if (HasBag)
         _worldPacket >> PlayerBag;
+}
+
+void WorldPackets::Guild::GuildBankSwapItemsBankBank::Read()
+{
+    _worldPacket >> Banker;
+    _worldPacket >> BankTab;
+    _worldPacket >> BankSlot;
+    _worldPacket >> NewBankTab;
+    _worldPacket >> NewBankSlot;
 }
 
 void WorldPackets::Guild::GuildBankSwapItemsBankBankCount::Read()
@@ -857,14 +896,4 @@ void WorldPackets::Guild::GuildSetAchievementTracking::Read()
 
     for (uint32& achievementID : AchievementIDs)
         _worldPacket >> achievementID;
-}
-
-WorldPacket const* WorldPackets::Guild::GuildNameChanged::Write()
-{
-    _worldPacket << GuildGUID;
-    _worldPacket.WriteBits(GuildName.length(), 7);
-    _worldPacket.FlushBits();
-    _worldPacket.WriteString(GuildName);
-
-    return &_worldPacket;
 }

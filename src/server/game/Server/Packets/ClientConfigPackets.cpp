@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,7 +21,7 @@ WorldPacket const* WorldPackets::ClientConfig::AccountDataTimes::Write()
 {
     _worldPacket << PlayerGuid;
     _worldPacket << uint32(ServerTime);
-    _worldPacket.append(AccountTimes, NUM_ACCOUNT_DATA_TYPES);
+    _worldPacket.append(AccountTimes.data(), AccountTimes.size());
 
     return &_worldPacket;
 }
@@ -72,4 +72,9 @@ void WorldPackets::ClientConfig::UserClientUpdateAccountData::Read()
 void WorldPackets::ClientConfig::SetAdvancedCombatLogging::Read()
 {
     Enable = _worldPacket.ReadBit();
+}
+
+void WorldPackets::ClientConfig::GetRemainingGameTime::Read()
+{
+    _worldPacket >> Time;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,14 +47,14 @@ namespace WorldPackets
         class DBReply final : public ServerPacket
         {
         public:
-            DBReply() : ServerPacket(SMSG_DB_REPLY, 12) { }
+            DBReply() : ServerPacket(SMSG_DB_REPLY, 4 + 4 + 4 + 1 + 4) { }
 
             WorldPacket const* Write() override;
 
             uint32 TableHash = 0;
             uint32 Timestamp = 0;
             uint32 RecordID = 0;
-            bool Allow = false;
+            DB2Manager::HotfixRecord::Status Status = DB2Manager::HotfixRecord::Status::Invalid;
             ByteBuffer Data;
         };
 
@@ -83,16 +83,16 @@ namespace WorldPackets
             std::vector<DB2Manager::HotfixRecord> Hotfixes;
         };
 
-        class HotfixResponse final : public ServerPacket
+        class HotfixConnect final : public ServerPacket
         {
         public:
             struct HotfixData
             {
                 DB2Manager::HotfixRecord Record;
-                Optional<uint32> Size;
+                uint32 Size = 0;
             };
 
-            HotfixResponse() : ServerPacket(SMSG_HOTFIX_RESPONSE) { }
+            HotfixConnect() : ServerPacket(SMSG_HOTFIX_CONNECT) { }
 
             WorldPacket const* Write() override;
 

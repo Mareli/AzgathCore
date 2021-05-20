@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -54,6 +54,7 @@ WorldPacket const* WorldPackets::Misc::SetCurrency::Write()
     _worldPacket.WriteBit(WeeklyQuantity.is_initialized());
     _worldPacket.WriteBit(TrackedQuantity.is_initialized());
     _worldPacket.WriteBit(MaxQuantity.is_initialized());
+    _worldPacket.WriteBit(Unused901.is_initialized());
     _worldPacket.WriteBit(SuppressChatLog);
     _worldPacket.WriteBit(QuantityChange.is_initialized());
     _worldPacket.WriteBit(QuantityGainSource.is_initialized());
@@ -68,6 +69,9 @@ WorldPacket const* WorldPackets::Misc::SetCurrency::Write()
 
     if (MaxQuantity)
         _worldPacket << int32(*MaxQuantity);
+
+    if (Unused901)
+        _worldPacket << int32(*Unused901);
 
     if (QuantityChange)
         _worldPacket << int32(*QuantityChange);
@@ -99,6 +103,7 @@ WorldPacket const* WorldPackets::Misc::SetupCurrency::Write()
         _worldPacket.WriteBit(data.MaxWeeklyQuantity.is_initialized());
         _worldPacket.WriteBit(data.TrackedQuantity.is_initialized());
         _worldPacket.WriteBit(data.MaxQuantity.is_initialized());
+        _worldPacket.WriteBit(data.Unused901.is_initialized());
         _worldPacket.WriteBits(data.Flags, 5);
         _worldPacket.FlushBits();
 
@@ -110,6 +115,8 @@ WorldPacket const* WorldPackets::Misc::SetupCurrency::Write()
             _worldPacket << uint32(*data.TrackedQuantity);
         if (data.MaxQuantity)
             _worldPacket << int32(*data.MaxQuantity);
+        if (data.Unused901)
+            _worldPacket << int32(*data.Unused901);
     }
 
     return &_worldPacket;
@@ -138,7 +145,7 @@ void WorldPackets::Misc::TimeSyncResponse::Read()
     _worldPacket >> ClientTime;
 }
 
-WorldPacket const* WorldPackets::Misc::UITime::Write()
+WorldPacket const* WorldPackets::Misc::ServerTimeOffset::Write()
 {
     _worldPacket << Time;
 
@@ -187,7 +194,7 @@ WorldPacket const* WorldPackets::Misc::WorldServerInfo::Write()
         _worldPacket << uint32(*RestrictedAccountMaxLevel);
 
     if (RestrictedAccountMaxMoney)
-        _worldPacket << uint32(*RestrictedAccountMaxMoney);
+        _worldPacket << uint64(*RestrictedAccountMaxMoney);
 
     if (InstanceGroupSize)
         _worldPacket << uint32(*InstanceGroupSize);
@@ -472,6 +479,7 @@ WorldPacket const* WorldPackets::Misc::PlayObjectSound::Write()
     _worldPacket << SourceObjectGUID;
     _worldPacket << TargetObjectGUID;
     _worldPacket << Position;
+    _worldPacket << int32(BroadcastTextID);
 
     return &_worldPacket;
 }
@@ -480,6 +488,7 @@ WorldPacket const* WorldPackets::Misc::PlaySound::Write()
 {
     _worldPacket << int32(SoundKitID);
     _worldPacket << SourceObjectGuid;
+    _worldPacket << int32(BroadcastTextID);
 
     return &_worldPacket;
 }
@@ -497,19 +506,12 @@ void WorldPackets::Misc::FarSight::Read()
     Enable = _worldPacket.ReadBit();
 }
 
-WorldPacket const* WorldPackets::Misc::Dismount::Write()
-{
-    _worldPacket << Guid;
-
-    return &_worldPacket;
-}
-
 void WorldPackets::Misc::SaveCUFProfiles::Read()
 {
     CUFProfiles.resize(_worldPacket.read<uint32>());
     for (std::unique_ptr<CUFProfile>& cufProfile : CUFProfiles)
     {
-        cufProfile = Trinity::make_unique<CUFProfile>();
+        cufProfile = std::make_unique<CUFProfile>();
 
         uint8 strLen = _worldPacket.ReadBits(7);
 
@@ -644,6 +646,16 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Misc::ReqResearchHistory 
     return data;
 }
 
+WorldPacket const* WorldPackets::Misc::StopElapsedTimer::Write()
+{
+    _worldPacket << TimerID;
+    _worldPacket.WriteBit(KeepTimer);
+    _worldPacket.FlushBits();
+
+    return &_worldPacket;
+}
+
+
 void WorldPackets::Misc::ResearchHistory::Read()
 {
     _worldPacket << resHistory;
@@ -752,6 +764,31 @@ void WorldPackets::Misc::AdventureJournalStartQuest::Read()
     _worldPacket >> QuestID;
 }
 
+void WorldPackets::Misc::AdventureJournalUpdateSuggestions::Read()
+{
+    OnLevelUp = _worldPacket.ReadBit();
+}
+
+WorldPacket const* WorldPackets::Misc::AdventureJournalDataResponse::Write()
+{
+    _worldPacket.WriteBit(OnLevelUp);
+    _worldPacket.FlushBits(); // flush OnLevelUp bit
+
+    _worldPacket << uint32(AdventureJournalDatas.size());
+    for (auto const& dataInfo : AdventureJournalDatas)
+    {
+        _worldPacket << int32(dataInfo.AdventureJournalID);
+        _worldPacket << int32(dataInfo.Priority);
+    }
+
+    return &_worldPacket;
+}
+
+void WorldPackets::Misc::QueryCountdownTimer::Read()
+{
+    uint32(Type) = _worldPacket.read<uint32>();
+}
+
 WorldPacket const* WorldPackets::Misc::StartTimer::Write()
 {
     _worldPacket << TimeLeft;
@@ -769,15 +806,81 @@ WorldPacket const* WorldPackets::Misc::StartElapsedTimer::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::Misc::OpenAlliedRaceDetailsGiver::Write()
+void WorldPackets::Misc::SetWarMode::Read()
 {
-    _worldPacket << Guid;
-    _worldPacket << RaceId;
+    Enabled = _worldPacket.ReadBit();
+}
+
+WorldPacket const* WorldPackets::Misc::VignetteUpdate::Write()
+{
+    _worldPacket.WriteBit(ForceUpdate);
+    _worldPacket.WriteBit(UnkBit901);
+    _worldPacket.FlushBits();
+
+    _worldPacket << static_cast<uint32>(Removed.IDs.size());
+    for (ObjectGuid const& ID : Removed.IDs)
+        _worldPacket << ID;
+
+    _worldPacket << static_cast<uint32>(Added.IdList.IDs.size());
+    for (ObjectGuid const& ID : Added.IdList.IDs)
+        _worldPacket << ID;
+
+    _worldPacket << static_cast<uint32>(Added.Data.size());
+    for (auto const& x : Added.Data)
+    {
+        _worldPacket << x.Pos;
+        _worldPacket << x.ObjGUID;
+        _worldPacket << x.VignetteID;
+        _worldPacket << x.AreaID;
+        _worldPacket << x.Unk901_1;
+        _worldPacket << x.Unk901_2;
+    }
+
+    _worldPacket << static_cast<uint32>(Updated.IdList.IDs.size());
+    for (ObjectGuid const& ID : Updated.IdList.IDs)
+        _worldPacket << ID;
+
+    _worldPacket << static_cast<uint32>(Updated.Data.size());
+    for (auto const& x : Updated.Data)
+    {
+        _worldPacket << x.Pos;
+        _worldPacket << x.ObjGUID;
+        _worldPacket << x.VignetteID;
+        _worldPacket << x.AreaID;
+        _worldPacket << x.Unk901_1;
+        _worldPacket << x.Unk901_2;
+    }
 
     return &_worldPacket;
 }
 
-void WorldPackets::Misc::SetWarMode::Read()
+void WorldPackets::Misc::ShowTradeSkill::Read()
 {
-    Enabled = _worldPacket.ReadBit();
+    _worldPacket >> PlayerGUID;
+    _worldPacket >> SpellID;
+    _worldPacket >> SkillLineID;
+}
+
+WorldPacket const* WorldPackets::Misc::ShowTradeSkillResponse::Write()
+{
+    _worldPacket << PlayerGUID;
+    _worldPacket << SpellId;
+    _worldPacket << static_cast<uint32>(SkillLineIDs.size());
+    _worldPacket << static_cast<uint32>(SkillRanks.size());
+    _worldPacket << static_cast<uint32>(SkillMaxRanks.size());
+    _worldPacket << static_cast<uint32>(KnownAbilitySpellIDs.size());
+
+    for (auto const& v : SkillLineIDs)
+        _worldPacket << v;
+
+    for (auto const& c : SkillRanks)
+        _worldPacket << c;
+
+    for (auto const& z : SkillMaxRanks)
+        _worldPacket << z;
+
+    for (auto const& t : KnownAbilitySpellIDs)
+        _worldPacket << t;
+
+    return &_worldPacket;
 }

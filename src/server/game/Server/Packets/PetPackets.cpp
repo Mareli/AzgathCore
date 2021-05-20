@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -69,6 +69,13 @@ WorldPacket const* WorldPackets::Pet::PetStableList::Write()
         _worldPacket.WriteBits(pet.PetName.length(), 8);
         _worldPacket.WriteString(pet.PetName);
     }
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Pet::PetStableResult::Write()
+{
+    _worldPacket << uint8(Result);
 
     return &_worldPacket;
 }
@@ -182,6 +189,22 @@ void WorldPackets::Pet::PetCancelAura::Read()
 WorldPacket const* WorldPackets::Pet::SetPetSpecialization::Write()
 {
     _worldPacket << uint16(SpecID);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Pet::PetActionFeedback::Write()
+{
+    _worldPacket << int32(SpellID);
+    _worldPacket << uint8(Response);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Pet::PetActionSound::Write()
+{
+    _worldPacket << UnitGUID;
+    _worldPacket << int32(Action);
 
     return &_worldPacket;
 }

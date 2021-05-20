@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,7 +16,6 @@
  */
 
 #include "LootPackets.h"
-#include "Loot.h"
 
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Loot::LootItemData const& lootItem)
 {
@@ -70,6 +69,20 @@ void WorldPackets::Loot::LootItem::Read()
 {
     uint32 Count;
     _worldPacket >> Count;
+
+    Loot.resize(Count);
+    for (uint32 i = 0; i < Count; ++i)
+    {
+        _worldPacket >> Loot[i].Object;
+        _worldPacket >> Loot[i].LootListID;
+    }
+}
+
+void WorldPackets::Loot::MasterLootItem::Read()
+{
+    uint32 Count;
+    _worldPacket >> Count;
+    _worldPacket >> Target;
 
     Loot.resize(Count);
     for (uint32 i = 0; i < Count; ++i)
@@ -203,6 +216,16 @@ WorldPacket const* WorldPackets::Loot::LootRollsComplete::Write()
     return &_worldPacket;
 }
 
+WorldPacket const* WorldPackets::Loot::MasterLootCandidateList::Write()
+{
+    _worldPacket << LootObj;
+    _worldPacket << uint32(Players.size());
+    for (ObjectGuid const& player : Players)
+        _worldPacket << player;
+
+    return &_worldPacket;
+}
+
 WorldPacket const* WorldPackets::Loot::AELootTargets::Write()
 {
     _worldPacket << uint32(Count);
@@ -220,14 +243,14 @@ WorldPacket const* WorldPackets::Loot::DisplayToast::Write()
 
     _worldPacket.WriteBits(ToastType, 2);
 
-    if (ToastType == TOAST_ITEM)
+    if (ToastType == uint32(ToastType::ITEM))
     {
         _worldPacket.WriteBit(Mailed);
         _worldPacket.FlushBits();
 
         // item instance
         bool hasItemBonus = !bonusListIDs.empty();
-        _worldPacket << EntityId;
+        _worldPacket << Loot;
         _worldPacket << uint32(0); // RandomPropertiesSeed
         _worldPacket << uint32(RandomPropertiesID);
         _worldPacket.WriteBit(hasItemBonus);
@@ -244,16 +267,22 @@ WorldPacket const* WorldPackets::Loot::DisplayToast::Write()
 
         _worldPacket.FlushBits();
 
-        _worldPacket << uint32(0); // SpecializationID
-        _worldPacket << uint32(0);
+        _worldPacket << SpecID;
+        _worldPacket << ItemQuantity;
     }
-    else if (ToastType == TOAST_CURRENCY)
+    else if (ToastType == uint32(ToastType::CURRENCY))
     {
         _worldPacket.FlushBits();
-        _worldPacket << EntityId;
+        _worldPacket << CurrencyID;
     }
     else
         _worldPacket.FlushBits();
 
     return &_worldPacket;
+}
+
+void WorldPackets::Loot::DoMasterLootRoll::Read()
+{
+    _worldPacket >> LootObj;
+    _worldPacket >> LootListID;
 }

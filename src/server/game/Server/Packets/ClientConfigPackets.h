@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,7 +34,7 @@ namespace WorldPackets
 
             ObjectGuid PlayerGuid;
             uint32 ServerTime = 0;
-            uint32 AccountTimes[NUM_ACCOUNT_DATA_TYPES];
+            std::array<uint32, NUM_ACCOUNT_DATA_TYPES> AccountTimes = { };
         };
 
         class ClientCacheVersion final : public ServerPacket
@@ -95,6 +95,17 @@ namespace WorldPackets
 
             bool Enable = false;
         };
+
+        class GetRemainingGameTime  final : public ClientPacket
+        {
+        public:
+            GetRemainingGameTime(WorldPacket&& packet) : ClientPacket(CMSG_GET_REMAINING_GAME_TIME, std::move(packet)) { }
+
+            void Read() override;
+
+            uint32 Time = 0;
+        };
+
     }
 }
 

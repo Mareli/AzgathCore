@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -42,6 +42,15 @@ namespace WorldPackets
             CollectionType Type = NONE;
             uint32 ID = 0;
             bool IsFavorite = false;
+        };
+
+        class BattlePetClearFanfare final : public ClientPacket
+        {
+        public:
+            BattlePetClearFanfare(WorldPacket&& packet) : ClientPacket(CMSG_BATTLE_PET_CLEAR_FANFARE, std::move(packet)) { }
+
+            void Read() override;
+            ObjectGuid BattlePetGUID;
         };
     }
 }

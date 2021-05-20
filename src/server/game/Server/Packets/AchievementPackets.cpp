@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -66,15 +66,6 @@ WorldPacket const* WorldPackets::Achievement::AllAchievementData::Write()
     return &_worldPacket;
 }
 
-WorldPacket const* WorldPackets::Achievement::AllAccountCriteria::Write()
-{
-    _worldPacket << uint32(Progress.size());
-    for (WorldPackets::Achievement::CriteriaProgress const& progress : Progress)
-        _worldPacket << progress;
-
-    return &_worldPacket;
-}
-
 WorldPacket const* WorldPackets::Achievement::RespondInspectAchievements::Write()
 {
     _worldPacket << Player;
@@ -92,18 +83,6 @@ WorldPacket const* WorldPackets::Achievement::CriteriaUpdate::Write()
     _worldPacket.AppendPackedTime(CurrentTime);
     _worldPacket << uint32(ElapsedTime);
     _worldPacket << uint32(CreationTime);
-    _worldPacket.WriteBit(RafAcceptanceID.is_initialized());
-    _worldPacket.FlushBits();
-
-    if (RafAcceptanceID)
-        _worldPacket << uint64(*RafAcceptanceID);
-
-    return &_worldPacket;
-}
-
-WorldPacket const* WorldPackets::Achievement::AccountCriteriaUpdate::Write()
-{
-    _worldPacket << Progress;
 
     return &_worldPacket;
 }

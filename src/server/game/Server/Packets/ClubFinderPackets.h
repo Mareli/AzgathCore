@@ -15,14 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PacketUtilities.h"
-#include "Errors.h"
-#include <sstream>
+#ifndef ClubFinderPackets_h__
+#define ClubFinderPackets_h__
 
-WorldPackets::PacketArrayMaxCapacityException::PacketArrayMaxCapacityException(std::size_t requestedSize, std::size_t sizeLimit)
+#include "Packet.h"
+#include "WorldSession.h"
+
+namespace WorldPackets
 {
-    std::ostringstream builder;
-    builder << "Attempted to read more array elements from packet " << requestedSize << " than allowed " << sizeLimit;
-    message().assign(builder.str());
+    namespace ClubFinder
+    {
+		
+    }
 }
 
+#endif // ClubFinderPackets_h__

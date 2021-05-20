@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -227,10 +227,10 @@ namespace WorldPackets
             std::string OldGuildName;
         };
 
-        class GuildEventAwayChange final : public ServerPacket
+        class GuildEventStatusChange final : public ServerPacket
         {
         public:
-            GuildEventAwayChange() : ServerPacket(SMSG_GUILD_EVENT_AWAY_CHANGE, 16 + 1) {  }
+            GuildEventStatusChange() : ServerPacket(SMSG_GUILD_EVENT_STATUS_CHANGE, 16 + 1) {  }
 
             WorldPacket const* Write() override;
 
@@ -628,6 +628,19 @@ namespace WorldPackets
             void Read() override { }
         };
 
+        class GuildChallengeCompleted final : public ServerPacket
+        {
+        public:
+            GuildChallengeCompleted() : ServerPacket(SMSG_GUILD_CHALLENGE_COMPLETED, 4 * 4) { }
+
+            WorldPacket const* Write() override;
+
+            int32 ChallengeType = 0;
+            int32 CurrentCount = 0;
+            int32 MaxCount = 0;
+            int32 GoldAwarded = 0;
+        };
+
         class GuildChangeNameRequest final : public ClientPacket
         {
         public:
@@ -636,6 +649,18 @@ namespace WorldPackets
             void Read() override;
 
             std::string NewName;
+        };
+
+        class GuildInviteDeclined final : public ServerPacket
+        {
+        public:
+            GuildInviteDeclined() : ServerPacket(SMSG_GUILD_INVITE_DECLINED, 8) { }
+
+            WorldPacket const* Write() override;
+
+            uint32 VirtualRealmAddress = 0;
+            std::string Name;
+            bool AutoDecline = false;
         };
 
         class GuildFlaggedForRename final : public ServerPacket
@@ -838,20 +863,7 @@ namespace WorldPackets
             uint8 BankSlot;
             uint8 PlayerSlot;
             uint8 PlayerBag = 0;
-        };
-
-        class GuildBankSwapItemsBankBank final : public ClientPacket
-        {
-        public:
-            GuildBankSwapItemsBankBank(WorldPacket&& packet) : ClientPacket(std::move(packet)) { }
-
-            void Read() override;
-
-            ObjectGuid Banker;
-            uint8 BankTab;
-            uint8 BankSlot;
-            uint8 NewBankTab;
-            uint8 NewBankSlot;
+            bool HasBag = false;
         };
 
         class GuildBankSwapItemsAuto final : public ClientPacket
@@ -874,11 +886,26 @@ namespace WorldPackets
             void Read() override;
 
             ObjectGuid Banker;
-            uint8 BankTab;
-            uint8 BankSlot;
-            uint8 PlayerSlot;
+            uint32 StackCount = 0;
+            uint8 BankTab = 0;
+            uint8 BankSlot = 0;
+            uint8 PlayerSlot = 0;
             uint8 PlayerBag = 0;
-            uint32 StackCount;
+            bool HasBag = false;
+        };
+
+        class GuildBankSwapItemsBankBank final : public ClientPacket
+        {
+        public:
+            GuildBankSwapItemsBankBank(WorldPacket&& packet) : ClientPacket(std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid Banker;
+            uint8 BankTab = 0;
+            uint8 BankSlot = 0;
+            uint8 NewBankTab = 0;
+            uint8 NewBankSlot = 0;
         };
 
         class GuildBankSwapItemsBankBankCount final : public ClientPacket
@@ -889,11 +916,11 @@ namespace WorldPackets
             void Read() override;
 
             ObjectGuid Banker;
-            uint8 BankTab;
-            uint8 BankSlot;
-            uint8 NewBankTab;
-            uint8 NewBankSlot;
-            uint32 StackCount;
+            uint32 StackCount = 0;
+            uint8 BankTab = 0;
+            uint8 BankSlot = 0;
+            uint8 NewBankTab = 0;
+            uint8 NewBankSlot = 0;
         };
 
         class GuildBankLogQuery final : public ClientPacket
@@ -1077,6 +1104,16 @@ namespace WorldPackets
             void Read() override;
 
             Array<uint32, 10> AchievementIDs;
+        };
+
+        class GuildChangeNameResult final : public ServerPacket
+        {
+        public:
+            GuildChangeNameResult() : ServerPacket(SMSG_GUILD_CHANGE_NAME_RESULT, 1) { }
+
+            WorldPacket const* Write() override;
+
+            bool Success = true;
         };
 
         class GuildNameChanged final : ServerPacket
