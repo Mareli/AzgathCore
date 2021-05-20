@@ -28,4 +28,4 @@ build_script:
 test: off
 artifacts:
 - path: build\bin\RelWithDebInfo\
-  name: TrinityCoreWin64VS2019
+  name: AzgathCoreWin64VS2019
