@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,6 +25,8 @@
 class GameObject;
 class SpellInfo;
 class Unit;
+enum class LootItemType : uint8;
+enum class QuestGiverStatus : uint32;
 
 class TC_GAME_API GameObjectAI
 {
@@ -48,12 +49,20 @@ class TC_GAME_API GameObjectAI
 
         static int Permissible(GameObject const* go);
 
-        virtual bool GossipHello(Player* /*player*/, bool /*reportUse*/) { return false; }
-        virtual bool GossipSelect(Player* /*player*/, uint32 /*sender*/, uint32 /*action*/) { return false; }
-        virtual bool GossipSelectCode(Player* /*player*/, uint32 /*sender*/, uint32 /*action*/, char const* /*code*/) { return false; }
-        virtual bool QuestAccept(Player* /*player*/, Quest const* /*quest*/) { return false; }
-        virtual bool QuestReward(Player* /*player*/, Quest const* /*quest*/, uint32 /*opt*/) { return false; }
-        virtual uint32 GetDialogStatus(Player* /*player*/) { return DIALOG_STATUS_SCRIPTED_NO_STATUS; }
+        virtual bool GossipHello(Player* /*player*/) { return false; }
+        virtual bool GossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) { return false; }
+        virtual bool GossipSelectCode(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/, char const* /*code*/) { return false; }
+        virtual void QuestAccept(Player* /*player*/, Quest const* /*quest*/) { }
+        virtual void QuestReward(Player* /*player*/, Quest const* /*quest*/, uint32 /*opt*/) { }
+        virtual void QuestReward(Player* /*player*/, Quest const* /*quest*/, LootItemType /*type*/, uint32 /*opt*/) { }
+
+        // Called when the dialog status between a player and the gameobject is requested.
+        virtual QuestGiverStatus GetDialogStatus(Player* player);
+
+        // Called when a Player clicks a GameObject, before GossipHello
+        // prevents achievement tracking if returning true
+        virtual bool OnReportUse(Player* /*player*/) { return false; }
+
         virtual void Destroyed(Player* /*player*/, uint32 /*eventId*/) { }
         virtual uint32 GetData(uint32 /*id*/) const { return 0; }
         virtual void SetData64(uint32 /*id*/, uint64 /*value*/) { }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,7 +61,6 @@ struct Criteria
 };
 
 typedef std::vector<Criteria const*> CriteriaList;
-typedef std::unordered_map<uint32, CriteriaList> CriteriaListByAsset;
 
 struct CriteriaTree
 {
@@ -238,14 +237,14 @@ struct CriteriaData
     }
 
     bool IsValid(Criteria const* criteria);
-    bool Meets(uint32 criteriaId, Player const* source, Unit const* target, uint32 miscValue1 = 0, uint32 miscValue2 = 0) const;
+    bool Meets(uint32 criteriaId, Player const* source, Unit const* target, uint32 miscValue1 = 0) const;
 };
 
 struct CriteriaDataSet
 {
     CriteriaDataSet() : _criteriaId(0) { }
     void Add(CriteriaData const& data) { _storage.push_back(data); }
-    bool Meets(Player const* source, Unit const* target, uint32 miscValue1 = 0, uint32 miscValue2 = 0) const;
+    bool Meets(Player const* source, Unit const* target, uint32 miscValue = 0) const;
     void SetCriteriaId(uint32 id) { _criteriaId = id; }
 private:
     uint32 _criteriaId;
@@ -265,7 +264,7 @@ enum ProgressType
 class TC_GAME_API CriteriaHandler
 {
 public:
-    Ashamane::AnyData Variables;
+    AzgathCore::AnyData Variables;
 
     CriteriaHandler();
     virtual ~CriteriaHandler();
@@ -282,7 +281,7 @@ public:
 
     bool IsCompletedCriteria(Criteria const* criteria, uint64 requiredAmount);
     bool CheckCompletedCriteriaTree(CriteriaTree const* tree, Player* referencePlayer);
-    bool CheckCompletedCriteriaTree(uint32 criteriaTreeId, Player* referencePlayer);
+    bool CheckCompletedCriteriaTree(uint32 Criteriatreeid, Player* referencePlayer);
 
 protected:
     virtual void SendCriteriaUpdate(Criteria const* criteria, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const = 0;
@@ -308,7 +307,7 @@ protected:
     bool ModifierSatisfied(ModifierTreeEntry const* modifier, uint64 miscValue1, uint64 miscValue2, Unit const* unit, Player* referencePlayer) const;
 
     virtual std::string GetOwnerInfo() const = 0;
-    virtual CriteriaList const& GetCriteriaByType(CriteriaTypes type, uint32 asset) const = 0;
+    virtual CriteriaList const& GetCriteriaByType(CriteriaTypes type) const = 0;
 
     CriteriaProgressMap _criteriaProgress;
     std::set<uint32> _completedCriteriaTree;
@@ -326,7 +325,10 @@ public:
 
     static CriteriaMgr* Instance();
 
-    CriteriaList const& GetPlayerCriteriaByType(CriteriaTypes type, uint32 asset) const;
+    CriteriaList const& GetPlayerCriteriaByType(CriteriaTypes type) const
+    {
+        return _criteriasByType[type];
+    }
 
     CriteriaList const& GetGuildCriteriaByType(CriteriaTypes type) const
     {
@@ -357,7 +359,7 @@ public:
     CriteriaDataSet const* GetCriteriaDataSet(Criteria const* Criteria) const
     {
         CriteriaDataMap::const_iterator iter = _criteriaDataMap.find(Criteria->ID);
-        return iter != _criteriaDataMap.end() ? &iter->second : NULL;
+        return iter != _criteriaDataMap.end() ? &iter->second : nullptr;
     }
 
     static bool IsGroupCriteriaType(CriteriaTypes type)
@@ -390,7 +392,7 @@ public:
     void LoadCriteriaModifiersTree();
     void LoadCriteriaList();
     void LoadCriteriaData();
-    CriteriaTree const* GetCriteriaTree(uint32 criteriaTreeId) const;
+    CriteriaTree const* GetCriteriaTree(uint32 Criteriatreeid) const;
     Criteria const* GetCriteria(uint32 criteriaId) const;
     ModifierTreeNode const* GetModifierTree(uint32 modifierTreeId) const;
 
@@ -405,7 +407,6 @@ private:
 
     // store criterias by type to speed up lookup
     CriteriaList _criteriasByType[CRITERIA_TYPE_TOTAL];
-    CriteriaListByAsset _criteriasByAsset[CRITERIA_TYPE_TOTAL];
     CriteriaList _guildCriteriasByType[CRITERIA_TYPE_TOTAL];
     CriteriaList _scenarioCriteriasByType[CRITERIA_TYPE_TOTAL];
     CriteriaList _questObjectiveCriteriasByType[CRITERIA_TYPE_TOTAL];

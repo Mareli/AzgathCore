@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -75,7 +75,7 @@ Battlefield::~Battlefield()
 }
 
 // Called when a player enters the zone
-void Battlefield::HandlePlayerEnterZone(Player* player, Area* /*zone*/)
+void Battlefield::HandlePlayerEnterZone(Player* player, uint32 /*zone*/)
 {
     // If battle is started,
     // If not full of players > invite player to join the war
@@ -104,7 +104,7 @@ void Battlefield::HandlePlayerEnterZone(Player* player, Area* /*zone*/)
 }
 
 // Called when a player leave the zone
-void Battlefield::HandlePlayerLeaveZone(Player* player, Area* /*zone*/)
+void Battlefield::HandlePlayerLeaveZone(Player* player, uint32 /*zone*/)
 {
     if (IsWarTime())
     {
@@ -360,7 +360,7 @@ void Battlefield::EndBattle(bool endByTimer)
 
 void Battlefield::DoPlaySoundToAll(uint32 soundID)
 {
-    BroadcastPacketToWar(WorldPackets::Misc::PlaySound(ObjectGuid::Empty, soundID).Write());
+    BroadcastPacketToWar(WorldPackets::Misc::PlaySound(ObjectGuid::Empty, soundID, 0).Write());
 }
 
 bool Battlefield::HasPlayer(Player* player) const
@@ -789,14 +789,22 @@ bool BfGraveyard::HasNpc(ObjectGuid guid)
 // *******************************************************
 
 Creature* Battlefield::SpawnCreature(uint32 entry, Position const& pos)
-{    
+{
+    //Get map object
+    Map* map = sMapMgr->CreateBaseMap(m_MapId);
+    if (!map)
+    {
+        TC_LOG_ERROR("bg.battlefield", "Battlefield::SpawnCreature: Can't create creature entry: %u, map not found.", entry);
+        return nullptr;
+    }
+
     if (!sObjectMgr->GetCreatureTemplate(entry))
     {
         TC_LOG_ERROR("bg.battlefield", "Battlefield::SpawnCreature: entry %u does not exist.", entry);
         return nullptr;
     }
 
-    Creature* creature = Creature::CreateCreature(entry, m_Map, pos);
+    Creature* creature = Creature::CreateCreature(entry, map, pos);
     if (!creature)
     {
         TC_LOG_ERROR("bg.battlefield", "Battlefield::SpawnCreature: Can't create creature entry: %u", entry);
@@ -806,7 +814,7 @@ Creature* Battlefield::SpawnCreature(uint32 entry, Position const& pos)
     creature->SetHomePosition(pos);
 
     // Set creature in world
-    m_Map->AddToMap(creature);
+    map->AddToMap(creature);
     creature->setActive(true);
 
     return creature;
@@ -815,6 +823,14 @@ Creature* Battlefield::SpawnCreature(uint32 entry, Position const& pos)
 // Method for spawning gameobject on map
 GameObject* Battlefield::SpawnGameObject(uint32 entry, Position const& pos, QuaternionData const& rot)
 {
+    // Get map object
+    Map* map = sMapMgr->CreateBaseMap(m_MapId);
+    if (!map)
+    {
+        TC_LOG_ERROR("bg.battlefield", "Battlefield::SpawnGameObject: Can't create GameObject (Entry: %u). Map not found.", entry);
+        return nullptr;
+    }
+
     if (!sObjectMgr->GetGameObjectTemplate(entry))
     {
         TC_LOG_ERROR("bg.battlefield", "Battlefield::SpawnGameObject: GameObject template %u not found in database! Battlefield not created!", entry);
@@ -822,7 +838,7 @@ GameObject* Battlefield::SpawnGameObject(uint32 entry, Position const& pos, Quat
     }
 
     // Create gameobject
-    GameObject* go = GameObject::CreateGameObject(entry, m_Map, pos, rot, 255, GO_STATE_READY);
+    GameObject* go = GameObject::CreateGameObject(entry, map, pos, rot, 255, GO_STATE_READY);
     if (!go)
     {
         TC_LOG_ERROR("bg.battlefield", "Battlefield::SpawnGameObject: Could not create gameobject template %u! Battlefield has not been created!", entry);
@@ -830,7 +846,7 @@ GameObject* Battlefield::SpawnGameObject(uint32 entry, Position const& pos, Quat
     }
 
     // Add to world
-    m_Map->AddToMap(go);
+    map->AddToMap(go);
     go->setActive(true);
 
     return go;

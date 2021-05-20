@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -72,8 +72,8 @@ class TC_GAME_API SmartScript
         void DoFindFriendlyMissingBuff(std::list<Creature*>& list, float range, uint32 spellid);
         Unit* DoFindClosestFriendlyInRange(float range, bool playerOnly);
 
-        bool IsSmart(Creature* c = NULL);
-        bool IsSmartGO(GameObject* g = NULL);
+        bool IsSmart(Creature* c = nullptr);
+        bool IsSmartGO(GameObject* g = nullptr);
 
         void StoreTargetList(ObjectList* targets, uint32 id);
         ObjectList* GetTargetList(uint32 id);

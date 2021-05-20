@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,7 +36,7 @@ void DamageEventMap::SetPhase(uint16 phase)
 bool DamageEventMap::HasEvent(uint32 eventId) const
 {
     for (DamageEventStore::const_iterator itr = _eventMap.begin(); itr != _eventMap.end(); ++itr)
-        if ((itr->second & 0x00000000FFFFFFFF) == eventId)
+        if ((itr->second & EVENT_MASK) == eventId)
             return true;
 
     return false;
@@ -55,21 +55,19 @@ void DamageEventMap::ScheduleEventBelowHealthPct(uint32 eventId, uint8 healthPct
 
 uint32 DamageEventMap::OnDamageTaken(uint32 damageTaken)
 {
-    while (!Empty())
+    for (auto itr = _eventMap.begin(); itr != _eventMap.end(); )
     {
-        DamageEventStore::iterator itr = _eventMap.begin();
-
-        if (!_target->HealthWillBeBelowPctDamaged(itr->first, damageTaken))
-            return 0;
-        else if (_phase && (itr->second & 0xFFFF000000000000) && !((itr->second >> 48) & _phase))
-            _eventMap.erase(itr);
-        else
+        if (_phase && (itr->second & PHASE_MASK) && !((itr->second >> 48) & _phase))
+            itr = _eventMap.erase(itr);
+        else if (_target->HealthWillBeBelowPctDamaged(itr->first, damageTaken))
         {
-            uint32 eventId = (itr->second & 0x00000000FFFFFFFF);
+            uint32 eventId = (itr->second & EVENT_MASK);
             _lastEvent = itr->second; // include phase/group
             _eventMap.erase(itr);
             return eventId;
         }
+        else
+            ++itr;
     }
 
     return 0;
@@ -82,7 +80,7 @@ void DamageEventMap::CancelEvent(uint32 eventId)
 
     for (DamageEventStore::iterator itr = _eventMap.begin(); itr != _eventMap.end();)
     {
-        if (eventId == (itr->second & 0x00000000FFFFFFFF))
+        if (eventId == (itr->second & EVENT_MASK))
             _eventMap.erase(itr++);
         else
             ++itr;

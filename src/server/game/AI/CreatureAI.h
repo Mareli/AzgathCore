@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,31 +38,6 @@ typedef std::set<AreaBoundary const*> CreatureBoundary;
 
 #define TIME_INTERVAL_LOOK   5000
 #define VISIBILITY_RANGE    10000
-
-//Spell targets used by SelectSpell
-enum SelectTargetType
-{
-    SELECT_TARGET_DONTCARE = 0,                             //All target types allowed
-
-    SELECT_TARGET_SELF,                                     //Only Self casting
-
-    SELECT_TARGET_SINGLE_ENEMY,                             //Only Single Enemy
-    SELECT_TARGET_AOE_ENEMY,                                //Only AoE Enemy
-    SELECT_TARGET_ANY_ENEMY,                                //AoE or Single Enemy
-
-    SELECT_TARGET_SINGLE_FRIEND,                            //Only Single Friend
-    SELECT_TARGET_AOE_FRIEND,                               //Only AoE Friend
-    SELECT_TARGET_ANY_FRIEND                                //AoE or Single Friend
-};
-
-//Spell Effects used by SelectSpell
-enum SelectEffect
-{
-    SELECT_EFFECT_DONTCARE = 0,                             //All spell effects allowed
-    SELECT_EFFECT_DAMAGE,                                   //Spell does damage
-    SELECT_EFFECT_HEALING,                                  //Spell does healing
-    SELECT_EFFECT_AURA                                      //Spell applies an aura
-};
 
 enum SCEquip
 {
@@ -200,6 +174,8 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         void Talk(uint8 id, WorldObject const* whisperTarget = nullptr);
 
+        void ZoneTalk(uint8 id, WorldObject const* whisperTarget);
+
         /// == Reactions At =================================
 
         // Called if IsVisible(Unit* who) is true at each who move, reaction at visibility zone enter
@@ -263,6 +239,9 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         // Called when a spell is finished
         virtual void OnSpellFinished(SpellInfo const* /*spellInfo*/) { }
+
+        // Called when an aura is removed
+        virtual void OnAuraRemoved(SpellInfo const* /*spellInfo*/) { }
 
         // Called when the creature is target of hostile action: swing, hostile spell landed, fear/etc)
         virtual void AttackedBy(Unit* /*attacker*/) { }
@@ -344,6 +323,10 @@ class TC_GAME_API CreatureAI : public UnitAI
         // If a PlayerAI* is returned, that AI is placed on the player instead of the default charm AI
         // Object destruction is handled by Unit::RemoveCharmedBy
         virtual PlayerAI* GetAIForCharmedPlayer(Player* /*who*/) { return nullptr; }
+
+        // Should return true if the NPC is target of an escort quest
+        // If onlyIfActive is set, should return true only if the escort quest is currently active
+        virtual bool IsEscortNPC(bool /*onlyIfActive*/) const { return false; }
 
         // intended for encounter design/debugging. do not use for other purposes. expensive.
         int32 VisualizeBoundary(uint32 duration, Unit* owner=nullptr, bool fill=false) const;

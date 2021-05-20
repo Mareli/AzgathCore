@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,10 @@
 
 #include "Define.h"
 #include <map>
+
+#define EVENT_MASK 0x00000000FFFFFFFF
+#define GROUP_MASK 0x0000FFFF00000000
+#define PHASE_MASK 0xFFFF000000000000
 
 class TC_GAME_API DamageEventMap
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -583,7 +583,7 @@ bool SmartAIMgr::IsGameObjectValid(SmartScriptHolder const& e, uint32 entry)
 
 bool SmartAIMgr::IsSpellValid(SmartScriptHolder const& e, uint32 entry)
 {
-    if (!sSpellMgr->GetSpellInfo(entry))
+    if (!sSpellMgr->GetSpellInfo(entry, DIFFICULTY_NONE))
     {
         TC_LOG_ERROR("sql.sql", "SmartAIMgr: Entry " SI64FMTD " SourceType %u Event %u Action %u uses non-existent Spell entry %u, skipped.", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), entry);
         return false;
@@ -734,7 +734,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
             case SMART_EVENT_SPELLHIT_TARGET:
                 if (e.event.spellHit.spell)
                 {
-                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(e.event.spellHit.spell);
+                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(e.event.spellHit.spell, DIFFICULTY_NONE);
                     if (!spellInfo)
                     {
                         TC_LOG_ERROR("sql.sql", "SmartAIMgr: Entry " SI64FMTD " SourceType %u Event %u Action %u uses non-existent Spell entry %u, skipped.", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), e.event.spellHit.spell);
@@ -797,7 +797,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
                     return false;
                 break;
             case SMART_EVENT_VICTIM_CASTING:
-                if (e.event.targetCasting.spellId > 0 && !sSpellMgr->GetSpellInfo(e.event.targetCasting.spellId))
+                if (e.event.targetCasting.spellId > 0 && !sSpellMgr->GetSpellInfo(e.event.targetCasting.spellId, DIFFICULTY_NONE))
                 {
                     TC_LOG_ERROR("sql.sql", "SmartAIMgr: Entry " SI64FMTD " SourceType %u Event %u Action %u uses non-existent Spell entry %u, skipped.", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), e.event.spellHit.spell);
                     return false;
@@ -820,6 +820,8 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
                     return false;
                 break;
             case SMART_EVENT_ACCEPTED_QUEST:
+                if (e.event.questaccepted.quest && !IsQuestValid(e, e.event.questaccepted.quest))
+                    return false;
             case SMART_EVENT_REWARD_QUEST:
                 if (e.event.quest.quest && !IsQuestValid(e, e.event.quest.quest))
                     return false;
@@ -918,6 +920,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
 
                 switch (e.GetTargetType())
                 {
+                    case SMART_TARGET_ACTION_INVOKER:
                     case SMART_TARGET_CREATURE_RANGE:
                     case SMART_TARGET_CREATURE_GUID:
                     case SMART_TARGET_CREATURE_DISTANCE:
@@ -1109,6 +1112,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
             break;
         case SMART_ACTION_FAIL_QUEST:
         case SMART_ACTION_OFFER_QUEST:
+        case SMART_ACTION_FORCE_COMPLETE_QUEST:
             if (!e.action.quest.quest || !IsQuestValid(e, e.action.quest.quest))
                 return false;
             break;
@@ -1160,8 +1164,8 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
             if (!IsSpellValid(e, e.action.cast.spell))
                 return false;
 
-            SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(e.action.cast.spell);
-            for (SpellEffectInfo const* effect : spellInfo->GetEffectsForDifficulty(DIFFICULTY_NONE))
+            SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(e.action.cast.spell, DIFFICULTY_NONE);
+            for (SpellEffectInfo const* effect : spellInfo->GetEffects())
             {
                 if (effect && (effect->IsEffect(SPELL_EFFECT_KILL_CREDIT) || effect->IsEffect(SPELL_EFFECT_KILL_CREDIT2)))
                 {
@@ -1647,6 +1651,10 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
         case SMART_ACTION_MOVE_OFFSET:
         case SMART_ACTION_SET_CORPSE_DELAY:
         case SMART_ACTION_DISABLE_EVADE:
+        case SMART_ACTION_SAY:
+        case SMART_ACTION_GET_SCENARIO:
+        case SMART_ACTION_COMPLETE_SCENARIO_STEP:
+        case SMART_ACTION_COMPLETE_SCENARIO:
         case SMART_ACTION_PLAY_SPELL_VISUAL:
         case SMART_ACTION_PLAY_ORPHAN_SPELL_VISUAL:
         case SMART_ACTION_CANCEL_VISUAL:
@@ -1666,6 +1674,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
         case SMART_ACTION_TRIGGER_RANDOM_TIMED_EVENT:
         case SMART_ACTION_SET_COUNTER:
         case SMART_ACTION_REMOVE_ALL_GAMEOBJECTS:
+        case SMART_ACTION_ENTER_LFG_QUEUE:
             break;
         default:
             TC_LOG_ERROR("sql.sql", "SmartAIMgr: Not handled action_type(%u), event_type(%u), Entry " SI64FMTD " SourceType %u Event %u, skipped.", e.GetActionType(), e.GetEventType(), e.entryOrGuid, e.GetScriptType(), e.event_id);
@@ -1726,31 +1735,26 @@ void SmartAIMgr::LoadHelperStores()
 {
     uint32 oldMSTime = getMSTime();
 
-    SpellInfo const* spellInfo = NULL;
-    for (uint32 i = 0; i < sSpellMgr->GetSpellInfoStoreSize(); ++i)
+    sSpellMgr->ForEachSpellInfo([this](SpellInfo const* spellInfo)
     {
-        spellInfo = sSpellMgr->GetSpellInfo(i);
-        if (!spellInfo)
-            continue;
-
-        for (SpellEffectInfo const* effect : spellInfo->GetEffectsForDifficulty(DIFFICULTY_NONE))
+        for (SpellEffectInfo const* effect : spellInfo->GetEffects())
         {
             if (!effect)
                 continue;
 
             if (effect->IsEffect(SPELL_EFFECT_SUMMON))
-                SummonCreatureSpellStore.insert(std::make_pair(uint32(effect->MiscValue), std::make_pair(i, SpellEffIndex(effect->EffectIndex))));
+                SummonCreatureSpellStore.insert(std::make_pair(uint32(effect->MiscValue), std::make_pair(spellInfo->Id, SpellEffIndex(effect->EffectIndex))));
 
             else if (effect->IsEffect(SPELL_EFFECT_SUMMON_OBJECT_WILD))
-                SummonGameObjectSpellStore.insert(std::make_pair(uint32(effect->MiscValue), std::make_pair(i, SpellEffIndex(effect->EffectIndex))));
+                SummonGameObjectSpellStore.insert(std::make_pair(uint32(effect->MiscValue), std::make_pair(spellInfo->Id, SpellEffIndex(effect->EffectIndex))));
 
             else if (effect->IsEffect(SPELL_EFFECT_KILL_CREDIT) || effect->IsEffect(SPELL_EFFECT_KILL_CREDIT2))
-                KillCreditSpellStore.insert(std::make_pair(uint32(effect->MiscValue), std::make_pair(i, SpellEffIndex(effect->EffectIndex))));
+                KillCreditSpellStore.insert(std::make_pair(uint32(effect->MiscValue), std::make_pair(spellInfo->Id, SpellEffIndex(effect->EffectIndex))));
 
             else if (effect->IsEffect(SPELL_EFFECT_CREATE_ITEM))
-                CreateItemSpellStore.insert(std::make_pair(uint32(effect->ItemType), std::make_pair(i, SpellEffIndex(effect->EffectIndex))));
+                CreateItemSpellStore.insert(std::make_pair(uint32(effect->ItemType), std::make_pair(spellInfo->Id, SpellEffIndex(effect->EffectIndex))));
         }
-    }
+    });
 
     TC_LOG_INFO("server.loading", ">> Loaded SmartAIMgr Helpers in %u ms", GetMSTimeDiffToNow(oldMSTime));
 }

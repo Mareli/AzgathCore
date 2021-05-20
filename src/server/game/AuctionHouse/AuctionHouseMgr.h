@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +21,7 @@
 #include "Define.h"
 #include "DatabaseEnvFwd.h"
 #include "Duration.h"
-#include "EnumClassFlag.h"
+#include "EnumFlag.h"
 #include "ItemTemplate.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
@@ -43,8 +42,8 @@ namespace WorldPackets
         struct AuctionSortDef;
         struct BucketInfo;
         class AuctionListBucketsResult;
-        class AuctionListBidderItemsResult;
-        class AuctionListOwnerItemsResult;
+        class AuctionListBiddedItemsResult;
+        class AuctionListOwnedItemsResult;
         class AuctionListItemsResult;
         class AuctionReplicateResponse;
     }
@@ -54,38 +53,38 @@ uint32 constexpr MIN_AUCTION_TIME = 12 * HOUR;
 
 enum class AuctionResult : int8
 {
-    Ok                      = 0,
-    Inventory               = 1,
-    DatabaseError           = 2,
-    NotEnoughMoney          = 3,
-    ItemNotFound            = 4,
-    HigherBid               = 5,
-    BidIncrement            = 7,
-    BidOwn                  = 10,
-    RestrictedAccountTrial  = 13,
-    HasRestriction          = 17,
-    AuctionHouseBusy        = 18,
+    Ok = 0,
+    Inventory = 1,
+    DatabaseError = 2,
+    NotEnoughMoney = 3,
+    ItemNotFound = 4,
+    HigherBid = 5,
+    BidIncrement = 7,
+    BidOwn = 10,
+    RestrictedAccountTrial = 13,
+    HasRestriction = 17,
+    AuctionHouseBusy = 18,
     AuctionHouseUnavailable = 19,
     CommodityPurchaseFailed = 21,
-    ItemHasQuote            = 23
+    ItemHasQuote = 23
 };
 
 enum class AuctionCommand : int8
 {
-    SellItem    = 0,
-    Cancel      = 1,
-    PlaceBid    = 2
+    SellItem = 0,
+    Cancel = 1,
+    PlaceBid = 2
 };
 
 enum class AuctionMailType : int32
 {
-    Outbid      = 0,
-    Won         = 1,
-    Sold        = 2,
-    Expired     = 3,
-    Removed     = 4, // for bidder
-    Cancelled   = 5, // for seller
-    Invoice     = 6
+    Outbid = 0,
+    Won = 1,
+    Sold = 2,
+    Expired = 3,
+    Removed = 4, // for bidder
+    Cancelled = 5, // for seller
+    Invoice = 6
 };
 
 enum class AuctionHouseResultLimits : std::size_t
@@ -98,39 +97,41 @@ constexpr std::size_t MAX_FAVORITE_AUCTIONS = 100;
 
 enum class AuctionHouseFilterMask : uint32
 {
-    None                = 0x0,
-    UncollectedOnly     = 0x1,
-    UsableOnly          = 0x2,
-    UpgradesOnly        = 0x4,
-    ExactMatch          = 0x8,
-    PoorQuality         = 0x10,
-    CommonQuality       = 0x20,
-    UncommonQuality     = 0x40,
-    RareQuality         = 0x80,
-    EpicQuality         = 0x100,
-    LegendaryQuality    = 0x200,
-    ArtifactQuality     = 0x400,
+    None = 0x0,
+    UncollectedOnly = 0x1,
+    UsableOnly = 0x2,
+    UpgradesOnly = 0x4,
+    ExactMatch = 0x8,
+    PoorQuality = 0x10,
+    CommonQuality = 0x20,
+    UncommonQuality = 0x40,
+    RareQuality = 0x80,
+    EpicQuality = 0x100,
+    LegendaryQuality = 0x200,
+    ArtifactQuality = 0x400,
 };
+
+DEFINE_ENUM_FLAG(AuctionHouseFilterMask);
 
 enum class AuctionHouseSortOrder : uint8
 {
-    Price   = 0,
-    Name    = 1,
-    Level   = 2,
-    Bid     = 3,
-    Buyout  = 4
+    Price = 0,
+    Name = 1,
+    Level = 2,
+    Bid = 3,
+    Buyout = 4
 };
 
 enum class AuctionHouseBrowseMode : uint8
 {
-    Search          = 0,
-    SpecificKeys    = 1
+    Search = 0,
+    SpecificKeys = 1
 };
 
 enum class AuctionHouseListType : uint8
 {
     Commodities = 1,
-    Items       = 2
+    Items = 2
 };
 
 struct AuctionSearchClassFilters
@@ -205,7 +206,7 @@ struct AuctionsBucketData
     uint8 ItemClass = 0;
     uint8 ItemSubClass = 0;
     uint8 InventoryType = 0;
-    EnumClassFlag<AuctionHouseFilterMask> QualityMask = AuctionHouseFilterMask::None;
+    AuctionHouseFilterMask QualityMask = AuctionHouseFilterMask::None;
     std::array<uint32, MAX_ITEM_QUALITY> QualityCounts = { };
     uint64 MinPrice = 0; // for sort
     std::array<std::pair<uint32, uint32>, 4> ItemModifiedAppearanceId = { }; // for uncollected search
@@ -295,19 +296,19 @@ public:
     void Update();
 
     void BuildListBuckets(WorldPackets::AuctionHouse::AuctionListBucketsResult& listBucketsResult, Player* player,
-        std::wstring const& name, uint8 minLevel, uint8 maxLevel, EnumClassFlag<AuctionHouseFilterMask> filters, Optional<AuctionSearchClassFilters> const& classFilters,
+        std::wstring const& name, uint8 minLevel, uint8 maxLevel, EnumFlag<AuctionHouseFilterMask> filters, Optional<AuctionSearchClassFilters> const& classFilters,
         uint8 const* knownPetBits, std::size_t knownPetBitsCount, uint8 maxKnownPetLevel,
         uint32 offset, WorldPackets::AuctionHouse::AuctionSortDef const* sorts, std::size_t sortCount);
     void BuildListBuckets(WorldPackets::AuctionHouse::AuctionListBucketsResult& listBucketsResult, Player* player,
         WorldPackets::AuctionHouse::AuctionBucketKey const* keys, std::size_t keysCount,
         WorldPackets::AuctionHouse::AuctionSortDef const* sorts, std::size_t sortCount);
-    void BuildListBidderItems(WorldPackets::AuctionHouse::AuctionListBidderItemsResult& listBidderItemsResult, Player* player,
+    void BuildListBiddedItems(WorldPackets::AuctionHouse::AuctionListBiddedItemsResult& listBiddedItemsResult, Player* player,
         uint32 offset, WorldPackets::AuctionHouse::AuctionSortDef const* sorts, std::size_t sortCount) const;
     void BuildListAuctionItems(WorldPackets::AuctionHouse::AuctionListItemsResult& listItemsResult, Player* player, AuctionsBucketKey const& bucketKey,
         uint32 offset, WorldPackets::AuctionHouse::AuctionSortDef const* sorts, std::size_t sortCount) const;
     void BuildListAuctionItems(WorldPackets::AuctionHouse::AuctionListItemsResult& listItemsResult, Player* player, uint32 itemId,
         uint32 offset, WorldPackets::AuctionHouse::AuctionSortDef const* sorts, std::size_t sortCount) const;
-    void BuildListOwnerItems(WorldPackets::AuctionHouse::AuctionListOwnerItemsResult& listOwnerItemsResult, Player* player,
+    void BuildListOwnedItems(WorldPackets::AuctionHouse::AuctionListOwnedItemsResult& listOwnedItemsResult, Player* player,
         uint32 offset, WorldPackets::AuctionHouse::AuctionSortDef const* sorts, std::size_t sortCount);
     void BuildReplicate(WorldPackets::AuctionHouse::AuctionReplicateResponse& replicateResponse, Player* player,
         uint32 global, uint32 cursor, uint32 tombstone, uint32 count);
@@ -344,80 +345,80 @@ private:
 
 class TC_GAME_API AuctionHouseMgr
 {
-    private:
-        AuctionHouseMgr();
-        ~AuctionHouseMgr();
+private:
+    AuctionHouseMgr();
+    ~AuctionHouseMgr();
 
-    public:
-        static AuctionHouseMgr* instance();
+public:
+    static AuctionHouseMgr* instance();
 
-        AuctionHouseObject* GetAuctionsMap(uint32 factionTemplateId);
-        AuctionHouseObject* GetAuctionsById(uint32 auctionHouseId);
+    AuctionHouseObject* GetAuctionsMap(uint32 factionTemplateId);
+    AuctionHouseObject* GetAuctionsById(uint32 auctionHouseId);
 
-        Item* GetAItem(ObjectGuid itemGuid);
+    Item* GetAItem(ObjectGuid itemGuid);
 
-        static std::string BuildItemAuctionMailSubject(AuctionMailType type, AuctionPosting const* auction);
-        static std::string BuildCommodityAuctionMailSubject(AuctionMailType type, uint32 itemId, uint32 itemCount);
-        static std::string BuildAuctionMailSubject(uint32 itemId, AuctionMailType type, uint32 auctionId, uint32 itemCount, uint32 battlePetSpeciesId,
-            ItemContext context, std::vector<int32> const& bonusListIds);
-        static std::string BuildAuctionWonMailBody(ObjectGuid guid, uint64 bid, uint64 buyout);
-        static std::string BuildAuctionSoldMailBody(ObjectGuid guid, uint64 bid, uint64 buyout, uint32 deposit, uint64 consignment);
-        static std::string BuildAuctionInvoiceMailBody(ObjectGuid guid, uint64 bid, uint64 buyout, uint32 deposit, uint64 consignment, uint32 moneyDelay, uint32 eta);
+    static std::string BuildItemAuctionMailSubject(AuctionMailType type, AuctionPosting const* auction);
+    static std::string BuildCommodityAuctionMailSubject(AuctionMailType type, uint32 itemId, uint32 itemCount);
+    static std::string BuildAuctionMailSubject(uint32 itemId, AuctionMailType type, uint32 auctionId, uint32 itemCount, uint32 battlePetSpeciesId,
+        ItemContext context, std::vector<int32> const& bonusListIds);
+    static std::string BuildAuctionWonMailBody(ObjectGuid guid, uint64 bid, uint64 buyout);
+    static std::string BuildAuctionSoldMailBody(ObjectGuid guid, uint64 bid, uint64 buyout, uint32 deposit, uint64 consignment);
+    static std::string BuildAuctionInvoiceMailBody(ObjectGuid guid, uint64 bid, uint64 buyout, uint32 deposit, uint64 consignment, uint32 moneyDelay, uint32 eta);
 
-        static uint64 GetCommodityAuctionDeposit(ItemTemplate const* item, Minutes time, uint32 quantity);
-        static uint64 GetItemAuctionDeposit(Player* player, Item* item, Minutes time);
-        static AuctionHouseEntry const* GetAuctionHouseEntry(uint32 factionTemplateId, uint32* houseId);
+    static uint64 GetCommodityAuctionDeposit(ItemTemplate const* item, Minutes time, uint32 quantity);
+    static uint64 GetItemAuctionDeposit(Player* player, Item* item, Minutes time);
+    static AuctionHouseEntry const* GetAuctionHouseEntry(uint32 factionTemplateId, uint32* houseId);
 
-    public:
+public:
 
-        void LoadAuctions();
+    void LoadAuctions();
 
-        void AddAItem(Item* item);
-        bool RemoveAItem(ObjectGuid itemGuid, bool deleteItem = false);
-        bool PendingAuctionAdd(Player* player, uint32 auctionHouseId, uint32 auctionId, uint64 deposit);
-        std::size_t PendingAuctionCount(Player const* player) const;
-        void PendingAuctionProcess(Player* player);
-        void UpdatePendingAuctions();
-        void Update();
+    void AddAItem(Item* item);
+    bool RemoveAItem(ObjectGuid itemGuid, bool deleteItem = false, CharacterDatabaseTransaction* trans = nullptr);
+    bool PendingAuctionAdd(Player* player, uint32 auctionHouseId, uint32 auctionId, uint64 deposit);
+    std::size_t PendingAuctionCount(Player const* player) const;
+    void PendingAuctionProcess(Player* player);
+    void UpdatePendingAuctions();
+    void Update();
 
-        uint32 GenerateReplicationId();
+    uint32 GenerateReplicationId();
 
-        AuctionThrottleResult CheckThrottle(Player* player, bool addonTainted, AuctionCommand command = AuctionCommand::SellItem);
+    AuctionThrottleResult CheckThrottle(Player* player, bool addonTainted, AuctionCommand command = AuctionCommand::SellItem);
 
-    private:
+private:
 
-        AuctionHouseObject mHordeAuctions;
-        AuctionHouseObject mAllianceAuctions;
-        AuctionHouseObject mNeutralAuctions;
-        AuctionHouseObject mGoblinAuctions;
+    AuctionHouseObject mHordeAuctions;
+    AuctionHouseObject mAllianceAuctions;
+    AuctionHouseObject mNeutralAuctions;
+    AuctionHouseObject mGoblinAuctions;
 
-        struct PendingAuctionInfo
-        {
-            uint32 AuctionId = 0;
-            uint32 AuctionHouseId = 0;
-            uint64 Deposit = 0;
-        };
+    struct PendingAuctionInfo
+    {
+        uint32 AuctionId = 0;
+        uint32 AuctionHouseId = 0;
+        uint64 Deposit = 0;
+    };
 
-        struct PlayerPendingAuctions
-        {
-            std::vector<PendingAuctionInfo> Auctions;
-            std::size_t LastAuctionsSize = 0;
-        };
+    struct PlayerPendingAuctions
+    {
+        std::vector<PendingAuctionInfo> Auctions;
+        std::size_t LastAuctionsSize = 0;
+    };
 
-        struct PlayerThrottleObject
-        {
-            std::chrono::steady_clock::time_point PeriodEnd;
-            uint8 QueriesRemaining = 100;
-        };
+    struct PlayerThrottleObject
+    {
+        std::chrono::steady_clock::time_point PeriodEnd;
+        uint8 QueriesRemaining = 100;
+    };
 
-        std::unordered_map<ObjectGuid, PlayerPendingAuctions> _pendingAuctionsByPlayer;
+    std::unordered_map<ObjectGuid, PlayerPendingAuctions> _pendingAuctionsByPlayer;
 
-        std::unordered_map<ObjectGuid, Item*> _itemsByGuid;
+    std::unordered_map<ObjectGuid, Item*> _itemsByGuid;
 
-        uint32 _replicateIdGenerator;
+    uint32 _replicateIdGenerator;
 
-        std::unordered_map<ObjectGuid, PlayerThrottleObject> _playerThrottleObjects;
-        std::chrono::steady_clock::time_point _playerThrottleObjectsCleanupTime;
+    std::unordered_map<ObjectGuid, PlayerThrottleObject> _playerThrottleObjects;
+    std::chrono::steady_clock::time_point _playerThrottleObjectsCleanupTime;
 };
 
 #define sAuctionMgr AuctionHouseMgr::instance()

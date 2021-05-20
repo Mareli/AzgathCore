@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,7 +34,7 @@ typedef std::array<std::array<uint32, MAX_ITEM_CLASS>, MAX_ITEM_QUALITY> AllItem
 
 struct SellerItemClassInfo
 {
-    SellerItemClassInfo(): AmountOfItems(0), MissItems(0), Quantity(0), PriceRatio(0), RandomStackRatio(100) {}
+    SellerItemClassInfo() : AmountOfItems(0), MissItems(0), Quantity(0), PriceRatio(0), RandomStackRatio(100) {}
 
     uint32 AmountOfItems;
     uint32 MissItems;
@@ -45,7 +45,7 @@ struct SellerItemClassInfo
 
 struct SellerItemInfo
 {
-    SellerItemInfo(): AmountOfItems(0), MissItems(0), PriceRatio(0) {}
+    SellerItemInfo() : AmountOfItems(0), MissItems(0), PriceRatio(0) {}
 
     uint32 AmountOfItems;
     uint32 MissItems;
@@ -57,7 +57,7 @@ struct SellerItemInfo
 class SellerConfiguration
 {
 public:
-    SellerConfiguration(): LastMissedItem(0), _houseType(AUCTION_HOUSE_NEUTRAL), _minTime(1), _maxTime(72)
+    SellerConfiguration() : LastMissedItem(0), _houseType(AUCTION_HOUSE_NEUTRAL), _minTime(1), _maxTime(72)
     {
     }
 

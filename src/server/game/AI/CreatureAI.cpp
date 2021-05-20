@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -42,8 +41,11 @@ void CreatureAI::OnCharmed(bool apply)
     }
 }
 
-AISpellInfoType* UnitAI::AISpellInfo;
-AISpellInfoType* GetAISpellInfo(uint32 i) { return &UnitAI::AISpellInfo[i]; }
+std::unordered_map<std::pair<uint32, Difficulty>, AISpellInfoType> UnitAI::AISpellInfo;
+AISpellInfoType* GetAISpellInfo(uint32 spellId, Difficulty difficulty)
+{
+    return Trinity::Containers::MapGetValuePtr(UnitAI::AISpellInfo, { spellId, difficulty });
+}
 
 CreatureAI::CreatureAI(Creature* creature) : UnitAI(creature), me(creature),
     _boundary(nullptr),
@@ -61,7 +63,18 @@ CreatureAI::~CreatureAI()
 
 void CreatureAI::Talk(uint8 id, WorldObject const* whisperTarget /*= nullptr*/)
 {
+    if (!this)
+        return;
+        
     sCreatureTextMgr->SendChat(me, id, whisperTarget);
+}
+
+void CreatureAI::ZoneTalk(uint8 id, WorldObject const* whisperTarget /*= nullptr*/)
+{
+    if (!this)
+        return;
+
+    sCreatureTextMgr->SendChat(me, id, whisperTarget, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_ZONE);
 }
 
 void CreatureAI::DoZoneInCombat(Creature* creature /*= nullptr*/, float maxRangeToNearestTarget /* = 250.0f*/)
@@ -282,7 +295,7 @@ bool CreatureAI::_EnterEvadeMode(EvadeReason /*why*/)
     // sometimes bosses stuck in combat?
     me->DeleteThreatList();
     me->CombatStop(true);
-    me->ResetLootRecipients();
+    me->SetLootRecipient(nullptr);
     me->ResetPlayerDamageReq();
     me->SetLastDamagedTime(0);
     me->SetCannotReachTarget(false);

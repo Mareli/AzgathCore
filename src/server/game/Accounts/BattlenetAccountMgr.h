@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -29,7 +29,7 @@ namespace Battlenet
 {
     namespace AccountMgr
     {
-        TC_GAME_API AccountOpResult CreateBattlenetAccount(std::string email, std::string password, bool withGameAccount, std::string* gameAccountName);
+        TC_GAME_API AccountOpResult CreateBattlenetAccount(std::string email, std::string password, std::string* gameAccountName);
         TC_GAME_API AccountOpResult ChangePassword(uint32 accountId, std::string newPassword);
         TC_GAME_API bool CheckPassword(uint32 accountId, std::string password);
         TC_GAME_API AccountOpResult LinkWithGameAccount(std::string const& email, std::string const& gameAccountName);

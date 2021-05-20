@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,6 +22,10 @@
 
 class AreaTrigger;
 class Unit;
+
+#define VALIDATE_CASTER()   Unit* caster = at->GetCaster(); \
+                            if (!caster) \
+                                return;
 
 class TC_GAME_API AreaTriggerAI
 {
@@ -57,6 +61,9 @@ class TC_GAME_API AreaTriggerAI
 
         // Called when the AreaTrigger is removed
         virtual void OnRemove() { }
+
+        // Pass parameters between AI
+        virtual void DoAction(int32 /*param*/) { }
 };
 
 class NullAreaTriggerAI : public AreaTriggerAI

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,6 +21,7 @@
 #include "Containers.h"
 #include "EventMap.h"
 #include "ObjectGuid.h"
+#include "SpellDefines.h"
 #include "ThreatManager.h"
 
 #define CAST_AI(a, b)   (dynamic_cast<a*>(b))
@@ -41,7 +41,10 @@ class SpellInfo;
 class Unit;
 struct AISpellInfoType;
 enum DamageEffectType : uint8;
+enum Difficulty : uint8;
 enum SpellEffIndex : uint8;
+enum class LootItemType : uint8;
+enum class QuestGiverStatus : uint32;
 
 //Selection method used by SelectTarget
 enum SelectAggroTarget
@@ -124,6 +127,22 @@ private:
     bool _inLos;
 };
 
+struct TC_GAME_API BehindTargetSelector
+{
+    Unit const* me;
+    float m_dist;
+    bool m_playerOnly;
+    int32 m_aura;
+
+    // unit: the reference unit
+    // dist: if 0: ignored, if > 0: maximum distance to the reference unit, if < 0: minimum distance to the reference unit
+    // playerOnly: self explaining
+    // aura: if 0: ignored, if > 0: the target shall have the aura, if < 0, the target shall NOT have the aura
+    BehindTargetSelector(Unit const* unit, float dist = 0.f, bool playerOnly = true, int32 aura = 0) : me(unit), m_dist(dist), m_playerOnly(playerOnly), m_aura(aura) { }
+
+    bool operator()(Unit const* target) const;
+};
+
 TC_GAME_API void SortByDistanceTo(Unit* reference, std::list<Unit*>& targets);
 
 class TC_GAME_API UnitAI
@@ -152,6 +171,11 @@ class TC_GAME_API UnitAI
         virtual void SetData(uint32 /*id*/, uint32 /*value*/) { }
         virtual void SetGUID(ObjectGuid /*guid*/, int32 /*id*/ = 0) { }
         virtual ObjectGuid GetGUID(int32 /*id*/ = 0) const { return ObjectGuid::Empty; }
+
+        virtual QuestGiverStatus GetDialogStatus(Player* player);
+
+        void SetBaseAttackSpell(uint32 spellId) { _baseAttackSpell = spellId; }
+        uint32 GetBaseAttackSpell() { return _baseAttackSpell; }
 
         Unit* SelectTarget(SelectAggroTarget targetType, uint32 position = 0, float dist = 0.0f, bool playerOnly = false, int32 aura = 0);
         // Select the targets satisfying the predicate.
@@ -270,19 +294,23 @@ class TC_GAME_API UnitAI
         void DoCastVictim(uint32 spellId, bool triggered = false);
         void DoCastAOE(uint32 spellId, bool triggered = false);
         void DoCastRandom(uint32 spellId, float dist, bool triggered = false, int32 aura = 0, uint32 position = 0);
+        void DoCastRandomFriendlyCreature(uint32 spellId, float dist = 50.f, bool triggered = false);
+        void DoCastAI(uint32 spellId);
 
         void DoMeleeAttackIfReady();
         bool DoSpellAttackIfReady(uint32 spellId);
 
-        static AISpellInfoType* AISpellInfo;
+        static std::unordered_map<std::pair<uint32, Difficulty>, AISpellInfoType> AISpellInfo;
         static void FillAISpellInfo();
 
-        virtual void sGossipHello(Player* /*player*/) { }
-        virtual void sGossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) { }
-        virtual void sGossipSelectCode(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/, char const* /*code*/) { }
-        virtual void sQuestAccept(Player* /*player*/, Quest const* /*quest*/) { }
-        virtual void sQuestSelect(Player* /*player*/, Quest const* /*quest*/) { }
-        virtual void sQuestReward(Player* /*player*/, Quest const* /*quest*/, uint32 /*opt*/) { }
+        virtual bool GossipHello(Player* /*player*/) { return false; }
+        virtual bool GossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) { return false; }
+        virtual bool GossipSelectCode(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/, char const* /*code*/) { return false; }
+        virtual void QuestAccept(Player* /*player*/, Quest const* /*quest*/) { }
+        virtual void QuestSelect(Player* /*player*/, Quest const* /*quest*/) { }
+        virtual void QuestReward(Player* /*player*/, Quest const* /*quest*/, uint32 /*opt*/) { }
+        virtual void QuestReward(Player* /*player*/, Quest const* /*quest*/, LootItemType /*type*/, uint32 /*opt*/) { }
+
         virtual bool sOnDummyEffect(Unit* /*caster*/, uint32 /*spellId*/, SpellEffIndex /*effIndex*/) { return false; }
         virtual void sOnGameEvent(bool /*start*/, uint16 /*eventId*/) { }
 
@@ -311,6 +339,7 @@ class TC_GAME_API UnitAI
     private:
         UnitAI(UnitAI const& right) = delete;
         UnitAI& operator=(UnitAI const& right) = delete;
+        uint32 _baseAttackSpell = 0;
 
         ThreatManager& GetThreatManager();
 };

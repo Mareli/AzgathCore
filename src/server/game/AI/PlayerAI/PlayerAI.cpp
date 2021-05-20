@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -498,7 +498,7 @@ PlayerAI::TargetedSpell PlayerAI::VerifySpellCast(uint32 spellId, Unit* target)
     if (!knownRank)
         return {};
 
-    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(knownRank);
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(knownRank, me->GetMap()->GetDifficultyID());
     if (!spellInfo)
         return {};
 
@@ -671,7 +671,7 @@ Unit* SimpleCharmedPlayerAI::SelectAttackTarget() const
 PlayerAI::TargetedSpell SimpleCharmedPlayerAI::SelectAppropriateCastForSpec()
 {
     PossibleSpellVector spells;
-    /*
+    
     switch (me->getClass())
     {
         case CLASS_WARRIOR:
@@ -1190,7 +1190,6 @@ PlayerAI::TargetedSpell SimpleCharmedPlayerAI::SelectAppropriateCastForSpec()
             }
             break;
     }
-    */
     return SelectSpellCast(spells);
 }
 
@@ -1265,7 +1264,8 @@ void SimpleCharmedPlayerAI::UpdateAI(const uint32 diff)
                             AttackStartCaster(target, CASTER_CHASE_DISTANCE);
                     }
                 }
-                if (TargetedSpell shouldCast = SelectAppropriateCastForSpec())
+                PossibleSpellVector spells;
+                if (TargetedSpell shouldCast = SelectSpellCast(spells))
                     DoCastAtTarget(shouldCast);
                 _castCheckTimer = 500;
             }

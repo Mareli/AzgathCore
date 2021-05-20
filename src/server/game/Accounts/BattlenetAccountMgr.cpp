@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,13 +17,13 @@
 
 #include "BattlenetAccountMgr.h"
 #include "AccountMgr.h"
+#include "CryptoHash.h"
 #include "DatabaseEnv.h"
 #include "Util.h"
-#include "SHA256.h"
 
 using GameAccountMgr = AccountMgr;
 
-AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email, std::string password, bool withGameAccount, std::string* gameAccountName)
+AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email, std::string password, std::string* gameAccountName)
 {
     if (utf8length(email) > MAX_BNET_EMAIL_STR)
         return AccountOpResult::AOR_NAME_TOO_LONG;
@@ -37,6 +37,7 @@ AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email,
     if (GetId(email))
         return AccountOpResult::AOR_NAME_ALREADY_EXIST;
 
+    /* create bnet account */
     LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_BNET_ACCOUNT);
     stmt->setString(0, email);
     stmt->setString(1, CalculateShaPassHash(email, password));
@@ -45,11 +46,9 @@ AccountOpResult Battlenet::AccountMgr::CreateBattlenetAccount(std::string email,
     uint32 newAccountId = GetId(email);
     ASSERT(newAccountId);
 
-    if (withGameAccount)
-    {
-        *gameAccountName = std::to_string(newAccountId) + "#1";
-        GameAccountMgr::instance()->CreateAccount(*gameAccountName, password, email, newAccountId, 1);
-    }
+    /* create game account */
+    *gameAccountName = std::to_string(newAccountId) + "#1";
+    GameAccountMgr::instance()->CreateAccount(*gameAccountName, password, email, newAccountId, 1);
 
     return AccountOpResult::AOR_OK;
 }
@@ -174,15 +173,15 @@ uint8 Battlenet::AccountMgr::GetMaxIndex(uint32 accountId)
 
 std::string Battlenet::AccountMgr::CalculateShaPassHash(std::string const& name, std::string const& password)
 {
-    SHA256Hash email;
+    Trinity::Crypto::SHA256 email;
     email.UpdateData(name);
     email.Finalize();
 
-    SHA256Hash sha;
-    sha.UpdateData(ByteArrayToHexStr(email.GetDigest(), email.GetLength()));
+    Trinity::Crypto::SHA256 sha;
+    sha.UpdateData(ByteArrayToHexStr(email.GetDigest()));
     sha.UpdateData(":");
     sha.UpdateData(password);
     sha.Finalize();
 
-    return ByteArrayToHexStr(sha.GetDigest(), sha.GetLength(), true);
+    return ByteArrayToHexStr(sha.GetDigest(), true);
 }

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -127,6 +126,17 @@ struct TC_GAME_API VehicleAI : public CreatureAI
         uint32 m_ConditionsTimer;
         bool m_DoDismiss;
         uint32 m_DismissTimer;
+};
+
+struct TC_GAME_API  BattlePetAI : public CreatureAI
+{
+    public:
+        explicit BattlePetAI(Creature* c) : CreatureAI(c) {}
+
+        void InitializeAI();
+        void UpdateAI(uint32);
+        static int Permissible(const Creature*);
+        void MovementInform(uint32 moveType, uint32 data);
 };
 
 #endif
