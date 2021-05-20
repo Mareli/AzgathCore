@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -126,7 +125,7 @@ namespace Instances
                                 m_MinerSpawnGuids[TEAM_NEUTRAL] = creature->GetGUID();
                                 break;
                             case uint32(MobEntries::EarthCrushStalker):
-                                creature->setFaction(2102);
+                                creature->SetFaction(2102);
                                 creature->SetReactState(ReactStates::REACT_PASSIVE);
                                 break;
                             case uint32(MobEntries::BloodmaulWarder):
@@ -333,12 +332,12 @@ namespace Instances
 
                                             if (i == TEAM_ALLIANCE && playersTeamId == TEAM_ALLIANCE)
                                             {
-                                                summon->setFaction(FACTION_A);
+                                                summon->SetFaction(FACTION_A);
                                                 mustAttackBoss = true;
                                             }
                                             else if (i == TEAM_HORDE && playersTeamId == TEAM_HORDE)
                                             {
-                                                summon->setFaction(FACTION_H);
+                                                summon->SetFaction(FACTION_H);
                                                 mustAttackBoss = true;
                                             }
 
@@ -458,11 +457,15 @@ namespace Instances
 
                         if (m_CheckZPosTimer <= diff)
                         {
-                            DoOnPlayers([](Player* player)
+                            Map::PlayerList const& playerList = instance->GetPlayers();
+                            for (Map::PlayerList::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
                             {
-                                if (player->GetPositionZ() <= 150.0f)
-                                    player->Kill(player);
-                            });
+                                if (Player* player = itr->GetSource())
+                                {
+                                    if (player->GetPositionZ() <= 150.0f)
+                                        player->Kill(player);
+                                }
+                            }
 
                             m_CheckZPosTimer = 1000;
                         }

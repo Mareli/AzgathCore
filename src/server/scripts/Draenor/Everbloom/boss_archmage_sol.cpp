@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -389,6 +388,7 @@ Position ArchmagePositionBarrier[5] =
     { 627.4792f, 1552.241f, 121.7746f, 0.000000f },
 };
 
+//221335
 class aura_archmage_barrier : public SpellScriptLoader
 {
 public:
@@ -407,7 +407,7 @@ public:
 
         void Register() override
         {
-            OnEffectPeriodic += AuraEffectPeriodicFn(aura_archmage_barrier_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+            OnEffectPeriodic += AuraEffectPeriodicFn(aura_archmage_barrier_AuraScript::HandlePeriodic, EFFECT_0, SPELL_EFFECT_REMOVE_AURA);
         }
     };
 
