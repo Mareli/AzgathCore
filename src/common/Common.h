@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +19,7 @@
 #define TRINITYCORE_COMMON_H
 
 #include "Define.h"
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -104,25 +104,6 @@ enum LocaleConstant : uint8
     TOTAL_LOCALES
 };
 
-enum DiscordMessageChannel
-{
-    DISCORD_WORLD_A = 1,
-    DISCORD_WORLD_H = 2,
-    DISCORD_TICKET  = 3
-};
-
-struct DiscordMessage
-{
-    DiscordMessageChannel channel;
-    std::string message;
-
-    // Channel Specific
-    std::string characterName;
-    bool isGm;
-};
-
-TC_COMMON_API extern LockedQueue<DiscordMessage*> DiscordMessageQueue;
-
 const uint8 OLD_TOTAL_LOCALES = 9; /// @todo convert in simple system
 #define DEFAULT_LOCALE LOCALE_enUS
 
@@ -130,10 +111,20 @@ TC_COMMON_API extern char const* localeNames[TOTAL_LOCALES];
 
 TC_COMMON_API LocaleConstant GetLocaleByName(std::string const& name);
 
+constexpr inline bool IsValidLocale(LocaleConstant locale)
+{
+    return locale < TOTAL_LOCALES && locale != LOCALE_none;
+}
+
 #pragma pack(push, 1)
 
-struct TC_COMMON_API LocalizedString
+struct LocalizedString
 {
+    constexpr char const* operator[](LocaleConstant locale) const
+    {
+        return Str[locale];
+    }
+
     char const* Str[TOTAL_LOCALES];
 };
 
@@ -154,12 +145,7 @@ struct TC_COMMON_API LocalizedString
 
 #define MAX_QUERY_LEN 32*1024
 
-namespace Trinity
-{
-    using std::make_unique;
-}
-
-namespace Ashamane
+namespace AzgathCore
 {
     class TC_GAME_API AnyData
     {

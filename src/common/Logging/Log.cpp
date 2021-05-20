@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +18,6 @@
 #include "Log.h"
 #include "AppenderConsole.h"
 #include "AppenderFile.h"
-#include "AppenderGraylog.h"
 #include "Common.h"
 #include "Config.h"
 #include "Errors.h"
@@ -36,7 +34,6 @@ Log::Log() : AppenderId(0), lowestLogLevel(LOG_LEVEL_FATAL), _ioContext(nullptr)
     m_logsTimestamp = "_" + GetTimestampStr();
     RegisterAppender<AppenderConsole>();
     RegisterAppender<AppenderFile>();
-    RegisterAppender<AppenderGraylog>();
 }
 
 Log::~Log()
@@ -64,10 +61,10 @@ void Log::CreateAppenderFromConfig(std::string const& appenderName)
     if (appenderName.empty())
         return;
 
-    // Format=type, level, flags, optional1, optional2
+    // Format = type, level, flags, optional1, optional2
     // if type = File. optional1 = file and option2 = mode
     // if type = Console. optional1 = Color
-    std::string options = sConfigMgr->GetStringDefault(appenderName.c_str(), "");
+    std::string options = sConfigMgr->GetStringDefault(appenderName, "");
 
     Tokenizer tokens(options, ',');
     auto iter = tokens.begin();
@@ -120,7 +117,7 @@ void Log::CreateLoggerFromConfig(std::string const& appenderName)
     LogLevel level = LOG_LEVEL_DISABLED;
     uint8 type = uint8(-1);
 
-    std::string options = sConfigMgr->GetStringDefault(appenderName.c_str(), "");
+    std::string options = sConfigMgr->GetStringDefault(appenderName, "");
     std::string name = appenderName.substr(7);
 
     if (options.empty())
@@ -155,7 +152,7 @@ void Log::CreateLoggerFromConfig(std::string const& appenderName)
     if (level < lowestLogLevel)
         lowestLogLevel = level;
 
-    logger = Trinity::make_unique<Logger>(name, level);
+    logger = std::make_unique<Logger>(name, level);
     //fprintf(stdout, "Log::CreateLoggerFromConfig: Created Logger %s, Level %u\n", name.c_str(), level);
 
     std::istringstream ss(*iter);
@@ -216,14 +213,14 @@ void Log::RegisterAppender(uint8 index, AppenderCreatorFn appenderCreateFn)
     appenderFactory[index] = appenderCreateFn;
 }
 
-void Log::outMessage(std::string const& filter, LogLevel const level, std::string&& message)
+void Log::outMessage(std::string const& filter, LogLevel level, std::string&& message)
 {
-    write(Trinity::make_unique<LogMessage>(level, filter, std::move(message)));
+    write(std::make_unique<LogMessage>(level, filter, std::move(message)));
 }
 
 void Log::outCommand(std::string&& message, std::string&& param1)
 {
-    write(Trinity::make_unique<LogMessage>(LOG_LEVEL_INFO, "commands.gm", std::move(message), std::move(param1)));
+    write(std::make_unique<LogMessage>(LOG_LEVEL_INFO, "commands.gm", std::move(message), std::move(param1)));
 }
 
 void Log::write(std::unique_ptr<LogMessage>&& msg) const
@@ -237,6 +234,9 @@ void Log::write(std::unique_ptr<LogMessage>&& msg) const
     }
     else
         logger->write(msg.get());
+
+    std::cout << "";
+    std::cerr << "";
 }
 
 Logger const* Log::GetLoggerByType(std::string const& type) const
@@ -246,7 +246,7 @@ Logger const* Log::GetLoggerByType(std::string const& type) const
         return it->second.get();
 
     if (type == LOGGER_ROOT)
-        return NULL;
+        return nullptr;
 
     std::string parentLogger = LOGGER_ROOT;
     size_t found = type.find_last_of('.');
@@ -282,7 +282,7 @@ std::string Log::GetTimestampStr()
     }
 }
 
-bool Log::SetLogLevel(std::string const& name, const char* newLevelc, bool isLogger /* = true */)
+bool Log::SetLogLevel(std::string const& name, char const* newLevelc, bool isLogger /* = true */)
 {
     LogLevel newLevel = LogLevel(atoi(newLevelc));
     if (newLevel < 0)
@@ -332,10 +332,10 @@ void Log::outCharDump(char const* str, uint32 accountId, uint64 guid, char const
     write(std::move(msg));
 }
 
-void Log::SetRealmId(uint32 id, std::string name)
+void Log::SetRealmId(uint32 id)
 {
     for (auto it = appenders.begin(); it != appenders.end(); ++it)
-        it->second->setRealmId(id, name);
+        it->second->setRealmId(id);
 }
 
 void Log::Close()

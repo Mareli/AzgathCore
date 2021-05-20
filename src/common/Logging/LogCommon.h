@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,8 +36,7 @@ enum AppenderType : uint8
     APPENDER_NONE,
     APPENDER_CONSOLE,
     APPENDER_FILE,
-    APPENDER_DB,
-    APPENDER_GRAYLOG
+    APPENDER_DB
 };
 
 enum AppenderFlags

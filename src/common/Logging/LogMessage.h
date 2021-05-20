@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,7 +32,7 @@ struct TC_COMMON_API LogMessage
     LogMessage& operator=(LogMessage const& /*other*/) = delete;
 
     static std::string getTimeStr(time_t time);
-    std::string getTimeStr();
+    std::string getTimeStr() const;
 
     LogLevel const level;
     std::string const type;

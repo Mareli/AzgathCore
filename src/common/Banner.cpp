@@ -1,5 +1,5 @@
 /*
- * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information.
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,18 +21,22 @@
 
 void Trinity::Banner::Show(char const* applicationName, void(*log)(char const* text), void(*logExtraInfo)())
 {
-    log(" ");
-	log(Trinity::StringFormat("%s (%s)", GitRevision::GetFullVersion(), applicationName).c_str());
-    log("<Ctrl-C> to stop.\n");
-    log("      _/                                     _//              _//                              ");
-    log("     _/ //                                   _//  _//      _//   _//                           ");
-    log("    _/  _//    _/////_//   _////    _////  _/_/ _/_//     _//          _//    _/ _///   _//    ");
-    log("   _//   _//        _//  _//  _// _//  _//   _//  _/ _/   _//        _//  _//  _//    _/   _// ");
-    log("  _////// _//     _//   _//   _//_//   _//   _//  _//  _//_//       _//    _// _//   _///// _//");
-    log(" _//       _//   _//     _//  _//_//   _//   _//  _/   _// _//   _// _//  _//  _//   _/        ");
-	log("_//         _//_////////     _//   _// _///   _// _//  _//   _////     _//    _///     _/////  ");
-	log("                          _//                                                                  ");
-    log("https://Azgath.com");
+    log(Trinity::StringFormat("%s (%s)", GitRevision::GetFullVersion(), applicationName).c_str()                  );
+    log("<Ctrl-C> to stop.\n                                                                    ");
+    log("   █████╗ ███████╗ ██████╗  █████╗ ████████╗██╗  ██╗");
+    log("  ██╔══██╗╚══███╔╝██╔════╝ ██╔══██╗╚══██╔══╝██║  ██║");
+    log("  ███████║  ███╔╝ ██║  ███╗███████║   ██║   ███████║");
+    log("  ██╔══██║ ███╔╝  ██║   ██║██╔══██║   ██║   ██╔══██║");
+    log("  ██║  ██║███████╗╚██████╔╝██║  ██║   ██║   ██║  ██║");
+    log("  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝");
+    log("                           ██████╗ ██████╗ ██████╗ ███████╗");
+    log("                          ██╔════╝██╔═══██╗██╔══██╗██╔════╝");
+    log("                          ██║     ██║   ██║██████╔╝█████╗  ");
+    log("                          ██║     ██║   ██║██╔══██╗██╔══╝  ");
+    log("                          ╚██████╗╚██████╔╝██║  ██║███████╗");
+    log("                           ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝"); 
+    log("  	  AzgathCore 9.0.2  -  www.azgath.org\n");
+
 
     if (logExtraInfo)
         logExtraInfo();

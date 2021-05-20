@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -79,10 +79,10 @@ private:
     void ScheduleOverallStatusLog();
 
     static std::string FormatInfluxDBValue(bool value);
-    template<class T>
+    template <class T>
     static std::string FormatInfluxDBValue(T value);
     static std::string FormatInfluxDBValue(std::string const& value);
-    static std::string FormatInfluxDBValue(const char* value);
+    static std::string FormatInfluxDBValue(char const* value);
     static std::string FormatInfluxDBValue(double value);
     static std::string FormatInfluxDBValue(float value);
 

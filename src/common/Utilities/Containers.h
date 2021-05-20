@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -207,12 +207,17 @@ namespace Trinity
             return false;
         }
 
+   
+
         /**
          * Returns a pointer to mapped value (or the value itself if map stores pointers)
          */
         template<class M>
         inline auto MapGetValuePtr(M& map, typename M::key_type const& key) -> decltype(AddressOrSelf(map.find(key)->second))
         {
+            if (map.empty())
+                return nullptr;
+
             auto itr = map.find(key);
             return itr != map.end() ? AddressOrSelf(itr->second) : nullptr;
         }

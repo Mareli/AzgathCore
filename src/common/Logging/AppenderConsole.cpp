@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,6 +16,7 @@
  */
 
 #include "AppenderConsole.h"
+#include "Config.h"
 #include "LogMessage.h"
 #include "Util.h"
 #include <sstream>
@@ -184,16 +185,28 @@ void AppenderConsole::_write(LogMessage const* message)
             case LOG_LEVEL_FATAL:
                index = 0;
                break;
-            case LOG_LEVEL_ERROR: // No break on purpose
+            case LOG_LEVEL_ERROR:
+               index = 1;
+               break;
             default:
                index = 1;
                break;
         }
 
         SetColor(stdout_stream, _colors[index]);
-        utf8printf(stdout_stream ? stdout : stderr, "%s%s\n", message->prefix.c_str(), message->text.c_str());
+
+        if ((stdout_stream == 0) && (sConfigMgr->GetBoolDefault("ConsoleErrorLogging", true)))
+            utf8printf(stderr, "%s%s\n", message->prefix.c_str(), message->text.c_str());
+        else if (stdout_stream == 1)
+            utf8printf(stdout, "%s%s\n", message->prefix.c_str(), message->text.c_str());
+
         ResetColor(stdout_stream);
     }
     else
-        utf8printf(stdout_stream ? stdout : stderr, "%s%s\n", message->prefix.c_str(), message->text.c_str());
+    {
+        if ((stdout_stream == 0) && (sConfigMgr->GetBoolDefault("ConsoleErrorLogging", true)))
+            utf8printf(stderr, "%s%s\n", message->prefix.c_str(), message->text.c_str());
+        else if (stdout_stream == 1)
+            utf8printf(stdout, "%s%s\n", message->prefix.c_str(), message->text.c_str());
+    }
 }

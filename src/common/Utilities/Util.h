@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2020 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,8 +20,10 @@
 
 #include "Define.h"
 #include "Errors.h"
+#include <array>
 #include <string>
 #include <vector>
+#include "advstd.h"
 
 enum LocaleConstant : uint8;
 
@@ -63,6 +64,13 @@ TC_COMMON_API struct tm* localtime_r(const time_t* time, struct tm *result);
 TC_COMMON_API std::string secsToTimeString(uint64 timeInSecs, bool shortText = false, bool hoursOnly = false);
 TC_COMMON_API uint32 TimeStringToSecs(const std::string& timestring);
 TC_COMMON_API std::string TimeToTimestampStr(time_t t);
+
+inline void ApplyPercentModFloatVar(float& var, float val, bool apply)
+{
+    if (val == -100.0f)     // prevent set var to zero
+        val = -99.99f;
+    var *= (apply ? (100.0f + val) / 100.0f : 100.0f / (100.0f + val));
+}
 
 // Percentage calculation
 template <class T, class U>
@@ -309,8 +317,23 @@ TC_COMMON_API bool IsIPAddress(char const* ipaddress);
 TC_COMMON_API uint32 CreatePIDFile(std::string const& filename);
 TC_COMMON_API uint32 GetPID();
 
-TC_COMMON_API std::string ByteArrayToHexStr(uint8 const* bytes, uint32 length, bool reverse = false);
+TC_COMMON_API std::string ByteArrayToHexStr(uint8 const* bytes, size_t length, bool reverse = false);
+template <typename Container>
+std::string ByteArrayToHexStr(Container const& c, bool reverse = false) { return ByteArrayToHexStr(advstd::data(c), advstd::size(c), reverse); }
 TC_COMMON_API void HexStrToByteArray(std::string const& str, uint8* out, bool reverse = false);
+template <size_t Size>
+void HexStrToByteArray(std::string const& str, std::array<uint8, Size>& buf, bool reverse = false)
+{
+    ASSERT(str.size() == (2 * Size));
+    HexStrToByteArray(str, buf.data(), reverse);
+}
+template <size_t Size>
+std::array<uint8, Size> HexStrToByteArray(std::string const& str, bool reverse = false)
+{
+    std::array<uint8, Size> arr;
+    HexStrToByteArray(str, arr, reverse);
+    return arr;
+}
 
 TC_COMMON_API bool StringToBool(std::string const& str);
 TC_COMMON_API float DegToRad(float degrees);

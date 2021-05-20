@@ -15,34 +15,17 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef OptionalFwd_h__
+#define OptionalFwd_h__
 
-#include "Define.h"
-#include "LogCommon.h"
-#include <unordered_map>
-#include <string>
-
-class Appender;
-struct LogMessage;
-
-class TC_COMMON_API Logger
+namespace boost
 {
-    public:
-        Logger(std::string const& name, LogLevel level);
+    template <class T>
+    class optional;
+}
 
-        void addAppender(uint8 type, Appender* appender);
-        void delAppender(uint8 type);
+//! Optional helper class to wrap optional values within.
+template <class T>
+using Optional = boost::optional<T>;
 
-        std::string const& getName() const;
-        LogLevel getLogLevel() const;
-        void setLogLevel(LogLevel level);
-        void write(LogMessage* message) const;
-
-    private:
-        std::string name;
-        LogLevel level;
-        std::unordered_map<uint8, Appender*> appenders;
-};
-
-#endif
+#endif // OptionalFwd_h__
