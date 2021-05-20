@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -364,8 +363,8 @@ class boss_tectus : public CreatureScript
                                 if (Player* player = me->GetMap()->GetPlayers().begin()->GetSource())
                                 {
                                     player->CastSpell(me, eSpells::SuicideNoBloodNoLogging, true);
-                                    if(!me->HasLootRecipients())
-                                        me->AddLootRecipient(player);
+                                    if(!me->hasLootRecipient())
+                                        me->SetLootRecipient(player);
                                 }
                             });
                         }

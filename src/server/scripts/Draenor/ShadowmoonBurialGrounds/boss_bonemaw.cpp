@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -528,7 +527,7 @@ public:
             me->AddUnitFlag2(UNIT_FLAG2_DISABLE_TURN);
             me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC));
 
-            me->setFaction(FriendlyFaction);
+            me->SetFaction(FriendlyFaction);
             me->SetDisplayId(InvisibleDisplay);
 
             m_Timer = 2 * TimeConstants::IN_MILLISECONDS;

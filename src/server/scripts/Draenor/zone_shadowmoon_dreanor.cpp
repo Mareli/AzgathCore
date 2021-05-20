@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -51,7 +51,7 @@ enum
     NPC_ESTABLISH_YOUR_GARRISON_KILL_CREDIT = 79757,
 };
 
-// 79206 - Proph?te Velen - Shadowmoon start
+// 79206 - Prophet Velen - Shadowmoon start
 class npc_velen_shadowmoon_begin : public CreatureScript
 {
 public:
@@ -61,6 +61,10 @@ public:
     {
         if (quest->GetQuestId() == QUEST_FINDING_A_FOOTHOLD)
         {
+            player->GetScheduler().Schedule(68s, [this, player](TaskContext context)
+            {
+                player->ForceCompleteQuest(QUEST_FINDING_A_FOOTHOLD);
+            });
             if (TempSummon* waypointVelen = player->SummonCreature(creature->GetEntry(), creature->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN, 0, 0, true))
             {
                 waypointVelen->AI()->SetGUID(player->GetGUID());
@@ -91,9 +95,9 @@ public:
         return new npc_velen_shadowmoon_beginAI(creature);
     }
 
-    struct npc_velen_shadowmoon_beginAI : public npc_escortAI
+    struct npc_velen_shadowmoon_beginAI : public EscortAI
     {
-        npc_velen_shadowmoon_beginAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_velen_shadowmoon_beginAI(Creature* creature) : EscortAI(creature) { }
 
         ObjectGuid playerGuid;
 
@@ -107,15 +111,12 @@ public:
             playerGuid = guid;
             Start(false, true, guid);
             SetDespawnAtFar(false);
-        }
-
-        void LastWaypointReached() override
-        {
-            me->DespawnOrUnsummon();
-            me->SetFacingTo(5.631830f);
-
-            if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
-                player->ForceCompleteQuest(QUEST_FINDING_A_FOOTHOLD);
+            me->GetScheduler().Schedule(68s, [this](TaskContext context)
+            {
+                Talk(0);
+                me->SetFacingTo(5.631830f);
+                me->DespawnOrUnsummon(3s);
+            });
         }
     };
 };
@@ -131,9 +132,9 @@ public:
         return new npc_velen_shadowmoon_followerAI(creature);
     }
 
-    struct npc_velen_shadowmoon_followerAI : public npc_escortAI
+    struct npc_velen_shadowmoon_followerAI : public EscortAI
     {
-        npc_velen_shadowmoon_followerAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_velen_shadowmoon_followerAI(Creature* creature) : EscortAI(creature) { }
 
         void SetGUID(ObjectGuid guid, int32 /*id*/) override
         {
@@ -165,6 +166,18 @@ public:
             }
         }
     };
+};
+
+//79470
+struct npc_vindicator_maraad_79470 : public ScriptedAI
+{
+    npc_vindicator_maraad_79470(Creature* c) : ScriptedAI(c) { }
+
+    void QuestAccept(Player* player, Quest const* quest) override
+    {
+        if (quest->ID == QUEST_FOR_THE_ALLIANCE)
+            player->ForceCompleteQuest(QUEST_FOR_THE_ALLIANCE);
+    }
 };
 
 class npc_baros_pre_garrison : public CreatureScript
@@ -363,7 +376,7 @@ public:
     };
 };
 
-/// Submerge - 172189
+ //Submerge - 172189
 struct areatrigger_aqualir_submerge : AreaTriggerAI
 {
     areatrigger_aqualir_submerge(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
@@ -848,7 +861,7 @@ public:
                     {
                         if (TempSummon* Xan = me->SummonCreature(NPC_XAN, VoidRealmEventPos[0], TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 60 * 60 * IN_MILLISECONDS))
                         {
-                            Xan->setFaction(14);
+                            Xan->SetFaction(14);
                             Xan->SetReactState(REACT_AGGRESSIVE);
                         }
                     }
@@ -1153,11 +1166,8 @@ void AddSC_shadowmoon_draenor()
     new npc_velen_shadowmoon_follower();
     new npc_baros_pre_garrison();
     new npc_aqualir();
-
     new spell_shadowmoon_claiming();
-
     RegisterAreaTriggerAI(areatrigger_aqualir_submerge);
-
     new npc_gara();
     new spell_use_effigy();
     new go_spirit_effigy();
@@ -1166,4 +1176,5 @@ void AddSC_shadowmoon_draenor()
     new npc_void_gara();
     new npc_gara_void_creature();
     new npc_xan_void_realm();
+    RegisterCreatureAI(npc_vindicator_maraad_79470);
 }

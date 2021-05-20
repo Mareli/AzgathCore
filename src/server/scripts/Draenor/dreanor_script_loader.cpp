@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -72,6 +72,14 @@ void AddSC_boss_tectus();
 void AddSC_highmaul();
 void AddSC_instance_highmaul();
 
+// UpperBlackrockSpire
+void AddSC_boss_commander_tharbek();
+void AddSC_boss_kyrak();
+void AddSC_boss_orebender_gorashan();
+void AddSC_boss_ragewing_untamed();
+void AddSC_boss_warlord_zaela();
+void AddSC_instance_upper_blackrock_spire();
+
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
 void AddDraenorScripts()
@@ -103,6 +111,14 @@ void AddDraenorScripts()
     AddSC_spell_Bloodmaul();
     AddSC_instance_Bloodmaul();
 
+    // UpperBlackrockSpire
+    AddSC_boss_commander_tharbek();
+    AddSC_boss_kyrak();
+    AddSC_boss_orebender_gorashan();
+    AddSC_boss_ragewing_untamed();
+    AddSC_boss_warlord_zaela();
+    AddSC_instance_upper_blackrock_spire();
+    
     // Everbloom
     AddSC_boss_ancient_protectors();
     AddSC_boss_sol();

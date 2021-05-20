@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -94,10 +93,10 @@ class npc_highmaul_gharg_arena_master : public CreatureScript
                 }
             }
 
-            void sGossipSelect(Player* player, uint32 /*p_Sender*/, uint32 /*action*/) override
+            bool GossipSelect(Player* player, uint32 sender, uint32 action) override
             {
                 if (m_Instance == nullptr)
-                    return;
+                    return true;
 
                 /// Teleport player
                 //if (m_Instance->GetData(eHighmaulDatas::ElevatorActivated))
@@ -109,6 +108,8 @@ class npc_highmaul_gharg_arena_master : public CreatureScript
                 //}
 
                 CloseGossipMenuFor(player);
+
+                return true;
             }
 
             void MovementInform(uint32 type, uint32 id) override
@@ -1983,9 +1984,9 @@ class npc_highmaul_highmaul_conscript : public CreatureScript
                             Position pos;
 
                             me->GetContactPoint(target, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
-                            pos = target->GetFirstCollisionPosition(target->GetCombatReach(), l_O);
+                            pos = target->GetFirstCollisionPosition(target->GetObjectSize(), l_O);
                             me->ClearUnitState(UnitState::UNIT_STATE_ROOT);
-                            me->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ + target->GetCombatReach());
+                            me->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ + target->GetObjectSize());
 
                             me->CastSpell(me, eSpells::ShieldCharge, true);
                         }
@@ -3869,51 +3870,6 @@ class spell_highmaul_boars_rush : public SpellScriptLoader
         }
 };
 
-/// Unstoppable Charge - 174465
-class spell_highmaul_unstoppable_charge : public SpellScriptLoader
-{
-    public:
-        spell_highmaul_unstoppable_charge() : SpellScriptLoader("spell_highmaul_unstoppable_charge") { }
-
-        class spell_highmaul_unstoppable_charge_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_highmaul_unstoppable_charge_SpellScript);
-
-            void CorrectTargets(std::list<WorldObject*>& targets)
-            {
-                if (targets.empty())
-                    return;
-
-                Unit* caster = GetCaster();
-                if (caster == nullptr)
-                    return;
-
-                if (Creature* l_IronFlame = caster->ToCreature())
-                {
-                    Unit* target = ObjectAccessor::GetUnit(*l_IronFlame, l_IronFlame->AI()->GetGUID(0));
-                    if (target == nullptr)
-                        return;
-
-                    targets.remove_if([caster, target](WorldObject* p_Object) -> bool
-                    {
-                        return !p_Object || !p_Object->IsInBetween(caster, target, 3.0f);
-                    });
-                }
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_highmaul_unstoppable_charge_SpellScript::CorrectTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_highmaul_unstoppable_charge_SpellScript::CorrectTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_highmaul_unstoppable_charge_SpellScript();
-        }
-};
-
 /// Corrupted Blood Shield - 174474
 class spell_highmaul_corrupted_blood_shield : public SpellScriptLoader
 {
@@ -4529,7 +4485,6 @@ void AddSC_highmaul()
     new spell_highmaul_chain_grip();
     new spell_highmaul_chain_grip_aura();
     new spell_highmaul_boars_rush();
-    new spell_highmaul_unstoppable_charge();
     new spell_highmaul_corrupted_blood_shield();
     new spell_highmaul_rending_slash();
     new spell_highmaul_shield_charge();

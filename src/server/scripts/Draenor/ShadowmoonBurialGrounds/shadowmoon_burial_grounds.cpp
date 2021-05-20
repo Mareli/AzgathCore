@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -160,8 +159,6 @@ class defiled_burial_site : public CreatureScript
 
 enum ExhumerEnums
 {
-    SPELL_EXHUME_THE_CRYPTS_1 = 153268,
-    SPELL_EXHUME_THE_CRYPTS_2 = 153276,
     SPELL_VOID_BOLT = 156722,
 };
 
@@ -177,11 +174,6 @@ public:
         void Reset() override
         {
             voidBoltTimer = urand(2000, 3000);
-        }
-
-        void EnterCombat(Unit* /*victim*/) override
-        {
-            DoCast(me, SPELL_EXHUME_THE_CRYPTS_1);
         }
 
         void UpdateAI(uint32 uiDiff) override
@@ -222,49 +214,6 @@ public:
             return true;
 
         return false;
-    }
-};
-
-class spell_exhume_the_crypts : public SpellScriptLoader
-{
-public:
-    spell_exhume_the_crypts() : SpellScriptLoader("spell_exhume_the_crypts") { }
-
-    class spell_exhume_the_crypts_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_exhume_the_crypts_SpellScript);
-
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            if (!sSpellMgr->GetSpellInfo(SPELL_EXHUME_THE_CRYPTS_1))
-                return false;
-
-            if (!sSpellMgr->GetSpellInfo(SPELL_EXHUME_THE_CRYPTS_2))
-                return false;
-            return true;
-        }
-
-        void SelectTarget(std::list<WorldObject*>& targets)
-        {
-            targets.remove_if(ExhumeTargetSelector());
-        }
-
-        void HandleScriptEffect(SpellEffIndex /*effIndex*/)
-        {
-            GetHitUnit()->CastSpell(GetHitUnit(), SPELL_EXHUME_THE_CRYPTS_2);
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_exhume_the_crypts_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-            OnEffectHitTarget += SpellEffectFn(spell_exhume_the_crypts_SpellScript::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-        }
-
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_exhume_the_crypts_SpellScript();
     }
 };
 
@@ -359,44 +308,6 @@ public:
     {
         return new npc_carrion_wormAI(creature);
     }
-};
-
-class spell_water_burst_targeting : public SpellScriptLoader
-{
-    public:
-        spell_water_burst_targeting() : SpellScriptLoader("spell_water_burst_targeting") { }
-
-        class spell_water_burst_targeting_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_water_burst_targeting_SpellScript);
-
-            void SelectTargets(std::list<WorldObject*>& targets)
-            {
-                targets.clear();
-
-                std::list<Player*> list;
-                GetPlayerListInGrid(list, GetCaster(), 5.0f);
-
-                if (!list.empty())
-                    targets.push_back(list.front());
-            }
-
-            void HandleForceCast(SpellEffIndex /*effIndex*/)
-            {
-                GetHitUnit()->CastSpell(GetHitUnit(), uint32(GetEffectValue()));
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_water_burst_targeting_SpellScript::SelectTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-                OnEffectHitTarget += SpellEffectFn(spell_water_burst_targeting_SpellScript::HandleForceCast, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_water_burst_targeting_SpellScript();
-        }
 };
 
 enum NerzhulFlyEnums
@@ -568,9 +479,7 @@ void AddSC_shadowmoon_burial_grounds()
     RegisterAreaTriggerAI(at_shadow_rune3);
     new defiled_burial_site();
     new npc_shadowmoon_exhumer();
-    new spell_exhume_the_crypts();
     new npc_carrion_worm();
-    new spell_water_burst_targeting();
     new npc_nerzhul_fly();
     new playerScript_nerzhul_scene();
 }

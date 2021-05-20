@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -67,8 +67,10 @@ public:
     void OnPlayerExit(Player* player) override
     {
         if (!player->IsBeingTeleportedFar())
+        {
             if (player->GetMapId() == TANAAN_JUNGLE_100_PHASE_MAP)
                 player->SeamlessTeleportToMap(MAP_DRAENOR);
+        }
     }
 };
 
@@ -263,7 +265,7 @@ public:
 
         void Reset() override
         {
-            me->setFaction(14);
+            me->SetFaction(14);
 
             me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
             me->GetMotionMaster()->MovePoint(1, 4092.80f, -760.21f, 2.89f, false);

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -3346,59 +3345,6 @@ class spell_highmaul_chain_hurl : public SpellScriptLoader
         }
 };
 
-/// Vile Breath - 160521
-class spell_highmaul_vile_breath : public SpellScriptLoader
-{
-    public:
-        spell_highmaul_vile_breath() : SpellScriptLoader("spell_highmaul_vile_breath") { }
-
-        class spell_highmaul_vile_breath_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_highmaul_vile_breath_SpellScript);
-
-            enum eSpell
-            {
-                TargetRestrict = 20321
-            };
-
-            void CorrectTargets(std::list<WorldObject*>& targets)
-            {
-                if (targets.empty())
-                    return;
-
-                SpellTargetRestrictionsEntry const* l_Restriction = sSpellTargetRestrictionsStore.LookupEntry(eSpell::TargetRestrict);
-                if (l_Restriction == nullptr)
-                    return;
-
-                Unit* caster = GetCaster();
-                if (caster == nullptr)
-                    return;
-
-                float l_Angle = 2 * float(M_PI) / 360 * l_Restriction->ConeDegrees;
-                targets.remove_if([caster, l_Angle](WorldObject* p_Object) -> bool
-                {
-                    if (p_Object == nullptr)
-                        return true;
-
-                    if (!p_Object->isInFront(caster, l_Angle))
-                        return true;
-
-                    return false;
-                });
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_highmaul_vile_breath_SpellScript::CorrectTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY_110);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_highmaul_vile_breath_SpellScript();
-        }
-};
-
 /// Obscured - 160131
 class spell_highmaul_obscured : public SpellScriptLoader
 {
@@ -4085,7 +4031,6 @@ void AddSC_boss_kargath_bladefist()
     new spell_highmaul_fire_pillar_gout_searcher();
     new spell_highmaul_berserker_rush();
     new spell_highmaul_chain_hurl();
-    new spell_highmaul_vile_breath();
     new spell_highmaul_obscured();
     new spell_highmaul_crowd_minion_killed();
     new spell_highmaul_roar_of_the_crowd();

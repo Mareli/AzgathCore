@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -155,8 +155,8 @@ public:
         if (!player->GetSceneMgr().HasScene(sceneInstanceId, TanaanSceneObjects::SceneFinaleIronBastion))
             return;
 
-        if (triggerEvent == "Damage")
-            player->EnvironmentalDamage(DAMAGE_FIRE, urand(11230, 14320));
+        //if (triggerEvent == "Damage")
+        //    player->EnvironmentalDamage(DAMAGE_FIRE, urand(11230, 14320));  // TODO: verify that this is proper damage for SL. -Varjgard
     }
 
     void OnUpdate(Player* player, uint32 diff) override

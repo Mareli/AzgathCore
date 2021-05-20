@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -660,7 +659,7 @@ class boss_imperator_margok : public CreatureScript
 
                     ///< Only Cho'gall can loot in mythic mode
                     if (IsMythic())
-                        me->ResetLootRecipients();
+                        me->SetLootRecipient(nullptr);
                 }
             }
 
@@ -4583,7 +4582,7 @@ public:
                 std::list<Player*> playersAlly;
                 victim->GetPlayerListInGrid(playersAlly, 250.f);
 
-                int32 finalShieldAmount = m_HealAbsorbAmount / playersAlly.size();
+                float finalShieldAmount = m_HealAbsorbAmount / playersAlly.size();
 
                 for (Player* ally : playersAlly)
                     victim->CastCustomSpell(ally, SpellEntropy, &finalShieldAmount, nullptr, nullptr, true);

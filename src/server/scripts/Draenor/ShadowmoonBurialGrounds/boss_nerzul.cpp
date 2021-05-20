@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2016 Firestorm Servers <https://firestorm-servers.com>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -104,7 +103,7 @@ public:
         void Reset() override
         {
             events.Reset();
-            me->setFaction(16);
+            me->SetFaction(16);
 
             m_X = 10.375f;
             m_Y = 4.538f;
@@ -299,7 +298,7 @@ public:
         void Reset() override
         {
             {
-                const SpellInfo* l_SpellInfo = sSpellMgr->GetSpellInfo(eNerzulSpells::SpellRitualOfBonesPeriodic);
+                const SpellInfo* l_SpellInfo = sSpellMgr->GetSpellInfo(eNerzulSpells::SpellRitualOfBonesPeriodic, DIFFICULTY_NONE);
 
                 if (!l_SpellInfo)
                     return;
@@ -365,7 +364,7 @@ public:
             }
 
             me->SetDisplayId(11686);
-            me->setFaction(35);
+            me->SetFaction(35);
             me->SetReactState(ReactStates::REACT_PASSIVE);
             me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_REMOVE_CLIENT_CONTROL));
 
@@ -426,7 +425,7 @@ public:
         void Reset() override
         {
             me->SetDisplayId(11686);
-            me->setFaction(35);
+            me->SetFaction(35);
             me->SetReactState(ReactStates::REACT_PASSIVE);
             me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_REMOVE_CLIENT_CONTROL));
         }
@@ -515,7 +514,7 @@ public:
         void Reset() override
         {
             me->SetDisplayId(11686);
-            me->setFaction(35);
+            me->SetFaction(35);
             me->SetReactState(ReactStates::REACT_PASSIVE);
             me->AddUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_REMOVE_CLIENT_CONTROL));
             me->SetDisableGravity(true);
