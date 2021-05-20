@@ -52,6 +52,7 @@ https://github.com/AzgathCore/AzgathCore/releases/
 ## Copyright
 
 License: GPL 2.0
+
 Read file [COPYING](COPYING)
 
 ## Links
