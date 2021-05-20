@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,7 +32,7 @@ class CreatureTextLocalizer
 public:
     CreatureTextLocalizer(Builder const& builder, ChatMsg msgType) : _builder(builder), _msgType(msgType)
     {
-        _packetCache.resize(TOTAL_LOCALES, NULL);
+        _packetCache.resize(TOTAL_LOCALES, nullptr);
     }
 
     ~CreatureTextLocalizer()

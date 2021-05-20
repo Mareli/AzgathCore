@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,13 +23,16 @@
 
 enum AURA_FLAGS
 {
-    AFLAG_NONE                   = 0x00,
-    AFLAG_NOCASTER               = 0x01,
-    AFLAG_POSITIVE               = 0x02,
-    AFLAG_DURATION               = 0x04,
-    AFLAG_SCALABLE               = 0x08,
-    AFLAG_NEGATIVE               = 0x10,
-    AFLAG_UNK20                  = 0x20
+    AFLAG_NONE                   = 0x0000,
+    AFLAG_NOCASTER               = 0x0001,
+    AFLAG_POSITIVE               = 0x0002,
+    AFLAG_DURATION               = 0x0004,
+    AFLAG_SCALABLE               = 0x0008,
+    AFLAG_NEGATIVE               = 0x0010,
+    AFLAG_UNK20                  = 0x0020,
+    AFLAG_UNK40                  = 0x0040,
+    AFLAG_UNK80                  = 0x0080,
+    AFLAG_MAW_POWER              = 0x0100,
 };
 
 // these are modes, in which aura effect handler may be called
@@ -204,7 +206,7 @@ enum AuraType : uint32
     SPELL_AURA_MOD_MELEE_DAMAGE_TAKEN                       = 125,
     SPELL_AURA_MOD_MELEE_DAMAGE_TAKEN_PCT                   = 126,
     SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS           = 127,
-    SPELL_AURA_MOD_POSSESS_PET                              = 128,
+    SPELL_AURA_MOD_FIXATE                                   = 128,
     SPELL_AURA_MOD_SPEED_ALWAYS                             = 129,
     SPELL_AURA_MOD_MOUNTED_SPEED_ALWAYS                     = 130,
     SPELL_AURA_MOD_RANGED_ATTACK_POWER_VERSUS               = 131,
@@ -296,11 +298,11 @@ enum AuraType : uint32
     SPELL_AURA_MOD_MELEE_HASTE_2                            = 217,
     SPELL_AURA_218                                          = 218,  // old SPELL_AURA_HASTE_RANGED
     SPELL_AURA_MOD_MANA_REGEN_FROM_STAT                     = 219,
-    SPELL_AURA_MOD_RATING_FROM_STAT                         = 220,
+    SPELL_AURA_MOD_ABILITY_SCHOOL_MASK                      = 220,
     SPELL_AURA_MOD_DETAUNT                                  = 221,
     SPELL_AURA_222                                          = 222,
     SPELL_AURA_223                                          = 223,  // old SPELL_AURA_RAID_PROC_FROM_CHARGE
-    SPELL_AURA_224                                          = 224,
+    SPELL_AURA_ENABLE_EXTRA_TALENT                          = 224,
     SPELL_AURA_MOD_VISIBILITY_RANGE                         = 225,
     SPELL_AURA_PERIODIC_DUMMY                               = 226,
     SPELL_AURA_PERIODIC_TRIGGER_SPELL_WITH_VALUE            = 227,
@@ -497,8 +499,8 @@ enum AuraType : uint32
     SPELL_AURA_MOD_MAX_POWER                                = 418,
     SPELL_AURA_MOD_BASE_MANA_PCT                            = 419,
     SPELL_AURA_MOD_BATTLE_PET_XP_PCT                        = 420,  // NYI
-    SPELL_AURA_MOD_ABSORB_EFFECTS_DONE_PCT                  = 421,  // NYI
-    SPELL_AURA_MOD_ABSORB_EFFECTS_TAKEN_PCT                 = 422,  // NYI
+    SPELL_AURA_MOD_ABSORB_EFFECTS_AMOUNT_PCT                = 421,
+    SPELL_AURA_MOD_ABSORB_EFFECTS_TAKEN_PCT                 = 422,
     SPELL_AURA_423                                          = 423,  // Not used in 7.3.5
     SPELL_AURA_424                                          = 424,  // Not used in 7.3.5
     SPELL_AURA_425                                          = 425,  // Not used in 7.3.5
@@ -560,16 +562,26 @@ enum AuraType : uint32
     SPELL_AURA_CONVERT_CONSUMED_RUNE                        = 481,
     SPELL_AURA_PROFIL_CAMERA                                = 482,
     SPELL_AURA_SUPPRESS_TRANSFORMS                          = 483,  // NYI
-    SPELL_AURA_484                                          = 484,  // NYI Aura interrupted by spell MiscValue
+    SPELL_AURA_ALLOW_INTERRUPT                              = 484,
     SPELL_AURA_MOD_MOVEMENT_FORCE_MAGNITUDE                 = 485,
     SPELL_AURA_486                                          = 486,
     SPELL_AURA_487                                          = 487,  // Not used in 7.3.5
     SPELL_AURA_488                                          = 488,
-    SPELL_AURA_FORGET_LANGUAGE                              = 489,
+    SPELL_AURA_MOD_ALTERNATIVE_DEFAULT_LANGUAGE             = 489,
     SPELL_AURA_SWITCH_TEAM                                  = 490,
     SPELL_AURA_MOD_HONOR_GAIN_PCT_2                         = 491,
     SPELL_AURA_492                                          = 492,
     SPELL_AURA_493                                          = 493, // 1 spell, 267116 - Animal Companion (modifies Call Pet)
+    SPELL_AURA_SET_POWER_POINT_CHARGE                       = 494, // NYI
+    SPELL_AURA_TRIGGER_SPELL_ON_EXPIRE                      = 495, // NYI
+    SPELL_AURA_ALLOW_CHANGING_EQUIPMENT_IN_TORGHAST         = 496, // NYI
+    SPELL_AURA_MOD_ANIMA_GAIN                               = 497, // NYI
+    SPELL_AURA_CURRENCY_LOSS_PCT_ON_DEATH                   = 498, // NYI
+    SPELL_AURA_MOD_RESTED_XP_CONSUMPTION                    = 499,
+    SPELL_AURA_IGNORE_SPELL_CHARGE_COOLDOWN                 = 500, // NYI
+    SPELL_AURA_MOD_CRITICAL_DAMAGE_TAKEN_FROM_CASTER        = 501,
+    SPELL_AURA_MOD_VERSATILITY_DAMAGE_DONE_BENEFIT          = 502, // NYI
+    SPELL_AURA_MOD_VERSATILITY_HEALING_DONE_BENEFIT         = 503, // NYI
     TOTAL_AURAS
 };
 

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -121,7 +120,6 @@ enum WorldBoolConfigs
     CONFIG_GM_LOWER_SECURITY,
     CONFIG_SKILL_PROSPECTING,
     CONFIG_SKILL_MILLING,
-    CONFIG_SAVE_RESPAWN_TIME_IMMEDIATELY,
     CONFIG_WEATHER,
     CONFIG_QUEST_IGNORE_RAID,
     CONFIG_CHAT_PARTY_RAID_WARNINGS,
@@ -161,7 +159,6 @@ enum WorldBoolConfigs
     CONFIG_SUPPORT_SUGGESTIONS_ENABLED,
     CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES,
     CONFIG_PRESERVE_CUSTOM_CHANNELS,
-    CONFIG_ANTICHEAT_ENABLE,
     CONFIG_PDUMP_NO_PATHS,
     CONFIG_PDUMP_NO_OVERWRITE,
     CONFIG_QUEST_IGNORE_AUTO_ACCEPT,
@@ -171,13 +168,15 @@ enum WorldBoolConfigs
     CONFIG_ENABLE_MMAPS,
     CONFIG_WINTERGRASP_ENABLE,
     CONFIG_TOLBARAD_ENABLE,
-    CONFIG_UI_QUESTLEVELS_IN_DIALOGS,     // Should we add quest levels to the title in the NPC dialogs?
     CONFIG_EVENT_ANNOUNCE,
     CONFIG_STATS_LIMITS_ENABLE,
     CONFIG_INSTANCES_RESET_ANNOUNCE,
     CONFIG_IP_BASED_ACTION_LOGGING,
     CONFIG_ALLOW_TRACK_BOTH_RESOURCES,
-    CONFIG_FEATURE_SYSTEM_BPAY_STORE_ENABLED,
+    CONFIG_CALCULATE_CREATURE_ZONE_AREA_DATA,
+    CONFIG_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA,
+    CONFIG_FEATURE_SYSTEM_BATTLE_PAY_ENABLED,
+    CONFIG_FEATURE_SYSTEM_BATTLE_PAY_AVAILABLE,
     CONFIG_FEATURE_SYSTEM_CHARACTER_UNDELETE_ENABLED,
     CONFIG_FEATURE_SYSTEM_WAR_MODE_ENABLED,
     CONFIG_RESET_DUEL_COOLDOWNS,
@@ -195,12 +194,13 @@ enum WorldBoolConfigs
     CONFIG_CACHE_DATA_QUERIES,
     CONFIG_CREATURE_CHECK_INVALID_POSITION,
     CONFIG_GAME_OBJECT_CHECK_INVALID_POSITION,
-    CONFIG_LEGACY_BUFF_ENABLED,
     CONFIG_IGNORE_DUNGEONS_BIND,
-    CONFIG_BATTLEPAY_STORE_ENABLED,
-    CONFIG_BATTLEPAY_STORE_AVAILABLE,
-    CONFIG_BATTLEPAY_SHOW_ACCOUNT_BALANCE,
-    BOOL_CONFIG_VALUE_COUNT
+    CONFIG_BATTLE_PAY_ENABLED,
+	CONFIG_ARGUSWOW_ENABLE,
+    CONFIG_PET_BATTLES,
+    CONFIG_FEATURE_SYSTEM_CLUB_FINDER_ENABLED,
+    BOOL_CONFIG_VALUE_COUNT,
+    CONFIG_LFG_UNLOCKALL
 };
 
 enum WorldFloatConfigs
@@ -249,7 +249,6 @@ enum WorldIntConfigs
     CONFIG_CHARACTER_CREATING_DISABLED_CLASSMASK,
     CONFIG_CHARACTERS_PER_ACCOUNT,
     CONFIG_CHARACTERS_PER_REALM,
-    CONFIG_DEMON_HUNTERS_PER_REALM,
     CONFIG_CHARACTER_CREATING_MIN_LEVEL_FOR_DEMON_HUNTER,
     CONFIG_SKIP_CINEMATICS,
     CONFIG_MAX_PLAYER_LEVEL,
@@ -257,11 +256,13 @@ enum WorldIntConfigs
     CONFIG_START_PLAYER_LEVEL,
     CONFIG_START_DEATH_KNIGHT_PLAYER_LEVEL,
     CONFIG_START_DEMON_HUNTER_PLAYER_LEVEL,
+    CONFIG_START_ALLIED_RACE_LEVEL,
     CONFIG_START_PLAYER_MONEY,
     CONFIG_CURRENCY_START_APEXIS_CRYSTALS,
     CONFIG_CURRENCY_MAX_APEXIS_CRYSTALS,
     CONFIG_CURRENCY_START_JUSTICE_POINTS,
     CONFIG_CURRENCY_MAX_JUSTICE_POINTS,
+    CONFIG_CURRENCY_START_ARTIFACT_KNOWLEDGE,
     CONFIG_CURRENCY_RESET_HOUR,
     CONFIG_CURRENCY_RESET_DAY,
     CONFIG_CURRENCY_RESET_INTERVAL,
@@ -356,15 +357,14 @@ enum WorldIntConfigs
     CONFIG_CHARDELETE_DEMON_HUNTER_MIN_LEVEL,
     CONFIG_AUTOBROADCAST_CENTER,
     CONFIG_AUTOBROADCAST_INTERVAL,
+    CONFIG_AUTORESTART_WORLDSERVER,
     CONFIG_MAX_RESULTS_LOOKUP_COMMANDS,
     CONFIG_DB_PING_INTERVAL,
     CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION,
     CONFIG_PERSISTENT_CHARACTER_CLEAN_FLAGS,
+    CONFIG_LFG_DEBUG_JOIN,
     CONFIG_LFG_OPTIONSMASK,
-    CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION,
-    CONFIG_ANTICHEAT_MAX_REPORTS_FOR_DAILY_REPORT,
     CONFIG_MAX_INSTANCES_PER_HOUR,
-    CONFIG_ANTICHEAT_DETECTIONS_ENABLED,
     CONFIG_WARDEN_CLIENT_RESPONSE_DELAY,
     CONFIG_WARDEN_CLIENT_CHECK_HOLDOFF,
     CONFIG_WARDEN_CLIENT_FAIL_ACTION,
@@ -406,11 +406,17 @@ enum WorldIntConfigs
     CONFIG_NO_GRAY_AGGRO_ABOVE,
     CONFIG_NO_GRAY_AGGRO_BELOW,
     CONFIG_AUCTION_REPLICATE_DELAY,
+    CONFIG_CHALLENGE_LEVEL_LIMIT,
+    CONFIG_CHALLENGE_LEVEL_MAX,
+    CONFIG_CHALLENGE_LEVEL_STEP,
     CONFIG_AUCTION_SEARCH_DELAY,
     CONFIG_AUCTION_TAINTED_SEARCH_DELAY,
+    CONFIG_WEIGHTED_MYTHIC_KEYSTONE,
+    CONFIG_DUNGEON_ACTIVE_STEP,
     CONFIG_TALENTS_INSPECTING,
     CONFIG_BLACKMARKET_MAXAUCTIONS,
     CONFIG_BLACKMARKET_UPDATE_PERIOD,
+    CONFIG_BATTLE_PAY_CURRENCY,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -550,6 +556,10 @@ enum WorldStates
     WS_BG_DAILY_RESET_TIME      = 20003,                     // Next daily BG reset time
     WS_CLEANING_FLAGS           = 20004,                     // Cleaning Flags
     WS_GUILD_DAILY_RESET_TIME   = 20006,                     // Next guild cap reset time
+    WS_CHALLENGE_KEY_RESET_TIME         = 20015,                      // Reset time for Challenge key
+    WS_CHALLENGE_AFFIXE1_RESET_TIME     = 20016,                      // Challenge Affixe 1
+    WS_CHALLENGE_AFFIXE2_RESET_TIME     = 20017,                      // Challenge Affixe 2
+    WS_CHALLENGE_AFFIXE3_RESET_TIME     = 20018,                      // Challenge Affixe 3
     WS_MONTHLY_QUEST_RESET_TIME = 20007,                     // Next monthly reset time
     // Cata specific custom worldstates
     WS_GUILD_WEEKLY_RESET_TIME  = 20050,                     // Next guild week reset time
@@ -577,11 +587,28 @@ private:
 
 typedef std::unordered_map<uint32, WorldSession*> SessionMap;
 
+struct CharacterInfo
+{
+    ObjectGuid::LowType Guid;
+    std::string Name;
+    uint32 GuildId = 0;
+    uint32 AccountId = 0;
+    uint32 BnetAccountId = 0;
+    uint16 ZoneId = 0;
+    uint16 SpecId = 0;
+    uint8 Class = 0;
+    uint8 Race = 0;
+    uint8 Sex = 0;
+    uint8 Level = 0;
+    uint8 RankId = 0;
+    bool IsDeleted = false;
+};
+
 /// The World
 class TC_GAME_API World
 {
     public:
-        Ashamane::AnyData Variables;
+        AzgathCore::AnyData Variables;
 
         static World* instance();
 
@@ -675,7 +702,7 @@ class TC_GAME_API World
         void SendWorldText(uint32 string_id, ...);
         void SendGlobalText(const char* text, WorldSession* self);
         void SendGMText(uint32 string_id, ...);
-        void SendServerMessage(ServerMessageType messageID, std::string stringParam = "", Player* player = NULL);
+        void SendServerMessage(ServerMessageType messageID, std::string stringParam = "", Player* player = nullptr);
         void SendGlobalMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
         void SendGlobalGMMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
         bool SendZoneMessage(uint32 zone, WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
@@ -686,7 +713,7 @@ class TC_GAME_API World
         uint32 GetShutDownTimeLeft() const { return m_ShutdownTimer; }
         void ShutdownServ(uint32 time, uint32 options, uint8 exitcode, const std::string& reason = std::string());
         uint32 ShutdownCancel();
-        void ShutdownMsg(bool show = false, Player* player = NULL, const std::string& reason = std::string());
+        void ShutdownMsg(bool show = false, Player* player = nullptr, const std::string& reason = std::string());
         static uint8 GetExitCode() { return m_ExitCode; }
         static void StopNow(uint8 exitcode) { m_stopEvent = true; m_ExitCode = exitcode; }
         static bool IsStopped() { return m_stopEvent; }
@@ -747,6 +774,8 @@ class TC_GAME_API World
         uint32 getWorldState(uint32 index) const;
         void LoadWorldStates();
 
+        /// Are we on a "Player versus Player" server?
+        bool IsPvPRealm() const;
         bool IsFFAPvPRealm() const;
 
         void KickAll();
@@ -787,8 +816,12 @@ class TC_GAME_API World
         void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
         void   ResetEventSeasonalQuests(uint16 event_id);
 
+        CharacterInfo const* GetCharacterInfo(ObjectGuid const& guid) const;
+        CharacterInfo const* GetCharacterInfo(std::string name) const;
+
         void ReloadRBAC();
 
+        time_t getNextChallengeKeyReset();
         void RemoveOldCorpses();
 
     protected:
@@ -871,6 +904,7 @@ class TC_GAME_API World
         time_t m_NextRandomBGReset;
         time_t m_NextGuildReset;
         time_t m_NextCurrencyReset;
+        time_t m_NextChallengeKeyReset;
 
         //Player Queue
         Queue m_QueuedPlayer;
@@ -892,6 +926,10 @@ class TC_GAME_API World
         };
         typedef std::unordered_map<uint8, Autobroadcast> AutobroadcastContainer;
         AutobroadcastContainer m_Autobroadcasts;
+
+        std::vector<CharacterInfo*> _characterInfoStore;
+
+        std::unordered_map<std::string, CharacterInfo*> nameMap;
 
         void ProcessQueryCallbacks();
         QueryCallbackProcessor _queryProcessor;

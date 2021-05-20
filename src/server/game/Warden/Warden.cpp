@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -31,8 +30,8 @@
 
 #include <openssl/sha.h>
 
-Warden::Warden() : _session(NULL), _inputCrypto(16), _outputCrypto(16), _checkTimer(10000/*10 sec*/), _clientResponseTimer(0),
-                   _dataSent(false), _previousTimestamp(0), _module(NULL), _initialized(false)
+Warden::Warden() : _session(nullptr), _checkTimer(10000/*10 sec*/), _clientResponseTimer(0),
+                   _dataSent(false), _previousTimestamp(0), _module(nullptr), _initialized(false)
 {
     memset(_inputKey, 0, sizeof(_inputKey));
     memset(_outputKey, 0, sizeof(_outputKey));
@@ -43,7 +42,7 @@ Warden::~Warden()
 {
     delete[] _module->CompressedData;
     delete _module;
-    _module = NULL;
+    _module = nullptr;
     _initialized = false;
 }
 
@@ -67,7 +66,7 @@ void Warden::SendModuleToClient()
         pos += burstSize;
 
         EncryptData((uint8*)&packet, burstSize + 3);
-        WorldPacket pkt1(SMSG_WARDEN_DATA, burstSize + 3);
+        WorldPacket pkt1(SMSG_WARDEN3_DATA, burstSize + 3);
         pkt1.append((uint8*)&packet, burstSize + 3);
         _session->SendPacket(&pkt1);
     }
@@ -88,7 +87,7 @@ void Warden::RequestModule()
     // Encrypt with warden RC4 key.
     EncryptData((uint8*)&request, sizeof(WardenModuleUse));
 
-    WorldPacket pkt(SMSG_WARDEN_DATA, sizeof(WardenModuleUse));
+    WorldPacket pkt(SMSG_WARDEN3_DATA, sizeof(WardenModuleUse));
     pkt.append((uint8*)&request, sizeof(WardenModuleUse));
     _session->SendPacket(&pkt);
 }
@@ -132,15 +131,15 @@ void Warden::Update()
 
 void Warden::DecryptData(uint8* buffer, uint32 length)
 {
-    _inputCrypto.UpdateData(length, buffer);
+    _inputCrypto.UpdateData(buffer, length);
 }
 
 void Warden::EncryptData(uint8* buffer, uint32 length)
 {
-    _outputCrypto.UpdateData(length, buffer);
+    _outputCrypto.UpdateData(buffer, length);
 }
 
-bool Warden::IsValidCheckSum(uint32 checksum, const uint8* data, const uint16 length)
+bool Warden::IsValidCheckSum(uint32 checksum, uint8 const* data, const uint16 length)
 {
     uint32 newChecksum = BuildChecksum(data, length);
 
@@ -171,7 +170,7 @@ struct keyData {
     };
 };
 
-uint32 Warden::BuildChecksum(const uint8* data, uint32 length)
+uint32 Warden::BuildChecksum(uint8 const* data, uint32 length)
 {
     keyData hash;
     SHA1(data, length, hash.bytes.bytes);
@@ -182,7 +181,7 @@ uint32 Warden::BuildChecksum(const uint8* data, uint32 length)
     return checkSum;
 }
 
-std::string Warden::Penalty(WardenCheck* check /*= NULL*/)
+std::string Warden::Penalty(WardenCheck* check /*= nullptr*/)
 {
     WardenActions action;
 
@@ -217,6 +216,11 @@ std::string Warden::Penalty(WardenCheck* check /*= NULL*/)
             break;
     }
     return "Undefined";
+}
+
+void WorldSession::HandleResetChallengeModeCheat(WorldPackets::Misc::ResetChallengeModeCheat& /*packet*/)
+{
+   // sLog->outWarden("%s failed Warden check %u. Action: %s", GetPlayerName(false).c_str(), 52, _warden->Penalty(52).c_str());
 }
 
 void WorldSession::HandleWardenData(WorldPackets::Warden::WardenData& packet)

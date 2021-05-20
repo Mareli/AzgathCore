@@ -15,23 +15,31 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/// \addtogroup world
-/// @{
-/// \file
-
-#ifndef __WEATHERMGR_H
-#define __WEATHERMGR_H
+#ifndef TRINITY_SPELLDEFINES_H
+#define TRINITY_SPELLDEFINES_H
 
 #include "Define.h"
 
-class Weather;
-class Player;
-struct WeatherData;
-
-namespace WeatherMgr
+namespace UF
 {
-    TC_GAME_API void LoadWeatherData();
-    TC_GAME_API WeatherData const* GetWeatherData(uint32 zone_id);
+    struct SpellCastVisual;
 }
+
+namespace WorldPackets
+{
+    namespace Spells
+    {
+        struct SpellCastVisual;
+    }
+}
+
+struct SpellCastVisual
+{
+    uint32 SpellXSpellVisualID = 0;
+    uint32 ScriptVisualID = 0;
+
+    operator UF::SpellCastVisual() const;
+    operator WorldPackets::Spells::SpellCastVisual() const;
+};
 
 #endif
