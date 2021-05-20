@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -112,7 +112,7 @@ bool OutdoorPvPZM::Update(uint32 diff)
     return changed;
 }
 
-void OutdoorPvPZM::HandlePlayerEnterZone(Player* player, Area* zone)
+void OutdoorPvPZM::HandlePlayerEnterZone(Player* player, uint32 zone)
 {
     if (player->GetTeam() == ALLIANCE)
     {
@@ -127,7 +127,7 @@ void OutdoorPvPZM::HandlePlayerEnterZone(Player* player, Area* zone)
     OutdoorPvP::HandlePlayerEnterZone(player, zone);
 }
 
-void OutdoorPvPZM::HandlePlayerLeaveZone(Player* player, Area* zone)
+void OutdoorPvPZM::HandlePlayerLeaveZone(Player* player, uint32 zone)
 {
     // remove buffs
     player->RemoveAurasDueToSpell(ZM_CAPTURE_BUFF);
@@ -140,7 +140,7 @@ void OutdoorPvPZM::HandlePlayerLeaveZone(Player* player, Area* zone)
 OutdoorPvPZM::OutdoorPvPZM()
 {
     m_TypeId = OUTDOOR_PVP_ZM;
-    m_GraveYard = NULL;
+    m_GraveYard = nullptr;
     m_AllianceTowersControlled = 0;
     m_HordeTowersControlled = 0;
 }

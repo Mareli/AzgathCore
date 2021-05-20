@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,7 +27,7 @@
 OutdoorPvPNA::OutdoorPvPNA()
 {
     m_TypeId = OUTDOOR_PVP_NA;
-    m_obj = NULL;
+    m_obj = nullptr;
 }
 
 void OutdoorPvPNA::HandleKillImpl(Player* player, Unit* killed)
@@ -201,7 +201,7 @@ bool OutdoorPvPNA::SetupOutdoorPvP()
     return true;
 }
 
-void OutdoorPvPNA::HandlePlayerEnterZone(Player* player, Area* zone)
+void OutdoorPvPNA::HandlePlayerEnterZone(Player* player, uint32 zone)
 {
     // add buffs
     if (player->GetTeam() == m_obj->GetControllingFaction())
@@ -209,7 +209,7 @@ void OutdoorPvPNA::HandlePlayerEnterZone(Player* player, Area* zone)
     OutdoorPvP::HandlePlayerEnterZone(player, zone);
 }
 
-void OutdoorPvPNA::HandlePlayerLeaveZone(Player* player, Area* zone)
+void OutdoorPvPNA::HandlePlayerLeaveZone(Player* player, uint32 zone)
 {
     // remove buffs
     player->RemoveAurasDueToSpell(NA_CAPTURE_BUFF);
@@ -383,7 +383,7 @@ int32 OPvPCapturePointNA::HandleOpenGo(Player* player, GameObject* go)
     int32 retval = OPvPCapturePoint::HandleOpenGo(player, go);
     if (retval >= 0)
     {
-        const go_type * gos = NULL;
+        const go_type * gos = nullptr;
         if (m_ControllingFaction == ALLIANCE)
             gos=AllianceControlGOs;
         else if (m_ControllingFaction == HORDE)
