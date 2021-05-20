@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,7 +20,7 @@
 
 void MySQL::Library_Init()
 {
-    mysql_library_init(-1, NULL, NULL);
+    mysql_library_init(-1, nullptr, nullptr);
 }
 
 void MySQL::Library_End()

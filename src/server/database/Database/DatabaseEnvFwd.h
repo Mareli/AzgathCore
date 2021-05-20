@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,6 +21,7 @@
 #include <future>
 #include <memory>
 
+struct QueryResultFieldMetadata;
 class Field;
 
 class ResultSet;
@@ -32,7 +33,6 @@ class CharacterDatabaseConnection;
 class HotfixDatabaseConnection;
 class LoginDatabaseConnection;
 class WorldDatabaseConnection;
-class ShopDatabaseConnection;
 
 class PreparedStatementBase;
 
@@ -43,7 +43,6 @@ using CharacterDatabasePreparedStatement = PreparedStatement<CharacterDatabaseCo
 using HotfixDatabasePreparedStatement = PreparedStatement<HotfixDatabaseConnection>;
 using LoginDatabasePreparedStatement = PreparedStatement<LoginDatabaseConnection>;
 using WorldDatabasePreparedStatement = PreparedStatement<WorldDatabaseConnection>;
-using ShopDatabasePreparedStatement = PreparedStatement<ShopDatabaseConnection>;
 
 class PreparedResultSet;
 using PreparedQueryResult = std::shared_ptr<PreparedResultSet>;
@@ -74,7 +73,6 @@ using CharacterDatabaseTransaction = SQLTransaction<CharacterDatabaseConnection>
 using HotfixDatabaseTransaction = SQLTransaction<HotfixDatabaseConnection>;
 using LoginDatabaseTransaction = SQLTransaction<LoginDatabaseConnection>;
 using WorldDatabaseTransaction = SQLTransaction<WorldDatabaseConnection>;
-using ShopDatabaseTransaction = SQLTransaction<ShopDatabaseConnection>;
 
 class SQLQueryHolderBase;
 using QueryResultHolderFuture = std::future<SQLQueryHolderBase*>;
@@ -87,7 +85,6 @@ using CharacterDatabaseQueryHolder = SQLQueryHolder<CharacterDatabaseConnection>
 using HotfixDatabaseQueryHolder = SQLQueryHolder<HotfixDatabaseConnection>;
 using LoginDatabaseQueryHolder = SQLQueryHolder<LoginDatabaseConnection>;
 using WorldDatabaseQueryHolder = SQLQueryHolder<WorldDatabaseConnection>;
-using ShopDatabaseQueryHolder = SQLQueryHolder<ShopDatabaseConnection>;
 
 // mysql
 struct MySQLHandle;

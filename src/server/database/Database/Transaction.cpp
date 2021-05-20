@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,7 +23,7 @@
 std::mutex TransactionTask::_deadlockLock;
 
 //- Append a raw ad-hoc query to the transaction
-void TransactionBase::Append(const char* sql)
+void TransactionBase::Append(char const* sql)
 {
     SQLElementData data;
     data.type = SQL_ELEMENT_RAW;
@@ -46,7 +46,7 @@ void TransactionBase::Cleanup()
     if (_cleanedUp)
         return;
 
-    for (SQLElementData const &data : m_queries)
+    for (SQLElementData const& data : m_queries)
     {
         switch (data.type)
         {

@@ -1,6 +1,6 @@
-###############################################
-# Trinity Core Auth Server configuration file #
-###############################################
+#############################################
+# AzgathCore Auth Server configuration file #
+#############################################
 [bnetserver]
 
 ###################################################################################################
@@ -38,7 +38,7 @@
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ""
+LogsDir = ".\Data\Logs"
 
 #
 #    MaxPingTime
@@ -179,9 +179,9 @@ BanExpiryCheckInterval = 60
 
 #
 #    SourceDirectory
-#        Description: The path to your TrinityCore source directory.
+#        Description: The path to your AzgathCore source directory.
 #                     If the path is left empty, the built-in CMAKE_SOURCE_DIR is used.
-#        Example:     "../TrinityCore"
+#        Example:     "../AzgathCore"
 #        Default:     ""
 
 SourceDirectory  = ""
@@ -222,7 +222,7 @@ IPLocationFile = ""
 #                                                                           Unix/Linux)
 #        Default:     "127.0.0.1;3306;trinity;trinity;auth"
 
-LoginDatabaseInfo = "127.0.0.1;3306;trinity;trinity;auth"
+LoginDatabaseInfo = "127.0.0.1;3306;root;admin;sl_auth"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -372,8 +372,8 @@ Updates.CleanDeadRefMaxCount = 3
 #                         Example:  536870912 (512 mb)
 #
 
-Appender.Console=1,2,0
-Appender.Bnet=2,2,0,Bnet.log,w
+Appender.Console=1,1,2,1 1 9 10 3 8
+Appender.Bnet=2,1,2,Bnet.log,w
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -398,6 +398,15 @@ Logger.realmlist=3,Console Bnet
 Logger.session=3,Console Bnet
 Logger.session.packets=3,Console Bnet
 Logger.sql.updates=3,Console Bnet
+
+#
+#    ConsoleErrorLogging
+#        Description: Show errors on console on/off.
+#                     If disabled, errors will still be saved to log files.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+ConsoleErrorLogging = 1
 
 #
 ###################################################################################################

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -225,7 +225,7 @@ bool PreparedStatementTask::Execute()
         if (!result || !result->GetRowCount())
         {
             delete result;
-            m_result->set_value(PreparedQueryResult(NULL));
+            m_result->set_value(PreparedQueryResult(nullptr));
             return false;
         }
         m_result->set_value(PreparedQueryResult(result));

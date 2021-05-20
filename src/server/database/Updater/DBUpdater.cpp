@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -182,38 +182,6 @@ BaseLocation DBUpdater<HotfixDatabaseConnection>::GetBaseLocationType()
     return LOCATION_DOWNLOAD;
 }
 
-// Shop Database
-template<>
-std::string DBUpdater<ShopDatabaseConnection>::GetConfigEntry()
-{
-    return "Updates.Shop";
-}
-
-template<>
-std::string DBUpdater<ShopDatabaseConnection>::GetTableName()
-{
-    return "Shop";
-}
-
-template<>
-std::string DBUpdater<ShopDatabaseConnection>::GetBaseFile()
-{
-    return "";
-}
-
-template<>
-bool DBUpdater<ShopDatabaseConnection>::IsEnabled(uint32 const updateMask)
-{
-    // This way silences warnings under msvc
-    return (updateMask & DatabaseLoader::DATABASE_SHOP) ? true : false;
-}
-
-template<>
-BaseLocation DBUpdater<ShopDatabaseConnection>::GetBaseLocationType()
-{
-    return LOCATION_DOWNLOAD;
-}
-
 // All
 template<class T>
 BaseLocation DBUpdater<T>::GetBaseLocationType()
@@ -348,7 +316,7 @@ bool DBUpdater<T>::Populate(DatabaseWorkerPool<T>& pool)
             {
                 std::string const filename = base.filename().generic_string();
                 std::string const workdir = boost::filesystem::current_path().generic_string();
-                TC_LOG_ERROR("sql.updates", ">> File \"%s\" is missing, download it from \"https://github.com/AshamaneProject/AshamaneCore/releases\"" \
+                TC_LOG_ERROR("sql.updates", ">> File \"%s\" is missing, download it from \"https://github.com/TrinityCore/TrinityCore/releases\"" \
                     " uncompress it and place the file \"%s\" in the directory \"%s\".", filename.c_str(), filename.c_str(), workdir.c_str());
                 break;
             }
@@ -449,7 +417,7 @@ void DBUpdater<T>::ApplyFile(DatabaseWorkerPool<T>& pool, std::string const& hos
         TC_LOG_FATAL("sql.updates", "Applying of file \'%s\' to database \'%s\' failed!" \
             " If you are a user, please pull the latest revision from the repository. "
             "Also make sure you have not applied any of the databases with your sql client. "
-            "You cannot use auto-update system and import sql files from TrinityCore repository with your sql client. "
+            "You cannot use auto-update system and import sql files from AzgathCore repository with your sql client. "
             "If you are a developer, please fix your sql query.",
             path.generic_string().c_str(), pool.GetConnectionInfo()->database.c_str());
 
@@ -461,5 +429,3 @@ template class TC_DATABASE_API DBUpdater<LoginDatabaseConnection>;
 template class TC_DATABASE_API DBUpdater<WorldDatabaseConnection>;
 template class TC_DATABASE_API DBUpdater<CharacterDatabaseConnection>;
 template class TC_DATABASE_API DBUpdater<HotfixDatabaseConnection>;
-template class TC_DATABASE_API DBUpdater<ShopDatabaseConnection>;
-

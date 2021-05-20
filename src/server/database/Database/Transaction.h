@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,7 +39,7 @@ class TC_DATABASE_API TransactionBase
         TransactionBase() : _cleanedUp(false) { }
         virtual ~TransactionBase() { Cleanup(); }
 
-        void Append(const char* sql);
+        void Append(char const* sql);
         template<typename Format, typename... Args>
         void PAppend(Format&& sql, Args&&... args)
         {
