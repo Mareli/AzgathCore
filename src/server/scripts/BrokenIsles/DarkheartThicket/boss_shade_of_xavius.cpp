@@ -1,143 +1,142 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "AreaTrigger.h"
-#include "AreaTriggerAI.h"
-#include "darkheart_thicket.h"
-#include "GameObject.h"
-#include "InstanceScript.h"
-#include "Map.h"
-#include "MotionMaster.h"
-#include "ObjectAccessor.h"
-#include "Player.h"
-#include "PhasingHandler.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
-#include "SpellInfo.h"
-#include "SpellScript.h"
-#include "TemporarySummon.h"
+#include "darkheart_thicket.h"
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
+
+enum Says
+{
+    SAY_AGGRO = 0,
+    SAY_DEATH = 1,
+    SAY_END = 0,
+};
 
 enum Spells
 {
-    SPELL_SHADE_OF_XAVIUS_VISUAL = 31059,
+    SPELL_SHADE_VISUAL = 195106,
+    SPELL_FESTERING_RIP = 200182,
+    SPELL_NIGHTMARE_BOLT = 204808,
+    SPELL_FEED_ON_THE_WEAK = 200238,
+    SPELL_INDUCED_PARANOIA = 200359,
+    SPELL_COWARDICE = 200273,
 
-    //Festering Rip
-    SPELL_FR_TARGET         = 200182,  //Targets a random player within melee range
+    //Final Phase 50%HP
+    SPELL_PHASE_CHANGE_CONVERSATION = 199857, //deprecated
+    SPELL_APOCOLYPTIC_NIGHTMARE = 200050,
+    SPELL_DRAIN_ESSENCE = 199837, //deprecated
 
-    //Feed on the Weak
-    SPELL_FOTW_TARGET       = 200238,  //Target a random non-tank player
-    //     214224  //Mythic+ ?
-    //     214229  //Mythic+ ?
+    //Cage
+    SPELL_NIGHTMARE_SHIELD = 204511,
+    SPELL_NIGHTMARE_BINDINGS = 199752,
 
-    //Nightmare Bolt
-    SPELL_NB_TARGET         = 204808,  //Targets a random player
-    SPELL_NB_DAMAGE         = 200185,
-    //225899 ?
-
-    //Waking Nightmare
-    SPELL_WN_TARGET_AT      = 200243,  //Targets a random player
-    //Growing Paranoia
-    SPELL_GP_TARGET_AT      = 200289,  //Targets a random player
-    //Overwhelming Terror
-    SPELL_OT_TARGET         = 200329,  //Targets a random player
-    //Induced Paranoia
-    SPELL_IP_TARGET         = 200359,  //Targets a random player
-
-    //Apocalyptic Nightmare
-    SPELL_AN_TARGET         = 200050,  //Cast after reaching 50% health
-    SPELL_AN_TRIGGERMISSILE = 200067,
-    SPELL_AN_MISSILE        = 200111,
-    SPELL_AN_DAMAGE         = 204502,
-    SPELL_AN_TRIGGERMISSILE_1 = 221267, //ocd trigger much ?
-    SPELL_AN_MISSILE_1      = 221268
+    //Malfurion
+    SPELL_NATURE_RECOVERY = 204680,
+    SPELL_ESCAPES_CONVERSATION = 199912,
+    SPELL_NATURE_DOMINANCE = 199922, //deprecated
 };
 
-enum Events
+enum eEvents
 {
-    EVENT_FESTERING_RIP     = 1,
-    EVENT_FEED_ON_THE_WEAK  = 2,
-    EVENT_NIGHTMARE_BOLT    = 3,
-    EVENT_INDUCED_PARANOIA  = 4
+    EVENT_FESTERING_RIP = 1,
+    EVENT_NIGHTMARE_BOLT = 2,
+    EVENT_FEED_ON_THE_WEAK = 3,
+    EVENT_INDUCED_PARANOIA = 4,
+    EVENT_FINAL_PHASE = 5,
 };
 
-enum Talks
+enum Misc
 {
-    SAY_PULL        = 0,
-    SAY_90PCT       = 1,
-    SAY_15PCT       = 2,
-    SAY_DIE         = 3,
+    DATA_STACKS = 221315,
+    EVENT_1,
+    ACTION_1, 
 };
 
+//99192
 class boss_shade_of_xavius : public CreatureScript
 {
 public:
-    boss_shade_of_xavius() : CreatureScript("boss_shade_of_xavius") { }
+    boss_shade_of_xavius() : CreatureScript("boss_shade_of_xavius") {}
 
     struct boss_shade_of_xaviusAI : public BossAI
     {
-        boss_shade_of_xaviusAI(Creature* creature) : BossAI(creature, DATA_SHADE_OF_XAVIUS)
-        {
-            hp90 = false;
-            hp15 = false;
-        }
+        boss_shade_of_xaviusAI(Creature* creature) : BossAI(creature, DATA_XAVIUS), summons(me) {}
+
+        SummonList summons;
+        bool finalPhase;
+        bool _stacked = false;
 
         void Reset() override
         {
             _Reset();
-            events.ScheduleEvent(EVENT_NIGHTMARE_BOLT, urand(17000, 25000));
-            events.ScheduleEvent(EVENT_FEED_ON_THE_WEAK, urand(15000, 20000));
-            events.ScheduleEvent(EVENT_FESTERING_RIP, urand(17000, 21000));
-            //events.ScheduleEvent(EVENT_INDUCED_PARANOIA, urand(18000, 28000));
-
-            me->CastSpell(me, SPELL_SHADE_OF_XAVIUS_VISUAL, true);
-
-            hp90 = false;
-            hp15 = false;
-            hp50 = false;
-        }
-
-        void JustReachedHome() override
-        {
-            _JustReachedHome();
-            instance->SetBossState(DATA_SHADE_OF_XAVIUS, FAIL);
-
-            me->CastSpell(me, SPELL_SHADE_OF_XAVIUS_VISUAL, true);
+            summons.DespawnAll();
+            if (Creature* malfurion = instance->instance->GetCreature(instance->GetGuidData(NPC_MALFURION_STORMRAGE)))
+                malfurion->DespawnOrUnsummon();
+            finalPhase = false;
+            DoCast(me, SPELL_SHADE_VISUAL, true);
+            me->SummonCreature(NPC_NIGHTMARE_BINDINGS, 2689.05f, 1297.46f, 128.40f);
+            _stacked = false;
         }
 
         void EnterCombat(Unit* /*who*/) override
+            //49:53
         {
-            me->setActive(true);
-            DoZoneInCombat();
+            Talk(SAY_AGGRO);
+            _EnterCombat();
+            events.RescheduleEvent(EVENT_FESTERING_RIP, 3000);  //49:56, 50:13
+            events.RescheduleEvent(EVENT_NIGHTMARE_BOLT, 9000);  //50:02, 50:19
+            events.RescheduleEvent(EVENT_FEED_ON_THE_WEAK, 14000); //50:07, 51:01, 51:30, 52:00
+            events.RescheduleEvent(EVENT_INDUCED_PARANOIA, 21000); //50:14, 51:00, 51:21, 51:42
+        }
 
-            events.ScheduleEvent(EVENT_NIGHTMARE_BOLT, urand(17000, 25000));
-            events.ScheduleEvent(EVENT_FEED_ON_THE_WEAK, urand(15000, 20000));
-            events.ScheduleEvent(EVENT_FESTERING_RIP, urand(17000, 21000));
-            //events.ScheduleEvent(EVENT_INDUCED_PARANOIA, urand(18000, 28000));
+        uint32 GetData(uint32 type) const override
+        {
+            switch (type)
+            {
+            case DATA_STACKS:
+                return _stacked ? 1 : 0;
+            }
 
-            Talk(SAY_PULL);
-            instance->SetBossState(DATA_SHADE_OF_XAVIUS, IN_PROGRESS);
+            return 0;
         }
 
         void JustDied(Unit* /*killer*/) override
         {
+            Talk(SAY_DEATH);
             _JustDied();
+            summons.DespawnAll();
+            if (Creature* malfurion = instance->instance->GetCreature(instance->GetGuidData(NPC_MALFURION_STORMRAGE)))
+                malfurion->AI()->DoAction(ACTION_1);
+        }
 
-            Talk(SAY_DIE);
-            instance->SetBossState(DATA_SHADE_OF_XAVIUS, DONE);
+        void JustSummoned(Creature* summon) override
+        {
+            summons.Summon(summon);
+
+            if (summon->GetEntry() == NPC_NIGHTMARE_BINDINGS)
+            {
+                summon->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+                summon->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+                summon->SetReactState(REACT_PASSIVE);
+                summon->CastSpell(summon, SPELL_NIGHTMARE_SHIELD, true);
+                summon->CastSpell(summon, SPELL_NIGHTMARE_BINDINGS, true);
+            }
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage)
+        {
+            if (HealthBelowPct(51) && !finalPhase)
+            {
+                finalPhase = true;
+                events.RescheduleEvent(EVENT_FINAL_PHASE, 1000);
+            }
+            if (damage >= me->GetHealth())
+            {
+                if (Aura const* aura = me->GetAura(221315))
+                {
+                    if (aura->GetStackAmount() >= 10)
+                        _stacked = true;
+                }
+            }
         }
 
         void UpdateAI(uint32 diff) override
@@ -150,78 +149,34 @@ public:
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
 
-            if (!hp90 && HealthBelowPct(90))
-            {
-                Talk(SAY_90PCT);
-                hp90 = true;
-            }
-
-            if (!hp15 && HealthBelowPct(15))
-            {
-                Talk(SAY_15PCT);
-                hp15 = true;
-            }
-
-            if (!hp50 && HealthBelowPct(50))
-            {
-                me->CastSpell(me, SPELL_AN_TARGET, false);
-                hp50 = true;
-            }
-
-            while (uint32 eventId = events.ExecuteEvent())
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
-                    case EVENT_NIGHTMARE_BOLT:
-                    {
-                        events.ScheduleEvent(EVENT_NIGHTMARE_BOLT, urand(17000, 25000));
-                        Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0, true);
-                        if (!target)
-                            break;
-
-                        me->CastSpell(target, SPELL_NB_TARGET, false);
-                        break;
-                    }
-                    case EVENT_INDUCED_PARANOIA:
-                    {
-                        events.ScheduleEvent(EVENT_INDUCED_PARANOIA, urand(18000, 28000));
-
-                        Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0, true);
-                        if (!target)
-                            break;
-
-                        me->CastSpell(target, SPELL_IP_TARGET, false);
-                        break;
-                    }
-                    case EVENT_FESTERING_RIP:
-                    {
-                        events.ScheduleEvent(EVENT_FESTERING_RIP, urand(17000, 21000));
-                        Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0, true);
-                        if (!target)
-                            break;
-
-                        me->CastSpell(target, SPELL_FR_TARGET, false);
-                        break;
-                    }
-                    case EVENT_FEED_ON_THE_WEAK:
-                    {
-                        events.ScheduleEvent(EVENT_FEED_ON_THE_WEAK, urand(15000, 20000));
-                        Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0, true);
-                        if (!target)
-                            break;
-
-                        me->CastSpell(target, SPELL_FOTW_TARGET, false);
-                        break;
-                    }
+                case EVENT_FESTERING_RIP:
+                    DoCastVictim(SPELL_FESTERING_RIP);
+                    events.RescheduleEvent(EVENT_FESTERING_RIP, 17000);
+                    break;
+                case EVENT_NIGHTMARE_BOLT:
+                    DoCast(SPELL_NIGHTMARE_BOLT);
+                    events.RescheduleEvent(EVENT_NIGHTMARE_BOLT, 17000);
+                    break;
+                case EVENT_FEED_ON_THE_WEAK:
+                    if (Unit* pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f, true))
+                        DoCast(pTarget, SPELL_FEED_ON_THE_WEAK);
+                    events.RescheduleEvent(EVENT_FEED_ON_THE_WEAK, 30000);
+                    break;
+                case EVENT_INDUCED_PARANOIA:
+                    DoCast(SPELL_INDUCED_PARANOIA);
+                    events.RescheduleEvent(EVENT_INDUCED_PARANOIA, 21000);
+                    break;
+                case EVENT_FINAL_PHASE:
+                    DoCast(SPELL_APOCOLYPTIC_NIGHTMARE);
+                    break;
                 }
             }
-
             DoMeleeAttackIfReady();
         }
-        private:
-            bool hp90;
-            bool hp15;
-            bool hp50;
 
     };
 
@@ -231,171 +186,139 @@ public:
     }
 };
 
-/*
-    Nightmare Bolt
-*/
-
-//204808
-class spell_shade_of_xavius_nightmare_bolt_target : public SpellScriptLoader
+//100652
+class npc_xavius_malfurion_stormrage : public CreatureScript
 {
 public:
-    spell_shade_of_xavius_nightmare_bolt_target() : SpellScriptLoader("spell_shade_of_xavius_nightmare_bolt_target") { }
+    npc_xavius_malfurion_stormrage() : CreatureScript("npc_xavius_malfurion_stormrage") { }
 
-    class spell_shade_of_xavius_nightmare_bolt_target_SpellScript : public SpellScript
+    struct npc_xavius_malfurion_stormrageAI : public ScriptedAI
     {
-        PrepareSpellScript(spell_shade_of_xavius_nightmare_bolt_target_SpellScript);
-
-        void HandleHit(SpellEffIndex /*effIndex*/)
+        npc_xavius_malfurion_stormrageAI(Creature* creature) : ScriptedAI(creature)
         {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
+            instance = me->GetInstanceScript();
+            me->SetReactState(REACT_PASSIVE);
+        }
 
-            if (!caster || !target)
+        InstanceScript* instance;
+        EventMap events;
+
+        void Reset() override {}
+
+        void DoAction(int32 const action) override
+        {
+            if (action == ACTION_1)
+                me->GetMotionMaster()->MoveCharge(1302.77f, 128.36f, me->GetPositionZ(), 10.0f);
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type != EFFECT_MOTION_TYPE)
                 return;
 
-            caster->CastSpell(target, SPELL_NB_DAMAGE, true);
+            events.RescheduleEvent(EVENT_1, 3000);
         }
 
-        void Register() override
+        bool GossipSelect(Player* player, uint32 sender, uint32 action) override
         {
-            OnEffectHitTarget += SpellEffectFn(spell_shade_of_xavius_nightmare_bolt_target_SpellScript::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
+            player->TeleportTo(1466, 3248.16f, 1829.34f, 236.84f, 0.1f);
 
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_shade_of_xavius_nightmare_bolt_target_SpellScript();
-    }
-};
-
-/*
-    Induced Paranoia
-*/
-
-//200359
-class spell_shade_of_xavius_induced_paranoia_target : public SpellScriptLoader
-{
-public:
-    spell_shade_of_xavius_induced_paranoia_target() : SpellScriptLoader("spell_shade_of_xavius_induced_paranoia_target") { }
-
-    class spell_shade_of_xavius_induced_paranoia_target_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_shade_of_xavius_induced_paranoia_target_SpellScript);
-
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target)
-                return;
-
-            target->CastSpell(target, SPELL_GP_TARGET_AT, true);
+            return true;
         }
 
-        void Register() override
+        void UpdateAI(uint32 diff) override
         {
-            OnEffectHitTarget += SpellEffectFn(spell_shade_of_xavius_induced_paranoia_target_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
+            events.Update(diff);
 
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_shade_of_xavius_induced_paranoia_target_SpellScript();
-    }
-};
-
-//AT ID : 5631
-//Spell ID : 200289
-class at_shade_of_xavius_growing_paranoia : public AreaTriggerEntityScript
-{
-public:
-    at_shade_of_xavius_growing_paranoia() : AreaTriggerEntityScript("at_shade_of_xavius_growing_paranoia") { }
-
-    struct at_oakheart_strangling_rootsAI : AreaTriggerAI
-    {
-        int32 timeInterval;
-        at_oakheart_strangling_rootsAI(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger)
-        {
-            timeInterval = 200;
-        }
-
-        void OnUpdate(uint32 p_Time) override
-        {
-            Unit* caster = at->GetCaster();
-
-            if (!caster)
-                return;
-
-            timeInterval += p_Time;
-            if (timeInterval < 200)
-                return;
-
-            for (ObjectGuid guid : at->GetInsideUnits())
-                if (Unit* unit = ObjectAccessor::GetUnit(*caster, guid))
-                    if (caster->IsFriendlyTo(unit))
-                        caster->CastSpell(caster, SPELL_OT_TARGET, true);
-
-            timeInterval -= 200;
-        }
-    };
-
-    AreaTriggerAI* GetAI(AreaTrigger* areatrigger) const override
-    {
-        return new at_oakheart_strangling_rootsAI(areatrigger);
-    }
-};
-
-/*
-    Apocalyptic Nightmare
-*/
-
-//200050
-class spell_shade_of_xavius_apocalyptic_nightmare : public SpellScriptLoader
-{
-public:
-    spell_shade_of_xavius_apocalyptic_nightmare() : SpellScriptLoader("spell_shade_of_xavius_apocalyptic_nightmare") { }
-
-    class spell_shade_of_xavius_apocalyptic_nightmare_AuraScript : public AuraScript
-    {
-        PrepareAuraScript(spell_shade_of_xavius_apocalyptic_nightmare_AuraScript);
-
-        void HandlePeriodic(AuraEffect const* /*aurEff*/)
-        {
-            Unit* caster = GetCaster();
-            if (!caster)
-                return;
-
-            int32 deltaX = urand(0, 150);
-            int32 deltaY = urand(0, 150);
-
-            if (TempSummon* tempSumm = caster->SummonCreature(WORLD_TRIGGER, caster->GetPositionX() + deltaX - 75, caster->GetPositionY() + deltaY - 75, caster->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 2000))
+            if (uint32 eventId = events.ExecuteEvent())
             {
-                tempSumm->SetSummonerGUID(caster->GetGUID());
-                PhasingHandler::InheritPhaseShift(tempSumm, caster);
-                tempSumm->SetName(caster->GetName());
-                caster->CastSpell(tempSumm, SPELL_AN_TRIGGERMISSILE, false);
+                switch (eventId)
+                {
+                case EVENT_1:
+                    Talk(SAY_END);
+                    me->GetMotionMaster()->MovePoint(1, 2711.70f, 1322.85f, 128.36f);
+                    break;
+                }
+            }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_xavius_malfurion_stormrageAI(creature);
+    }
+};
+
+//200243
+class spell_xavius_waking_nightmare : public SpellScriptLoader
+{
+public:
+    spell_xavius_waking_nightmare() : SpellScriptLoader("spell_xavius_waking_nightmare") { }
+
+    class spell_xavius_waking_nightmare_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_xavius_waking_nightmare_AuraScript);
+
+        uint16 m_checkTimer = 1000;
+
+        void OnUpdate(AuraEffect const* aurEff)
+        {
+            std::list<Player*> playersList;
+            GetPlayerListInGrid(playersList, GetCaster(), 5.0f);
+            if (playersList.size() > 1)
+            {
+                if (GetCaster()->HasAura(SPELL_COWARDICE))
+                    GetCaster()->RemoveAurasDueToSpell(SPELL_COWARDICE);
+            }
+            else
+            {
+                if (!GetCaster()->HasAura(SPELL_COWARDICE))
+                    GetCaster()->CastSpell(GetCaster(), SPELL_COWARDICE, true);
             }
         }
 
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (GetCaster())
+                GetCaster()->RemoveAurasDueToSpell(SPELL_COWARDICE);
+        }
+
         void Register() override
         {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_shade_of_xavius_apocalyptic_nightmare_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_xavius_waking_nightmare_AuraScript::OnUpdate, EFFECT_0, SPELL_AURA_AREA_TRIGGER);
+            OnEffectRemove += AuraEffectRemoveFn(spell_xavius_waking_nightmare_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
         }
     };
 
     AuraScript* GetAuraScript() const override
     {
-        return new spell_shade_of_xavius_apocalyptic_nightmare_AuraScript();
+        return new spell_xavius_waking_nightmare_AuraScript();
+    }
+};
+
+class achievement_burning_down_the_house : public AchievementCriteriaScript
+{
+public:
+    achievement_burning_down_the_house() : AchievementCriteriaScript("achievement_burning_down_the_house") { }
+
+    bool OnCheck(Player* /*player*/, Unit* target) override
+    {
+        if (!target)
+            return false;
+
+        if (Creature* Xav = target->ToCreature())
+            if (Xav->IsAIEnabled && (Xav->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC || Xav->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE))
+                if (Xav->AI()->GetData(DATA_STACKS))
+                    return true;
+
+        return false;
     }
 };
 
 void AddSC_boss_shade_of_xavius()
 {
-    new at_shade_of_xavius_growing_paranoia();
-
     new boss_shade_of_xavius();
-
-    new spell_shade_of_xavius_apocalyptic_nightmare();
-    new spell_shade_of_xavius_induced_paranoia_target();
-    new spell_shade_of_xavius_nightmare_bolt_target();
+    new npc_xavius_malfurion_stormrage();
+    new spell_xavius_waking_nightmare();
+    new achievement_burning_down_the_house();
 }

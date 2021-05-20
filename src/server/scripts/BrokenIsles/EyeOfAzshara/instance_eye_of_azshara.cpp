@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,268 +21,254 @@
 #include "InstanceScript.h"
 #include "eye_of_azshara.h"
 
-struct instance_eye_of_azshara : public InstanceScript
+DoorData const doorData[] =
 {
-    instance_eye_of_azshara(InstanceMap* map) : InstanceScript(map), _deadArcanistCount(0), _deadBossCount(0), _deadNagasCount(0)
-    {
-        SetHeaders(DataHeader);
-        SetBossNumber(EncounterCount);
-        SetChallengeDoorPos({ -3895.260742f, 4523.655273f, 84.528175f, 5.613298f });
-    }
+	{ GO_WATER_DOOR, DATA_KING_DEEPBEARD, DOOR_TYPE_ROOM },
+{ 0, 0, DOOR_TYPE_ROOM }
+};
 
-    void OnCreatureCreate(Creature* creature) override
-    {
-        InstanceScript::OnCreatureCreate(creature);
+class instance_eye_of_azshara : public InstanceMapScript
+{
+public:
+	instance_eye_of_azshara() : InstanceMapScript(EoAScriptName, 1456)
+	{}
 
-        if (instance->IsHeroic())
-            creature->SetBaseHealth(creature->GetMaxHealth() * 2.f);
-        if (instance->IsMythic())
-            creature->SetBaseHealth(creature->GetMaxHealth() * 1.33f);
+	struct instance_eye_of_azshara_InstanceScript : public InstanceScript
+	{
+		instance_eye_of_azshara_InstanceScript(InstanceMap* map) : InstanceScript(map)
+		{
+			SetHeaders(DataHeader);
+			SetBossNumber(EncounterCount);
+			LoadDoorData(doorData);
+			_parjeshGUID = ObjectGuid::Empty;
+			_ladyHatecoilGUID = ObjectGuid::Empty;
+			_ladyIntro = NOT_STARTED;
+			_wrathIntro = NOT_STARTED;
+			_ritualEvent = NOT_STARTED;
+			_ritualistDeads = 0;
+			_bossesDone = 0;
+			_ritualists.clear();
+			_serpentrixGUID = ObjectGuid::Empty;
+			_kingDeepbeardGUID = ObjectGuid::Empty;
+			_wrathOfAzsharaGUID = ObjectGuid::Empty;
+		}
 
-        switch (creature->GetEntry())
-        {
-            case NPC_HATECOIL_ARCANIST:
-            {
-                if (creature->isDead())
-                    incrementDeadArcanistCount();
-                break;
-            }
-            case NPC_LADY_HATECOIL:
-            {
-                _ladyHatecoilGUID = creature->GetGUID();
-                if (creature->AI() && _deadArcanistCount >= 2) // If 2 arcanists are dead, remove Lady Hatecoil's shield
-                    creature->AI()->DoAction(1);
+		void OnCreatureCreate(Creature* creature) override
+		{
+			if (!creature)
+				return;
 
-                if (creature->isDead() && ++_deadBossCount >= 4)
-                    releaseWrath();
+			switch (creature->GetEntry())
+			{
+			case BOSS_PARJESH:
+				_parjeshGUID = creature->GetGUID();
+				break;
 
-                tryEnableViolentWinds();
-                break;
-            }
-            case NPC_SERPENTRIX:
-            {
-                if (creature->isDead() && ++_deadBossCount >= 4)
-                    releaseWrath();
+			case BOSS_LADY_HATECOIL:
+				_ladyHatecoilGUID = creature->GetGUID();
+				break;
 
-                tryEnableViolentWinds();
-                break;
-            }
-            case NPC_WARLORD_PARJESH:
-            {
-                if (creature->isDead() && ++_deadBossCount >= 4)
-                    releaseWrath();
+			case BOSS_SERPENTRIX:
+				_serpentrixGUID = creature->GetGUID();
+				break;
 
-                tryEnableViolentWinds();
-                break;
-            }
-            case NPC_KING_DEEPBEARD:
-            {
-                if (creature->isDead() && ++_deadBossCount >= 4)
-                    releaseWrath();
+			case BOSS_KING_DEEPBEARD:
+				_kingDeepbeardGUID = creature->GetGUID();
+				break;
 
-                tryEnableViolentWinds();
-                break;
-            }
-            case NPC_WRATH_OF_AZSHARA:
-            {
-                _wrathGUID = creature->GetGUID();
-                if (_deadBossCount >= 4)
-                    releaseWrath();
-                if (_deadNagasCount >= 4)
-                    removeNonAttackableFromWrath();
-                break;
-            }
-            case NPC_RITUALIST_LESHA:
-            case NPC_CHANNELER_VARISZ:
-            case NPC_BINDER_ASHIOI:
-            case NPC_MYSTIC_SSAVEH:
-            {
-                _nagasGUIDs.push_back(creature->GetGUID());
-                if (creature->isDead())
-                    ++_deadNagasCount;
-                if (_deadNagasCount >= 4)
-                    removeNonAttackableFromWrath();
-                break;
-            }
-            case NPC_SAND_DUNE:
-            {
-                _sandDuneGUIDs.push_back(creature->GetGUID());
-                break;
-            }
-            case NPC_WEATHERMAN:
-            {
-                _weathermanGUID = creature->GetGUID();
-                break;
-            }
-        }
-    }
+			case BOSS_WRATH_OF_AZSHARA:
+				_wrathOfAzsharaGUID = creature->GetGUID();
+				break;
 
-    void OnGameObjectCreate(GameObject* go) override
-    {
-        InstanceScript::OnGameObjectCreate(go);
+			case NPC_RITUALIST_LESHA:
+			case NPC_CHANNELER_VARISZ:
+			case NPC_BINDER_ASHIOIS:
+			case NPC_MYSTIC_SSAVEH:
+				_ritualists.push_back(creature);
+				break;
 
-        switch (go->GetEntry())
-        {
-            case GO_BUBBLE:
-            {
-                _bubbleGUID = go->GetGUID();
-                if (_deadBossCount >= 4)
-                    releaseWrath();
-                break;
-            }
-        }
-    }
+			default: break;
+			}
+		}
 
-    void SetData(uint32 type, uint32 data) override
-    {
-        if (type == DATA_ARCANIST_DIED) // A Hatecoil Arcanist died
-            incrementDeadArcanistCount();
-        else if (type == DATA_RESPAWN_DUNES) // Called by Lady Hatecoil when she resets
-        {
-            for (auto guid : _sandDuneGUIDs)
-            {
-                if (Creature* sandDune = instance->GetCreature(guid))
-                    sandDune->Respawn();
-            }
-        }
-        else if (type == DATA_BOSS_DIED)
-        {
-            ++_deadBossCount;
+		void OnGameObjectCreate(GameObject* go) override
+		{
+			if (!go)
+				return;
 
-            if (_deadBossCount >= 4)
-                releaseWrath();
+			switch (go->GetEntry())
+			{
+			case GO_WATER_DOOR:
+				AddDoor(go, true);
+				break;
+			}
+		}
 
-            tryEnableViolentWinds();
-        }
-        else if (type == DATA_NAGA_DIED && ++_deadNagasCount >= 4)
-            removeNonAttackableFromWrath();
-        else if (type == DATA_CRY_OF_WRATH)
-        {
-            if (Creature* weatherman = instance->GetCreature(_weathermanGUID))
-            {
-                if (data == 0)
-                {
-                    weatherman->RemoveAurasDueToSpell(SPELL_VIOLENT_WINDS_90S);
-                    weatherman->CastSpell(weatherman, SPELL_VIOLENT_WINDS_10S, true);
-                }
-                else if (data == 1)
-                {
-                    weatherman->RemoveAurasDueToSpell(SPELL_VIOLENT_WINDS_10S);
-                    weatherman->CastSpell(weatherman, SPELL_VIOLENT_WINDS_90S, true);
-                }
-                else if (data == 2)
-                {
-                    weatherman->RemoveAurasDueToSpell(SPELL_VIOLENT_WINDS_10S);
-                    weatherman->RemoveAurasDueToSpell(SPELL_VIOLENT_WINDS_90S);
-                }
-            }
-        }
-    }
+		void OnGameObjectRemove(GameObject* go) override
+		{
+			if (!go)
+				return;
 
-    uint32 GetData(uint32 data) const override
-    {
-        switch (data)
-        {
-            case DATA_BOSS_DIED:
-                return _deadBossCount;
-            default:
-                return 0;
-        }
-    }
+			switch (go->GetEntry())
+			{
+			case GO_WATER_DOOR:
+				AddDoor(go, false);
+				break;
+			}
+		}
 
-private:
-    uint8 _deadArcanistCount;
-    uint8 _deadBossCount;
-    uint8 _deadNagasCount; // Only for the 4 nagas around Wrath of Azshara
+		bool SetBossState(uint32 id, EncounterState state) override
+		{
+			if (!InstanceScript::SetBossState(id, state))
+				return false;
 
-    ObjectGuid _ladyHatecoilGUID;
-    ObjectGuid _wrathGUID;
-    ObjectGuid _bubbleGUID;
-    ObjectGuid _weathermanGUID;
+			if (state == DONE)
+			{
+				_bossesDone++;
 
-    GuidVector _sandDuneGUIDs;
-    GuidVector _nagasGUIDs; // The 4 nagas around Wrath of Azshara
+				if (_bossesDone >= 4 && GetData(DATA_RITUAL_EVENT) != DONE)
+				{
+					SetData(DATA_RITUAL_EVENT, DONE);
 
-    void incrementDeadArcanistCount()
-    {
-        if (++_deadArcanistCount >= 2) // If 2 arcanists are dead, remove Lady Hatecoil's shield
-        {
-            if (Creature* ladyHatecoil = instance->GetCreature(_ladyHatecoilGUID))
-                ladyHatecoil->AI()->DoAction(1);
-        }
-    }
+					if (!_ritualists.empty())
+					{
+						for (auto & it : _ritualists)
+						{
+							if (it->IsAlive())
+								it->AI()->DoAction(2); // ACTION_BOSSES_DEAD
+						}
+					}
+				}
+			}
 
-    // Remove the bubble and the non-attackable flags from the 4 nagas
-    void releaseWrath()
-    {
-        if (!_bubbleGUID.IsEmpty())
-        {
-            if (GameObject* bubble = instance->GetGameObject(_bubbleGUID))
-            {
-                bubble->SetRespawnTime(0);
-                bubble->Delete();
-            }
+			return true;
+		}
 
-            bool allDead = true;
-            for (auto guid : _nagasGUIDs)
-            {
-                if (Creature* naga = instance->GetCreature(guid))
-                {
-                    naga->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-                    naga->RemoveAurasDueToSpell(SPELL_TEMPEST_ATTUNEMENT);
+		void OnUnitDeath(Unit* unit) override
+		{
+			if (!unit)
+				return;
 
-                    if (naga->IsAlive())
-                        allDead = false;
-                }
-            }
+			switch (unit->GetEntry())
+			{
+			case NPC_HATECOIL_ARCANIST:
+			{
+				if (Creature* ladyHatecoil = instance->GetCreature(_ladyHatecoilGUID))
+					ladyHatecoil->AI()->DoAction(2); // ACTION_REMOVE_SHIELD
+				break;
+			}
 
-            if (allDead) // If all nagas are dead, remove the non attackable flag from the boss
-            {
-                removeNonAttackableFromWrath();
-            }
-        }
-    }
+			case NPC_RITUALIST_LESHA:
+			case NPC_CHANNELER_VARISZ:
+			case NPC_BINDER_ASHIOIS:
+			case NPC_MYSTIC_SSAVEH:
+			{
+				_ritualistDeads++;
+				if (_ritualistDeads >= 4 && GetData(DATA_WRATH_INTRO) != DONE)
+				{
+					Creature* wrath = instance->GetCreature(_wrathOfAzsharaGUID);
 
-    void removeNonAttackableFromWrath()
-    {
-        if (Creature* wrath = instance->GetCreature(_wrathGUID))
-            wrath->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-    }
+					if (wrath)
+						wrath->AI()->DoAction(1); // ACTION_RITUALIST_DEAD
+				}
 
-    void tryEnableViolentWinds()
-    {
-        if (_deadBossCount >= 4)
-        {
-            if (Creature* weatherman = instance->GetCreature(_weathermanGUID))
-                weatherman->CastSpell(weatherman, SPELL_VIOLENT_WINDS_30S, true);
-        }
-        else if (_deadBossCount >= 2)
-        {
-            if (Creature* weatherman = instance->GetCreature(_weathermanGUID))
-                weatherman->CastSpell(weatherman, SPELL_VIOLENT_WINDS_90S, true);
-        }
+				break;
+			}
 
-        switch (_deadBossCount)
-        {
-            case 1:
-                DoCastSpellOnPlayers(SPELL_SKYBOX_RAIN);
-                break;
-            case 2:
-                DoCastSpellOnPlayers(SPELL_SKYBOX_WIND);
-                break;
-            case 3:
-                DoCastSpellOnPlayers(SPELL_SKYBOX_LIGHTNING);
-                break;
-            case 4:
-                DoCastSpellOnPlayers(SPELL_SKYBOX_HURRICANE);
-                break;
-            default:
-                break;
-        }
-    }
+			default: break;
+
+			}
+		}
+
+		uint32 GetData(uint32 type) const override
+		{
+			switch (type)
+			{
+			case DATA_LADY_INTRO: return _ladyIntro;
+			case DATA_WRATH_INTRO: return _wrathIntro;
+			case DATA_RITUAL_EVENT: return _ritualEvent;
+
+			default: break;
+			}
+
+			return 0;
+		}
+
+		void SetData(uint32 type, uint32 data) override
+		{
+			switch (type)
+			{
+			case DATA_LADY_INTRO:
+				_ladyIntro = data;
+				break;
+
+			case DATA_WRATH_INTRO:
+				_wrathIntro = data;
+				break;
+
+			case DATA_RITUAL_EVENT:
+				_ritualEvent = data;
+				break;
+
+			default: break;
+			}
+
+			if (data == DONE)
+				SaveToDB();
+		}
+
+		ObjectGuid GetGuidData(uint32 data) const override
+		{
+			switch (data)
+			{
+			case DATA_PARJESH: return _parjeshGUID;
+			case DATA_LADY_HATECOIL: return _ladyHatecoilGUID;
+			case DATA_SERPENTRIX: return _serpentrixGUID;
+			case DATA_KING_DEEPBEARD: return _kingDeepbeardGUID;
+			case DATA_WRATH_OF_AZSHARA: return _wrathOfAzsharaGUID;
+
+			default: break;
+			}
+
+			return ObjectGuid::Empty;
+		}
+
+		void WriteSaveDataMore(std::ostringstream& data) override
+		{
+			data << _ladyIntro << ' ' << _wrathIntro << ' ' << _ritualistDeads <<
+				' ' << _ritualEvent << ' ' << _bossesDone;
+		}
+
+		void ReadSaveDataMore(std::istringstream& data) override
+		{
+			data >> _ladyIntro;
+			data >> _wrathIntro;
+			data >> _ritualistDeads;
+			data >> _ritualEvent;
+			data >> _bossesDone;
+		}
+
+	private:
+		ObjectGuid _parjeshGUID;
+		ObjectGuid _ladyHatecoilGUID;
+		ObjectGuid _serpentrixGUID;
+		ObjectGuid _kingDeepbeardGUID;
+		ObjectGuid _wrathOfAzsharaGUID;
+		uint32 _ladyIntro;
+		uint32 _wrathIntro;
+		uint32 _ritualEvent;
+		uint8 _ritualistDeads;
+		uint8 _bossesDone;
+		std::list<Creature*> _ritualists;
+	};
+
+	InstanceScript* GetInstanceScript(InstanceMap* map) const override
+	{
+		return new instance_eye_of_azshara_InstanceScript(map);
+	}
 };
 
 void AddSC_instance_eye_of_azshara()
 {
-    RegisterInstanceScript(instance_eye_of_azshara, 1456);
+	new instance_eye_of_azshara();
 }

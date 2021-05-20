@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -21,6 +21,21 @@
 #include "ScriptMgr.h"
 #include "neltharions_lair.h"
 #include "CreatureTextMgr.h"
+
+enum Misc
+{
+    TAXI_NODE_FALLING_START_POINT = 1911,
+    TAXI_NODE_FALLING_END_POINT = 1910,
+    TAXI_NODE_BARREL_START_POINT = 1909,
+    TAXI_NODE_BARREL_END_POINT = 1908,
+
+    NPC_UNDERSTONE_DRUDGE = 92350,
+};
+
+enum eSpellsInstance
+{
+    SPELL_FALLING_VISUAL = 209888,
+};
 
 // 96247
 class mob_vileshard_crawler : public CreatureScript

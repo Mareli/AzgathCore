@@ -1,113 +1,118 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "Creature.h"
 #include "darkheart_thicket.h"
 #include "GameObject.h"
-#include "InstanceScript.h"
-#include "Map.h"
-#include "ScriptedCreature.h"
-#include "ScriptMgr.h"
 
 DoorData const doorData[] =
 {
-    { GO_DOOR_ROOM_GLAIDALIS_1,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_2,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_3,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_4,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_5,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_6,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_7,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_8,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_9,        DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_10,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_11,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_12,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_13,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_14,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_15,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_GLAIDALIS_16,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_DRESARON_1,         DATA_DRESARON,              DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_DRESARON_2,         DATA_DRESARON,              DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_XAVIUS,             DATA_SHADE_OF_XAVIUS,       DOOR_TYPE_ROOM }
+    {GO_GLAIDALIS_FIRE_DOOR,     DATA_GLAIDALIS,     DOOR_TYPE_ROOM,     BOUNDARY_NONE},
+    {GO_DRESARON_FIRE_DOOR,      DATA_DRESARON,      DOOR_TYPE_ROOM,     BOUNDARY_NONE},
+    {GO_OAKHEART_DOOR,           DATA_OAKHEART,      DOOR_TYPE_ROOM,     BOUNDARY_NONE},
 };
 
-struct instance_darkheart_thicket : public InstanceScript
+class instance_darkheart_thicket : public InstanceMapScript
 {
-    instance_darkheart_thicket(InstanceMap* map) : InstanceScript(map), _introDone(false) { }
+public:
+    instance_darkheart_thicket() : InstanceMapScript("instance_darkheart_thicket", 1466) {}
 
-    void Initialize() override
+    InstanceScript* GetInstanceScript(InstanceMap* map) const override
     {
-        SetBossNumber(DATA_MAX_ENCOUNTERS);
-        LoadDoorData(doorData);
-        SetChallengeDoorPos({ 3231.927979f, 1826.731812f, 233.376038f, 3.374087f });
+        return new instance_darkheart_thicket_InstanceMapScript(map);
     }
 
-    void OnUnitDeath(Unit* unit) override
+    struct instance_darkheart_thicket_InstanceMapScript : public InstanceScript
     {
-        if (unit->IsCreature() && !_introDone)
+        instance_darkheart_thicket_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
         {
-            DoCastSpellOnPlayers(SPELL_CONVERSATION_INTRO);
-            _introDone = true;
+            SetBossNumber(MAX_ENCOUNTER);
         }
-    }
 
-    void OnCreatureCreate(Creature* creature) override
-    {
-        InstanceScript::OnCreatureCreate(creature);
+        WorldLocation loc_res_pla;
 
-        if (instance->IsHeroic())
-            creature->SetBaseHealth(creature->GetMaxHealth() * 2.f);
-        if (instance->IsMythic())
-            creature->SetBaseHealth(creature->GetMaxHealth() * 1.33f);
-    }
+        ObjectGuid MalfurionGUID;
+        ObjectGuid MalfurionCageGUID;
+        ObjectGuid InvisDoorGUID;
+        ObjectGuid DresaronGUID;
 
-    bool SetBossState(uint32 type, EncounterState state) override
-    {
-        if (!InstanceScript::SetBossState(type, state))
-            return false;
-
-        switch (type)
+        void Initialize() override
         {
-            case DATA_ARCHDRUID_GLAIDALIS:
-            {
-                if (state == DONE)
-                    DoCastSpellOnPlayers(SPELL_CONVERSATION_AFTER_FIRST_BOSS);
+            LoadDoorData(doorData);
+        }
 
-                break;
-            }
-            case DATA_SHADE_OF_XAVIUS:
+        bool SetBossState(uint32 type, EncounterState state) override
+        {
+            if (!InstanceScript::SetBossState(type, state))
+                return false;
+
+            return true;
+        }
+
+        void OnCreatureCreate(Creature* creature) override
+        {
+            switch (creature->GetEntry())
             {
-                if (state == DONE)
-                    if (Creature* malfurion = GetCreature(NPC_MALFURION_STORMRAGE))
-                        malfurion->AI()->DoAction(ACTION_MALFURION_OUTRO);
+            case NPC_MALFURION_STORMRAGE:
+                MalfurionGUID = creature->GetGUID();
                 break;
-            }
+            case NPC_DRESARON:
+                DresaronGUID = creature->GetGUID();
+                break;
+            case NPC_NIGHTMARE_BINDINGS:
+                MalfurionCageGUID = creature->GetGUID();
+                break;
             default:
                 break;
+            }
         }
 
-        return true;
-    }
+        void OnGameObjectCreate(GameObject* go) override
+        {
+            switch (go->GetEntry())
+            {
+            case GO_GLAIDALIS_FIRE_DOOR:
+            case GO_DRESARON_FIRE_DOOR:
+            case GO_OAKHEART_DOOR:
+                AddDoor(go, true);
+                break;
+            case GO_GLAIDALIS_INVIS_DOOR:
+                InvisDoorGUID = go->GetGUID();
+                break;
+            default:
+                break;
+            }
+        }
 
-    bool _introDone;
+        void SetData(uint32 type, uint32 data) override
+        {
+            /*switch (type)
+            {
+                default:
+                    break;
+            }*/
+        }
+
+        ObjectGuid GetGuidData(uint32 type) const override
+        {
+            switch (type)
+            {
+            case NPC_MALFURION_STORMRAGE:
+                return MalfurionGUID;
+            case NPC_DRESARON:
+                return DresaronGUID;
+            case NPC_NIGHTMARE_BINDINGS:
+                return MalfurionCageGUID;
+            case GO_GLAIDALIS_INVIS_DOOR:
+                return InvisDoorGUID;
+            }
+            return ObjectGuid::Empty;
+        }
+
+        uint32 GetData(uint32 type) const override
+        {
+            return 0;
+        }
+    };
 };
 
 void AddSC_instance_darkheart_thicket()
 {
-    RegisterInstanceScript(instance_darkheart_thicket, 1466);
+    new instance_darkheart_thicket();
 }

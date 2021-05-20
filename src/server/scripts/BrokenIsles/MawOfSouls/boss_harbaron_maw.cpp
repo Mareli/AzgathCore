@@ -1,737 +1,560 @@
-/*
- Latincore bfa 2020
- ---MistiX----
- 70%
- 
- */
-
-
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "AreaTriggerTemplate.h"
-#include "AreaTriggerAI.h"
-#include "AreaTrigger.h"
-#include "Creature.h"
-#include "CreatureAI.h"
-#include "SpellHistory.cpp"
-#include "SpellAuras.h"
-#include "ObjectAccessor.h"
-#include "ScriptMgr.h"
-#include "InstanceScript.h"
-#include "SpellScript.h"
-#include "Object.cpp"
-#include "Position.h"
-#include "SpellInfo.h"
 #include "maw_of_souls.h"
-#include "TemporarySummon.h"
-#include "Log.h"
-#include "MotionMaster.h"
-#include "ObjectAccessor.h"
-#include "Player.h"
-#include "ScriptedGossip.h"
-
-
-enum Spells
-{
-    // Harbaron
-    SPELL_FRAGMENT = 194325,
-    SPELL_FRAGMENT_CHANNELED_TRIGGER = 194327,
-    SPELL_FRAGMENT_STUN = 198551,
-    SPELL_SUMMON_SHACKLED_SERVITOR = 194231,
-    SPELL_NETHER_RIP = 194668,
-    SPELL_NETHER_RIP_MISSILE = 199457,
-    SPELL_NETHER_RIP_AREA_DMG = 194235,
-    SPELL_COSMIC_SCYTHE = 194216,
-    SPELL_COSMIC_SCYTHE_DMG = 194218,
-    SPELL_COSMIC_SCYTHE_VISUAL = 198580,
-
-    // Shackled Servitor
-    SPELL_GHOST_VISUAL = 188272,
-    SPELL_VOID_SNAP    = 194266,
-
-    // Soul Fragment
-    SPELL_FRAGMENT_AURA_SOUL = 194344,
-    SPELL_FRAGMENT_DMG       = 194375,
-    SPELL_FRAGMENT_CLONE_IMAGE = 194345,
-    SPELL_FRAGMENT_MOD_SIZE = 194381,
-
-};
-
-enum Events
-{
-    EVENT_FRAGMENT = 1,
-    EVENT_COSMIC_SCYHTE = 2,
-    EVENT_NETHER_RIP = 3,
-    EVENT_SHACKLED_SERVITOR = 4,
-
-    EVENT_VOID_SNAP = 5,
-    EVENT_CONTINUE_MOVE = 6,
-    EVENT_BORN = 7,
-
-};
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
 
 enum Says
 {
     SAY_INTRO = 0,
     SAY_AGGRO = 1,
-    SAY_SPIRIT = 2,
-    SAY_SOUL = 3,
-    SAY_KILL = 4,
+    SAY_SUMMON = 2,
+    SAY_FRAGMENT = 3,
+    SAY_EMOTE_FRAGMENT = 4,
     SAY_DEATH = 5,
 };
 
-enum Adds
+enum Spells
 {
-    NPC_SHACKLED_SERVITOR = 98693,
-    NPC_SOUL_FRAGMENT = 98761,
-    NPC_COSMIC_SCYTHE = 98989,
+    SPELL_COSMIC_SCYTHE = 205330,
+    SPELL_COSMIC_SCYTHE_VIS = 198580,
+    SPELL_COSMIC_SCYTHE_VIS_2 = 194667,
+    SPELL_COSMIC_SCYTHE_DMG = 194218,
+    SPELL_SUM_SHACKLED_SERVITOR = 194231,
+    SPELL_FRAGMENT = 194325,
+
+    //Heroic
+    SPELL_NETHER_RIP_AURA = 194668,
+
+    //Summons
+    SPELL_SHACKLED_SERVITOR = 194259,
+    SPELL_VOID_SNAP = 194266,
 };
 
-enum DataTypes
+enum eEvents
 {
-    DATA_FRAGMENT_SOUL = 1,
+    EVENT_COSMIC_SCYTHE = 1,
+    EVENT_SUM_SHACKLED_SERVITOR = 2,
+    EVENT_FRAGMENT = 3,
+    EVENT_NETHER_RIP = 4,
+    EVENT_1,
+    EVENT_2,
 };
 
-struct NonMeleeTargetSelector : public std::unary_function<Unit*, bool>
+enum eMisc
+{
+    DATA_ACHIEVEMENT = 0
+};
+
+enum Actions
+{
+    ACTION_1 = 1,
+    ACTION_2,
+};
+
+//96754
+struct boss_harbaron : public BossAI
+{
+    boss_harbaron(Creature* creature) : BossAI(creature, DATA_HARBARON) {}
+
+    std::list<ObjectGuid> listGuid;
+    std::list<ObjectGuid> trashGUID;
+    bool _introDone = false;
+    bool achievement = false;
+    uint8 scytheRange = 0;
+
+    void Reset() override
+    {
+        _Reset();
+        achievement = true;
+        trashGUID.clear();
+    }
+
+    void EnterCombat(Unit* /*who*/) override
+    {
+        Talk(SAY_AGGRO);
+        _EnterCombat();
+        me->SetReactState(REACT_AGGRESSIVE);
+
+        events.RescheduleEvent(EVENT_COSMIC_SCYTHE, 4000);
+        events.RescheduleEvent(EVENT_SUM_SHACKLED_SERVITOR, 7000);
+        events.RescheduleEvent(EVENT_FRAGMENT, 18000);
+
+        if (me->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+            events.RescheduleEvent(EVENT_NETHER_RIP, 13000);
+    }
+
+    void EnterEvadeMode(EvadeReason w)
+    {
+        DespawnSouls();
+        _DespawnAtEvade(15);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        Talk(SAY_DEATH);
+        DespawnSouls();
+        _JustDied();
+
+        if (auto skjal = instance->instance->GetCreature(instance->GetGuidData(DATA_SKJAL)))
+            skjal->AI()->DoAction(ACTION_1);
+
+        if (auto valkyra = me->FindNearestCreature(104906, 200.f, true))
+            if (valkyra->IsAIEnabled)
+                valkyra->AI()->DoAction(ACTION_2);
+
+        if (CheckAura())
+        {
+            instance->DoAddAuraOnPlayers(213413);
+            instance->DoRemoveAurasDueToSpellOnPlayers(213441);
+        }
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        if (type == DATA_ACHIEVEMENT)
+            return achievement;
+
+        return 0;
+    }
+
+    void DoAction(int32 const action) override
+    {
+        if (action == ACTION_1)
+            achievement = false;
+    }
+
+    bool CheckAura()
+    {
+        bool check = true;
+
+        instance->DoOnPlayers([&](Player* player)
+        {
+            if (!player->HasAura(213441))
+                check = false;
+        });
+
+        return check;
+    }
+
+    void DespawnSouls()
+    {
+        for (auto const& guid : trashGUID)
+            if (auto soul = Creature::GetCreature(*me, guid))
+                if (soul->IsInWorld())
+                    soul->DespawnOrUnsummon();
+    }
+
+    void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+    {
+        if (spell->Id == SPELL_COSMIC_SCYTHE)
+        {
+            Position pos;
+            float angle = me->GetRelativeAngle(target);
+            scytheRange = 0.0f;
+
+            for (uint8 i = 0; i < 6; ++i)
+            {
+                scytheRange += 5;
+                me->GetRandomNearPosition(scytheRange);
+                me->SummonCreature(NPC_COSMIC_SCYTHE_2, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), angle * 2.0f);
+            }
+        }
+
+        if (spell->Id == SPELL_FRAGMENT)
+        {
+            uint8 maxCount = me->GetMap()->IsMythic() ? 4 : 2;
+            Position pos;
+            float angle = frand(0.0f, 6.28f);
+
+            for (uint8 i = 0; i < maxCount; ++i)
+            {
+                target->GetFirstCollisionPosition(1.5f, angle);
+                angle += 6.28f / maxCount;
+                if (auto soul = target->SummonCreature(NPC_SOUL_FRAGMENT, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000))
+                    trashGUID.push_back(soul->GetGUID());
+            }
+        }
+    }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (!who->IsPlayer())
+            return;
+
+        if (!_introDone && me->IsWithinDistInMap(who, 45.0f))
+        {
+            _introDone = true;
+            Talk(SAY_INTRO);
+        }
+        BossAI::MoveInLineOfSight(who);
+    }
+
+    bool GetObjectData(ObjectGuid const& guid)
+    {
+        bool find = false;
+
+        for (auto targetGuid : listGuid)
+            if (targetGuid == guid)
+                find = true;
+
+        if (!find)
+            listGuid.push_back(guid);
+
+        return find;
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_COSMIC_SCYTHE:
+                listGuid.clear();
+                me->AttackStop();
+                me->SetReactState(REACT_AGGRESSIVE);
+                DoCast(SPELL_COSMIC_SCYTHE);
+                events.RescheduleEvent(EVENT_COSMIC_SCYTHE, 8000);
+                break;
+            case EVENT_SUM_SHACKLED_SERVITOR:
+            {
+                Talk(SAY_SUMMON);
+                Position pos;
+                me->GetFirstCollisionPosition(15.0f, frand(0.0f, 6.28f));
+                me->CastSpell(pos, SPELL_SUM_SHACKLED_SERVITOR, false);
+                events.RescheduleEvent(EVENT_SUM_SHACKLED_SERVITOR, 23000);
+                break;
+            }
+            case EVENT_FRAGMENT:
+                Talk(SAY_FRAGMENT);
+                if (auto pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
+                {
+                    Talk(SAY_EMOTE_FRAGMENT);
+                    DoCast(pTarget, SPELL_FRAGMENT);
+                }
+                events.RescheduleEvent(EVENT_FRAGMENT, 30000);
+                break;
+            case EVENT_NETHER_RIP:
+                me->AddAura(SPELL_NETHER_RIP_AURA, me);
+                events.RescheduleEvent(EVENT_NETHER_RIP, 13000);
+                break;
+            }
+        }
+        DoMeleeAttackIfReady();
+    }
+};
+
+//100839
+struct npc_harbaron_scythe : public ScriptedAI
+{
+    npc_harbaron_scythe(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    EventMap events;
+
+    void Reset() override
+    {
+        DoCast(me, SPELL_COSMIC_SCYTHE_VIS, true);
+        events.RescheduleEvent(EVENT_1, 2000);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        events.Update(diff);
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_1:
+                me->RemoveAurasDueToSpell(SPELL_COSMIC_SCYTHE_VIS);
+                me->CastSpell(me, SPELL_COSMIC_SCYTHE_VIS_2, true);
+                me->CastSpell(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() - 5.0f, SPELL_COSMIC_SCYTHE_DMG);
+                me->DespawnOrUnsummon(500);
+                break;
+            }
+        }
+    }
+};
+
+//98693
+struct npc_harbaron_shackled_servitor : public ScriptedAI
+{
+    npc_harbaron_shackled_servitor(Creature* creature) : ScriptedAI(creature)
+    {
+        SetCombatMovement(false);
+    }
+
+    EventMap events;
+
+    void Reset() override {}
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        DoZoneInCombat(me, 100.0f);
+        DoCast(me, SPELL_SHACKLED_SERVITOR, true);
+    }
+
+    void EnterCombat(Unit* /*who*/) override
+    {
+        events.RescheduleEvent(EVENT_1, 2000);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_1:
+                DoCast(SPELL_VOID_SNAP);
+                events.RescheduleEvent(EVENT_1, 6000);
+                break;
+            }
+        }
+    }
+};
+
+//98761
+struct npc_harbaron_soul_fragment : public ScriptedAI
+{
+    npc_harbaron_soul_fragment(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void Reset() override {}
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        summoner->CastSpell(me, 194345, true); //Clone Caster
+        me->CastSpell(summoner, 194344, true); //Dmg tick summoner
+        me->CastSpell(me, 194381, true); //Scale
+        me->SetHomePosition(2933.75f, 683.98f, 553.48f, 0.0f);
+        me->GetMotionMaster()->MoveRandom(10.0f);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        if (auto summoner = me->GetOwner())
+        {
+            if (auto aura = summoner->GetAura(194344, me->GetGUID()))
+                aura->Remove();
+
+            if (!summoner->HasAura(194344))
+                summoner->RemoveAurasDueToSpell(194327);
+        }
+    }
+
+    void UpdateAI(uint32 diff) override {}
+};
+
+//104906
+struct npc_harbaron_captured_valkyr : public ScriptedAI
+{
+    npc_harbaron_captured_valkyr(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+        me->SetCanFly(true);
+    }
+
+    uint32 timer = 0;
+
+    void DoAction(int32 const action) override
+    {
+        if (action == ACTION_1)
+            timer = 240000;
+
+        if (action == ACTION_2)
+        {
+            timer = 0;
+            Talk(2);
+            me->DespawnOrUnsummon(5000);
+        }
+    }
+
+    void Reset() override {}
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (timer)
+        {
+            if (timer <= diff)
+            {
+                timer = 240000;
+
+                Talk(1);
+                if (auto boss = me->FindNearestCreature(96754, 250.f))
+                    if (boss->IsAIEnabled)
+                        boss->AI()->DoAction(ACTION_1);
+
+                me->DespawnOrUnsummon(2000);
+            }
+            else
+                timer -= diff;
+        }
+    }
+};
+
+//98919
+struct npc_mos_seacursed_swiftblade : public ScriptedAI
+{
+    npc_mos_seacursed_swiftblade(Creature* creature) : ScriptedAI(creature) {}
+
+    EventMap events;
+    uint8 healtPct = 45;
+    uint32 removeFlagsTimer = 0;
+
+    void Reset() override
+    {
+        events.Reset();
+        me->SetReactState(REACT_AGGRESSIVE);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+    }
+
+    void EnterCombat(Unit* /*who*/) override
+    {
+        events.RescheduleEvent(EVENT_1, urandms(3, 4));
+        events.RescheduleEvent(EVENT_2, urandms(7, 9));
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage)
+    {
+        if (HealthBelowPct(healtPct))
+        {
+            healtPct = 0;
+            DoCast(194615);
+        }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (removeFlagsTimer)
+        {
+            if (removeFlagsTimer <= diff)
+            {
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+            }
+            else
+                removeFlagsTimer -= diff;
+        }
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_1:
+                DoCastVictim(199327);
+                events.RescheduleEvent(EVENT_1, urandms(9, 11));
+                break;
+            case EVENT_2:
+            {
+                me->AttackStop();
+                me->SetReactState(REACT_AGGRESSIVE);
+                me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+                me->SetUnitFlags(UNIT_FLAG_NOT_SELECTABLE);
+                removeFlagsTimer = 4300;
+                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM))
+                {
+                    DoCast(199250);
+                    DoCast(185325);
+                    me->CastSpell(target, 199232);
+                }
+                events.RescheduleEvent(EVENT_2, urandms(17, 20));
+                break;
+            }
+            }
+        }
+        DoMeleeAttackIfReady();
+    }
+};
+
+//194668
+class spell_harbaron_nether_rip : public AuraScript
+{
+    PrepareAuraScript(spell_harbaron_nether_rip);
+
+    void PeriodicTick(AuraEffect const* aurEff)
+    {
+        if (!GetCaster())
+            return;
+
+        if (GetCaster()->GetMap()->IsMythic() || GetCaster()->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE)
+            if (aurEff->GetTickNumber() == 1 || aurEff->GetTickNumber() == 3)
+                return;
+
+        if (aurEff->GetTickNumber() % 2)
+        {
+            Position pos;
+            GetCaster()->GetRandomNearPosition(10.0f);
+            GetCaster()->CastSpell(pos, 199457, true); //Hack. 198726
+        }
+        else
+            GetCaster()->CastSpell(GetCaster(), 198724, true);
+        //and else 198727?
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_harbaron_nether_rip::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+//29683
+class achievement_helheim_hath_no_fury : public AchievementCriteriaScript
 {
 public:
-    NonMeleeTargetSelector(Unit* source, bool playerOnly = true) : _source(source), _playerOnly(playerOnly) { }
-    bool operator()(Unit const* target) const
+    achievement_helheim_hath_no_fury() : AchievementCriteriaScript("achievement_helheim_hath_no_fury") { }
+
+    bool OnCheck(Player* /*player*/, Unit* target) override
     {
         if (!target)
             return false;
 
-        if (_playerOnly && target->GetTypeId() != TYPEID_PLAYER)
-            return false;
-
-        return !_source->IsWithinMeleeRange(target);
-    }
-
-private:
-    Unit * _source;
-    bool _playerOnly;
-};
-
-class boss_harbaron : public CreatureScript
-{
-public:
-    boss_harbaron() : CreatureScript("boss_harbaron")
-    {}
-
-    struct boss_harbaron_AI : public BossAI
-    {
-        boss_harbaron_AI(Creature* creature) : BossAI(creature, DATA_HARBARON)
-        {}
-
-        void Reset()
-        {
-            _Reset();
-        }
-
-        void EnterCombat(Unit* /**/) override
-        {
-            Talk(SAY_AGGRO);
-            _EnterCombat();
-            events.ScheduleEvent(EVENT_FRAGMENT, Seconds(19));
-            events.ScheduleEvent(EVENT_COSMIC_SCYHTE, Seconds(3));
-            events.ScheduleEvent(EVENT_SHACKLED_SERVITOR, Seconds(7));
-
-            if (IsHeroic())
-                events.ScheduleEvent(EVENT_NETHER_RIP, Seconds(12));
-        }
-
-        ObjectGuid GetGUID(int32 id) const override
-        {
-            if (id == DATA_FRAGMENT_SOUL)
-                return _targetSoulGuid;
-
-            return ObjectGuid::Empty;
-        }
-
-        void SetGUID(ObjectGuid guid, int32 id) override
-        {
-            if (id == DATA_FRAGMENT_SOUL)
-                _targetSoulGuid = guid;
-        }
-
-        void SetData(uint32 id, uint32 value) override
-        {
-            if (id == DATA_FRAGMENT_SOUL)
-                _fragmentsDead = value;
-        }
-
-        void EnterEvadeMode(EvadeReason reason) override
-        {
-            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_FRAGMENT_CHANNELED_TRIGGER);
-            me->RemoveAllAreaTriggers();
-            CreatureAI::EnterEvadeMode(reason);
-        }
-
-        void JustReachedHome() override
-        {
-            _JustReachedHome();
-        }
-
-        void SummonedCreatureDies(Creature* summon, Unit* /**/) override
-        {
-            if (!summon)
-                return;
-
-            if (summon->GetEntry() == NPC_SOUL_FRAGMENT)
-            {
-                _fragmentsDead--;
-
-                if (_fragmentsDead == 0)
-                {
-                    if (Unit* target = ObjectAccessor::GetPlayer(*me, _targetSoulGuid))
-                        target->RemoveAurasDueToSpell(SPELL_FRAGMENT_CHANNELED_TRIGGER);
-                }
-            }
-        }
-
-        void JustDied(Unit* /**/) override
-        {
-            Talk(SAY_DEATH);
-            _JustDied();
-        }
-
-        void KilledUnit(Unit* victim) override
-        {
-            if (victim && victim->GetTypeId() == TYPEID_PLAYER)
-                Talk(SAY_KILL);
-        }
-
-        void ExecuteEvent(uint32 eventId) override
-        {
-            me->GetSpellHistory()->ResetAllCooldowns();
-            switch (eventId)
-            {
-            case EVENT_FRAGMENT:
-            {
-                Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, NonTankTargetSelector(me, true));
-
-                if (!target)
-                    DoCastVictim(SPELL_FRAGMENT);
-                else
-                    DoCast(target, SPELL_FRAGMENT);
-
-                Talk(SAY_SOUL);
-                events.ScheduleEvent(EVENT_FRAGMENT, Seconds(30));
-                break;
-            }
-
-            case EVENT_COSMIC_SCYHTE:
-            {
-                me->SetReactState(REACT_PASSIVE);
-                me->AttackStop();
-                me->StopMoving();
-
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                {
-                    me->SetFacingToObject(target);
-                    DoCast(target, SPELL_COSMIC_SCYTHE);
-                }
-
-                events.ScheduleEvent(EVENT_COSMIC_SCYHTE, Seconds(10));
-                break;
-            }
-
-            case EVENT_SHACKLED_SERVITOR:
-            {
-                Talk(SAY_SPIRIT);
-                Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, NonMeleeTargetSelector(me, true));
-
-                if (target)
-                    DoCast(target, SPELL_SUMMON_SHACKLED_SERVITOR);
-                else
-                    DoCastVictim(SPELL_SUMMON_SHACKLED_SERVITOR);
-
-                events.ScheduleEvent(EVENT_SHACKLED_SERVITOR, Seconds(23));
-                break;
-            }
-
-            case EVENT_NETHER_RIP:
-            {
-                DoCast(me, SPELL_NETHER_RIP);
-                events.ScheduleEvent(EVENT_NETHER_RIP, Seconds(14));
-                break;
-            }
-
-            default: break;
-            }
-        }
-
-    private:
-        int8 _fragmentsDead;
-        ObjectGuid _targetSoulGuid;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new boss_harbaron_AI(creature);
-    }
-};
-
-class npc_mos_shackled_servitor : public CreatureScript
-{
-public:
-    npc_mos_shackled_servitor() : CreatureScript("npc_mos_shackled_servitor")
-    {}
-
-    struct npc_mos_shackled_servitor_AI : public ScriptedAI
-    {
-        npc_mos_shackled_servitor_AI(Creature* creature) : ScriptedAI(creature)
-        {}
-
-        void Reset()
-        {
-            DoCast(me, SPELL_GHOST_VISUAL, true);
-            me->AddUnitState(UNIT_STATE_ROOT);
-        }
-
-        void EnterCombat(Unit* /**/) override
-        {
-            DoCast(me, SPELL_VOID_SNAP);
-            _events.ScheduleEvent(EVENT_VOID_SNAP, Seconds(6));
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (!UpdateVictim())
-                return;
-
-            _events.Update(diff);
-
-            if (me->HasUnitState(UNIT_STATE_CASTING))
-                return;
-
-            if (uint32 eventId = _events.ExecuteEvent())
-            {
-                if (eventId == EVENT_VOID_SNAP)
-                {
-                    DoCast(me, SPELL_VOID_SNAP);
-                    _events.ScheduleEvent(EVENT_VOID_SNAP, Seconds(6));
-                }
-            }
-        }
-
-    private:
-        EventMap _events;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_shackled_servitor_AI(creature);
-    };
-};
-
-class npc_mos_soul_fragment : public CreatureScript
-{
-public:
-    npc_mos_soul_fragment() : CreatureScript("npc_mos_soul_fragment")
-    {}
-
-    struct npc_mos_soul_fragment_AI : public ScriptedAI
-    {
-        npc_mos_soul_fragment_AI(Creature* creature) : ScriptedAI(creature)
-        {
-            me->SetReactState(REACT_PASSIVE);
-            me->SetWalk(true);
-            _pos = me->GetNearPosition(25.0f, 0);
-        }
-
-        void Reset() override
-        {
-            me->SetReactState(REACT_PASSIVE);
-            me->SetWalk(true);
-            DoCast(me, SPELL_FRAGMENT_AURA_SOUL, true);
-        }
-
-        void IsSummonedBy(Unit* summoner) override
-        {
-            if (!summoner)
-                return;
-
-            _events.ScheduleEvent(EVENT_BORN, Seconds(5));
-        }
-
-        void MovementInform(uint32 type, uint32 id) override
-        {
-            if (id == 0 && type == POINT_MOTION_TYPE)
-                me->GetMotionMaster()->MoveRandom(25.0f);
-        }
-
-        void SpellHit(Unit*, SpellInfo const* spell) override
-        {
-            if (!spell)
-                return;
-
-            uint32 mechanic = spell->Mechanic;
-
-            if (mechanic == MECHANIC_STUN || mechanic == MECHANIC_FEAR || mechanic == MECHANIC_ROOT || mechanic == MECHANIC_DISORIENTED)
-            {
-                me->GetMotionMaster()->Clear();
-                me->StopMoving();
-                me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-                _events.ScheduleEvent(EVENT_CONTINUE_MOVE, spell->GetMaxDuration() + 200);
-            }
-        }
-
-        ObjectGuid GetGUID(int32 id) const override
-        {
-            if (id == DATA_FRAGMENT_SOUL)
-                return _targetGuid;
-
-            return ObjectGuid::Empty;
-        }
-
-        void SetGUID(ObjectGuid guid, int32 id) override
-        {
-            if (id == DATA_FRAGMENT_SOUL)
-                _targetGuid = guid;
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            _events.Update(diff);
-
-            while (uint32 eventId = _events.ExecuteEvent())
-            {
-                if (eventId == EVENT_BORN)
-                    me->GetMotionMaster()->MovePoint(0, _pos);
-                else if (eventId == EVENT_CONTINUE_MOVE)
-                {
-                    me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-                    me->GetMotionMaster()->MoveRandom(25.0f);
-                }
-            }
-        }
-
-    private:
-        EventMap _events;
-        Position _pos;
-        ObjectGuid _targetGuid;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_soul_fragment_AI(creature);
-    }
-};
-
-class npc_mos_cosmic_scythe : public CreatureScript
-{
-public:
-    npc_mos_cosmic_scythe() : CreatureScript("npc_mos_cosmic_scythe")
-    {}
-
-    struct npc_mos_cosmic_scythe_AI : public ScriptedAI
-    {
-        npc_mos_cosmic_scythe_AI(Creature* creature) : ScriptedAI(creature)
-        {
-        }
-
-        void Reset()
-        {
-            _timerCast = 0;
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            _timerCast += diff;
-
-            if (_timerCast >= 1000)
-            {
-                _timerCast = 0;
-                DoCast(me, SPELL_COSMIC_SCYTHE_DMG, true);
-            }
-        }
-
-    private:
-        uint32 _timerCast;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_cosmic_scythe_AI(creature);
-    }
-};
-
-class at_mos_nether_rip : public AreaTriggerEntityScript
-{
-public:
-    at_mos_nether_rip() : AreaTriggerEntityScript("at_mos_nether_rip")
-    {}
-
-    struct at_mos_nether_rip_AI : public AreaTriggerAI
-    {
-        at_mos_nether_rip_AI(AreaTrigger* at) : AreaTriggerAI(at)
-        {}
-
-        void OnUnitEnter(Unit* target) override
-        {
-            if (!target)
-                return;
-
-            if (target->GetTypeId() == TYPEID_PLAYER)
-                at->GetCaster()->CastSpell(target, SPELL_NETHER_RIP_AREA_DMG, true);
-        }
-
-        void OnUnitExit(Unit* target) override
-        {
-            if (!target)
-                return;
-
-            if (target->GetTypeId() == TYPEID_PLAYER)
-                target->RemoveAurasDueToSpell(SPELL_NETHER_RIP_AREA_DMG);
-        }
-    };
-
-    AreaTriggerAI* GetAI(AreaTrigger* at) const override
-    {
-        return new at_mos_nether_rip_AI(at);
-    }
-};
-
-class spell_harbaron_nether_rip : public SpellScriptLoader
-{
-public:
-    spell_harbaron_nether_rip() : SpellScriptLoader("spell_harbaron_nether_rip")
-    {}
-
-    class spell_harbaron_nether_rip_AuraScript : public AuraScript
-    {
-        PrepareAuraScript(spell_harbaron_nether_rip_AuraScript);
-
-        bool Load() override
-        {
-            _target = nullptr;
-            _targetTwo = nullptr;
-            return true;
-        }
-
-        void HandlePeriodic(AuraEffect const* /**/)
-        {
-            if (!GetUnitOwner())
-                return;
-
-            Unit* owner = GetUnitOwner();
-
-            if (!_target)
-            {
-                _target = owner->GetAI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true);
-
-                if (_target)
-                    owner->CastSpell(_target, SPELL_NETHER_RIP_MISSILE, true);
-            }
-            else
-            {
-                _targetTwo = owner->GetAI()->SelectTarget(SELECT_TARGET_RANDOM, 0, ([&](Unit* player)
-                {
-                    return player->GetEntry() != _target->GetEntry();
-                }));
-
-                if (_targetTwo)
-                    owner->CastSpell(_targetTwo, SPELL_NETHER_RIP_MISSILE, true);
-            }
-        }
-
-        void Register()
-        {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_harbaron_nether_rip_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-        }
-
-    private:
-        Unit * _target;
-        Unit* _targetTwo;
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_harbaron_nether_rip_AuraScript();
-    }
-};
-
-class spell_harbaron_cosmic_scythe : public SpellScriptLoader
-{
-public:
-    spell_harbaron_cosmic_scythe() : SpellScriptLoader("spell_harbaron_cosmic_scythe")
-    {}
-
-    class spell_harbaron_cosmic_scythe_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_harbaron_cosmic_scythe_SpellScript);
-
-        void HandleSummon()
-        {
-            if (!GetCaster())
-                return;
-
-            Unit* caster = GetCaster();
-
-            Creature* scythe = caster->SummonCreature(NPC_COSMIC_SCYTHE, caster->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 3 * IN_MILLISECONDS);
-
-            if (scythe)
-            {
-                scythe->CastSpell(scythe, SPELL_COSMIC_SCYTHE_VISUAL, true);
-
-                Position pos = scythe->GetNearPosition(100.f, 0);
-
-                scythe->GetMotionMaster()->MovePoint(0, pos);
-            }
-        }
-
-        void HandleAfterCast()
-        {
-            if (GetCaster() && GetCaster()->ToCreature())
-                GetCaster()->ToCreature()->SetReactState(REACT_AGGRESSIVE);
-        }
-
-        void Register() override
-        {
-            OnCast += SpellCastFn(spell_harbaron_cosmic_scythe_SpellScript::HandleSummon);
-            AfterCast += SpellCastFn(spell_harbaron_cosmic_scythe_SpellScript::HandleAfterCast);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_harbaron_cosmic_scythe_SpellScript();
-    }
-};
-
-class spell_harbaron_fragment : public SpellScriptLoader
-{
-public:
-    spell_harbaron_fragment() : SpellScriptLoader("spell_harbaron_fragment")
-    {}
-
-    class spell_harbaron_fragment_SpellScript : public SpellScript
-    {
-    public:
-        PrepareSpellScript(spell_harbaron_fragment_SpellScript);
-
-        void HandleSummons(SpellEffIndex /**/)
-        {
-            if (!GetHitUnit() || !GetCaster())
-                return;
-
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-
-            Position pos = target->GetPosition();
-
-            uint8 souls = urand(2, 3);
-
-            caster->GetAI()->SetGUID(target->GetGUID(), DATA_FRAGMENT_SOUL);
-            caster->GetAI()->SetData(DATA_FRAGMENT_SOUL, souls);
-
-            for (uint8 i = 0; i < souls; ++i)
-            {
-                pos.SetOrientation(pos.GetOrientation() + float(M_PI) / 4.0f);
-                Creature* soul = caster->SummonCreature(NPC_SOUL_FRAGMENT, pos, TEMPSUMMON_TIMED_DESPAWN, 120 * IN_MILLISECONDS);
-
-                if (soul)
-                {
-                    target->CastSpell(soul, SPELL_FRAGMENT_CLONE_IMAGE, true);
-                    soul->CastSpell(soul, SPELL_FRAGMENT_MOD_SIZE, true);
-                    soul->GetAI()->SetGUID(target->GetGUID(), DATA_FRAGMENT_SOUL);
-                }
-            }
-        }
-
-        void Register() override
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_harbaron_fragment_SpellScript::HandleSummons, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_harbaron_fragment_SpellScript();
-    }
-};
-
-class spell_harbaron_fragment_dmg : public SpellScriptLoader
-{
-public:
-    spell_harbaron_fragment_dmg() : SpellScriptLoader("spell_harbaron_fragment_dmg")
-    {}
-
-    class spell_harbaron_fragment_dmg_AuraScript : public AuraScript
-    {
-    public:
-        PrepareAuraScript(spell_harbaron_fragment_dmg_AuraScript);
-
-        void HandlePeriodic(AuraEffect const* /**/)
-        {
-            if (!GetCaster())
-                return;
-
-            Unit* caster = GetCaster();
-            Unit* target = ObjectAccessor::GetPlayer(*caster, caster->GetAI()->GetGUID(DATA_FRAGMENT_SOUL));
-
-            if (target)
-                caster->CastSpell(target, SPELL_FRAGMENT_DMG, true);
-        }
-
-        void Register() override
-        {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_harbaron_fragment_dmg_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_harbaron_fragment_dmg_AuraScript();
-    }
-};
-
-class spell_mos_void_snap : public SpellScriptLoader
-{
-public:
-    spell_mos_void_snap() : SpellScriptLoader("spell_mos_void_snap")
-    {}
-
-    class spell_mos_void_snap_SpellScript : public SpellScript
-    {
-    public:
-        PrepareSpellScript(spell_mos_void_snap_SpellScript);
-
-        void CalculateDamage(SpellEffIndex)
-        {
-            if (!GetCaster())
-                return;
-
-            Aura* snap = GetCaster()->GetAura(SPELL_VOID_SNAP);
-
-            if (snap)
-                SetHitDamage(GetEffectInfo(EFFECT_0)->BasePoints * (1.0f + (snap->GetStackAmount() * 0.15f)));
-        }
-
-        void Register()
-        {
-            OnEffectLaunchTarget += SpellEffectFn(spell_mos_void_snap_SpellScript::CalculateDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_mos_void_snap_SpellScript();
+        if (auto boss = target->ToCreature())
+            if (boss->GetMap()->IsMythic() || boss->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE)
+                if (boss->GetAI()->GetData(DATA_ACHIEVEMENT))
+                    return true;
+
+        return false;
     }
 };
 
 void AddSC_boss_harbaron_maw()
 {
-    new boss_harbaron();
-    new npc_mos_shackled_servitor();
-    new npc_mos_cosmic_scythe();
-    new npc_mos_soul_fragment();
-    new at_mos_nether_rip();
-    new spell_harbaron_nether_rip();
-    new spell_harbaron_cosmic_scythe();
-    new spell_harbaron_fragment();
-    new spell_harbaron_fragment_dmg();
-    new spell_mos_void_snap();
+    RegisterCreatureAI(boss_harbaron);
+    RegisterCreatureAI(npc_harbaron_scythe);
+    RegisterCreatureAI(npc_harbaron_shackled_servitor);
+    RegisterCreatureAI(npc_harbaron_soul_fragment);
+    RegisterCreatureAI(npc_harbaron_captured_valkyr);
+    RegisterCreatureAI(npc_mos_seacursed_swiftblade);
+    RegisterAuraScript(spell_harbaron_nether_rip);
+    new achievement_helheim_hath_no_fury();
 }
-

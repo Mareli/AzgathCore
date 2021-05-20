@@ -1,201 +1,378 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "AreaTrigger.h"
-#include "AreaTriggerAI.h"
 #include "darkheart_thicket.h"
-#include "GameObject.h"
-#include "InstanceScript.h"
-#include "Map.h"
-#include "MotionMaster.h"
-#include "ObjectAccessor.h"
-#include "Player.h"
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "SpellInfo.h"
-#include "SpellScript.h"
-#include "TemporarySummon.h"
 
 enum Spells
 {
-    //Breath of Corruption
-    SPELL_BOC_TARGET        = 191325, //Targets a tank
-    SPELL_BOC_DAMAGE        = 191326, //Ticks every second for 3 seconds
+    SPELL_BREATH_OF_CORRUPTION = 199329,
+    SPELL_BREATH_OF_CORRUPTION_SUM = 199332,
+    SPELL_BREATH_OF_CORRUPTION_DMG = 191325,
+    SPELL_EARTHSHAKING_ROAR = 199389,
+    SPELL_DOWN_DRAFT = 199345,
 
-    //Down Draft
-    SPELL_DD_TARGET         = 199345,
-    SPELL_DD_AT             = 199348,
-    SPELL_DD_DOT            = 220855,
-    SPELL_DD_CHARGE         = 199351,
+    //Egg
+    SPELL_SUM_BIRTH_WHELPLING_1 = 199304, //Npc 100528 - unuseble?
+    SPELL_SUM_BIRTH_WHELPLING_2 = 199313, //Npc 101074
+    //Emerald Egg
+    SPELL_HATESPAWN_ABOMINATION = 220921,
 
-    //Earthshaking Roar
-    //                        199385 ?
-    SPELL_ER_TARGET         = 199389,
-    SPELL_ER_DAMAGE         = 218587,
-
-    //Falling Rocks
-    SPELL_FR_TRIGGERMISSILE = 141461,
-    SPELL_FR_MISSILE        = 141463,
-    SPELL_FR_AT             = 163897,
-    SPELL_FR_DOT            = 163900,
-    SPELL_FR_AT_1           = 199458,
-
-    SPELL_DISTURB_EGG       = 199313
+    //Whelpling
+    SPELL_HATESPAWN_DETONATION = 212797,
 };
 
-enum Events
+enum eEvents
 {
-    EVENT_BOC = 1,
-    EVENT_DD  = 2,
-    EVENT_ER  = 3
+    EVENT_BREATH_OF_CORRUPTION = 1,
+    EVENT_EARTHSHAKING_ROAR = 2,
+    EVENT_DOWN_DRAFT = 3,
 };
 
-enum
+enum Misc
 {
-    CREATURE_GROUP_EGGS = 0
+    ABOMINATION_KILLED = 1,
+    ACTION_1,
 };
 
-struct boss_dresaron : public BossAI
+//99200
+class boss_dresaron : public CreatureScript
 {
-    boss_dresaron(Creature* creature) : BossAI(creature, DATA_DRESARON) { }
+public:
+    boss_dresaron() : CreatureScript("boss_dresaron") {}
 
-    void Reset() override
+    struct boss_dresaronAI : public BossAI
     {
-        _Reset();
-        events.ScheduleEvent(EVENT_BOC, urand(15000, 20000));
-        events.ScheduleEvent(EVENT_ER, 21000);
-        events.ScheduleEvent(EVENT_DD, urand(38000, 42000));
+        boss_dresaronAI(Creature* creature) : BossAI(creature, DATA_DRESARON) {}
 
-        // Respawn eggs
-        me->SummonCreatureGroup(CREATURE_GROUP_EGGS);
-    }
+        bool abomination;
 
-    void JustReachedHome() override
-    {
-        _JustReachedHome();
-        instance->SetBossState(DATA_DRESARON, FAIL);
-    }
-
-    void EnterCombat(Unit* /*who*/) override
-    {
-        me->setActive(true);
-        DoZoneInCombat();
-        events.Reset();
-        events.ScheduleEvent(EVENT_BOC, urand(15000, 20000));
-        events.ScheduleEvent(EVENT_ER, 21000);
-        events.ScheduleEvent(EVENT_DD, urand(38000, 42000));
-        instance->SetBossState(DATA_DRESARON, IN_PROGRESS);
-    }
-
-    void JustDied(Unit* /*killer*/) override
-    {
-        _JustDied();
-        instance->SetBossState(DATA_DRESARON, DONE);
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (!UpdateVictim())
-            return;
-
-        events.Update(diff);
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
-
-        while (uint32 eventId = events.ExecuteEvent())
+        void Reset() override
         {
-            switch (eventId)
+            _Reset();
+            TreshRestore(false);
+            abomination = false;
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+        {
+            _EnterCombat();
+
+            events.RescheduleEvent(EVENT_BREATH_OF_CORRUPTION, 7000);
+            events.RescheduleEvent(EVENT_EARTHSHAKING_ROAR, 14000);
+            events.RescheduleEvent(EVENT_DOWN_DRAFT, 20000);
+            abomination = false;
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            _JustDied();
+            TreshRestore(true);
+        }
+
+        void DoAction(int32 const action) override
+        {
+            switch (action)
             {
-                case EVENT_BOC:
-                {
-                    events.ScheduleEvent(EVENT_BOC, urand(15000, 20000));
-                    DoCastVictim(SPELL_BOC_TARGET);
-                    break;
-                }
-                case EVENT_ER:
-                {
-                    events.ScheduleEvent(EVENT_ER, 21000);
-                    DoCastAOE(SPELL_ER_TARGET);
-                    break;
-                }
-                case EVENT_DD:
-                {
-                    events.ScheduleEvent(EVENT_DD, urand(38000, 42000));
-                    me->CastSpell(me, SPELL_DD_TARGET, false);
-                }
+            case ACTION_1:
+                abomination = true;
+                break;
             }
         }
 
-        DoMeleeAttackIfReady();
-    }
-};
-
-//AT ; 6084
-//Spell : 199345 - Effect 1
-struct at_dresaron_down_draft : AreaTriggerAI
-{
-    at_dresaron_down_draft(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
-
-    void OnUnitEnter(Unit* unit) override
-    {
-        if (unit->IsPlayer() && at->GetCaster())
+        uint32 GetData(uint32 type) const override
         {
-            unit->CastSpell(unit, SPELL_DD_DOT, true);
-            unit->ToPlayer()->ApplyMovementForce(at->GetGUID(), at->GetPosition(), -8.0f, 0);
+            if (type == ABOMINATION_KILLED)
+                return abomination ? 1 : 0;
+            return 0;
         }
-    }
 
-    void OnUnitExit(Unit* unit) override
+        void TreshRestore(bool encounterEnd)
+        {
+            std::list<Creature*> creList;
+            GetCreatureListWithEntryInGrid(creList, me, NPC_CORRUPTED_DRAGON_EGG, 100.0f);
+            GetCreatureListWithEntryInGrid(creList, me, NPC_HATESPAWN_WHELPLING, 100.0f);
+            GetCreatureListWithEntryInGrid(creList, me, NPC_EMERALD_EGG, 100.0f);
+            GetCreatureListWithEntryInGrid(creList, me, NPC_HATESPAWN_ABOMINATION, 100.0f);
+            for (auto const& tresh : creList)
+            {
+                if (tresh->GetEntry() == NPC_CORRUPTED_DRAGON_EGG || tresh->GetEntry() == NPC_EMERALD_EGG)
+                {
+                    if (encounterEnd)
+                        tresh->DespawnOrUnsummon();
+                    else
+                    {
+                        if (!tresh->IsAlive())
+                        {
+                            tresh->RemoveCorpse();
+                            tresh->Respawn();
+                        }
+                    }
+                }
+                else
+                    tresh->DespawnOrUnsummon();
+            }
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_BREATH_OF_CORRUPTION:
+                    DoCast(SPELL_BREATH_OF_CORRUPTION);
+                    events.RescheduleEvent(EVENT_BREATH_OF_CORRUPTION, 27000);
+                    break;
+                case EVENT_EARTHSHAKING_ROAR:
+                    DoCast(SPELL_EARTHSHAKING_ROAR);
+                    events.RescheduleEvent(EVENT_EARTHSHAKING_ROAR, 19000);
+                    break;
+                case EVENT_DOWN_DRAFT:
+                    DoCast(SPELL_DOWN_DRAFT);
+                    events.RescheduleEvent(EVENT_DOWN_DRAFT, 30000);
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        if (unit->HasAura(SPELL_DD_DOT))
-            unit->RemoveAura(SPELL_DD_DOT);
-
-        if (unit->IsPlayer())
-            unit->ToPlayer()->RemoveMovementForce(at->GetGUID());
+        return new boss_dresaronAI(creature);
     }
 };
 
-// 101072
-class npc_dresaron_corrupted_dragon_egg : public ScriptedAI
+//100533, 101072
+class npc_dresaron_corrupted_dragon_egg : public CreatureScript
 {
 public:
-    npc_dresaron_corrupted_dragon_egg(Creature* creature) : ScriptedAI(creature) {}
+    npc_dresaron_corrupted_dragon_egg() : CreatureScript("npc_dresaron_corrupted_dragon_egg") {}
 
-    void Reset() override
+    struct npc_dresaron_corrupted_dragon_eggAI : public ScriptedAI
     {
-        me->AddUnitFlag(UnitFlags(UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC));
-        SetCanSeeEvenInPassiveMode(true);
-    }
-
-    void MoveInLineOfSight(Unit* who) override
-    {
-        if (who->IsPlayer() && me->GetDistance(who) <= 1.0f)
+        npc_dresaron_corrupted_dragon_eggAI(Creature* creature) : ScriptedAI(creature)
         {
-            me->CastSpell(who, SPELL_DISTURB_EGG, true);
-            me->KillSelf();
+            instance = me->GetInstanceScript();
+            me->SetUnitFlags(UNIT_FLAG_STUNNED);
         }
+
+        InstanceScript* instance;
+        bool destroed;
+
+        void Reset() override
+        {
+            destroed = false;
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->GetTypeId() != TYPEID_PLAYER || who->ToPlayer()->IsGameMaster())
+                return;
+
+            if (instance->GetBossState(DATA_DRESARON) != IN_PROGRESS)
+                return;
+
+            if ((me->GetDistance(who) < 3.0f) && !destroed)
+            {
+                destroed = true;
+                DoCast(me, SPELL_SUM_BIRTH_WHELPLING_2, true);
+                me->Kill(me);
+            }
+        }
+
+        void UpdateAI(uint32 diff) override {}
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_dresaron_corrupted_dragon_eggAI(creature);
+    }
+};
+
+//101078
+class npc_dresaron_acid_breath_stalker : public CreatureScript
+{
+public:
+    npc_dresaron_acid_breath_stalker() : CreatureScript("npc_dresaron_acid_breath_stalker") {}
+
+    struct npc_dresaron_acid_breath_stalkerAI : public ScriptedAI
+    {
+        npc_dresaron_acid_breath_stalkerAI(Creature* creature) : ScriptedAI(creature)
+        {
+            me->SetReactState(REACT_PASSIVE);
+        }
+
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner)
+        {
+            summoner->CastSpell(me, SPELL_BREATH_OF_CORRUPTION_DMG, false);
+        }
+
+        void UpdateAI(uint32 diff) override {}
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_dresaron_acid_breath_stalkerAI(creature);
+    }
+};
+
+//101074
+class npc_dresaron_hatespawn_whelpling : public CreatureScript
+{
+public:
+    npc_dresaron_hatespawn_whelpling() : CreatureScript("npc_dresaron_hatespawn_whelpling") {}
+
+    struct npc_dresaron_hatespawn_whelplingAI : public ScriptedAI
+    {
+        npc_dresaron_hatespawn_whelplingAI(Creature* creature) : ScriptedAI(creature) {}
+
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            DoZoneInCombat(me, 60.0f);
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            if (me->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                DoCast(me, SPELL_HATESPAWN_DETONATION, true);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            DoMeleeAttackIfReady();
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_dresaron_hatespawn_whelplingAI(creature);
+    }
+};
+
+// achievement egg
+class npc_dresaron_emerald_dragon_egg : public CreatureScript
+{
+public:
+    npc_dresaron_emerald_dragon_egg() : CreatureScript("npc_dresaron_emerald_dragon_egg") {}
+
+    struct npc_dresaron_emerald_dragon_eggAI : public ScriptedAI
+    {
+        npc_dresaron_emerald_dragon_eggAI(Creature* creature) : ScriptedAI(creature)
+        {
+            instance = me->GetInstanceScript();
+            me->SetUnitFlags(UNIT_FLAG_STUNNED);
+        }
+
+        InstanceScript* instance;
+        bool destroed;
+
+        void Reset() override
+        {
+            destroed = false;
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->GetTypeId() != TYPEID_PLAYER || who->ToPlayer()->IsGameMaster())
+                return;
+
+            if (instance->GetBossState(DATA_DRESARON) != IN_PROGRESS)
+                return;
+
+            if ((me->GetDistance(who) < 2.0f) && !destroed)
+            {
+                destroed = true;
+                DoCast(me, SPELL_HATESPAWN_ABOMINATION, true);
+                me->Kill(me);
+            }
+        }
+
+        void UpdateAI(uint32 diff) override {}
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_dresaron_emerald_dragon_eggAI(creature);
+    }
+};
+
+//111008 achievement add
+class npc_dresaron_hatespawn_abomination : public CreatureScript
+{
+public:
+    npc_dresaron_hatespawn_abomination() : CreatureScript("npc_dresaron_hatespawn_abomination") {}
+
+    struct npc_dresaron_hatespawn_abominationAI : public ScriptedAI
+    {
+        npc_dresaron_hatespawn_abominationAI(Creature* creature) : ScriptedAI(creature)
+        {
+            instance = me->GetInstanceScript();
+        }
+
+        InstanceScript* instance;
+
+        void Reset() override {}
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            if (me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC || me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE)
+                if (Creature* dresaron = instance->instance->GetCreature(instance->GetGuidData(NPC_DRESARON)))
+                    dresaron->GetAI()->DoAction(ACTION_1);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            DoMeleeAttackIfReady();
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_dresaron_hatespawn_abominationAI(creature);
+    }
+};
+
+class achievement_egg_cellent : public AchievementCriteriaScript
+{
+public:
+    achievement_egg_cellent() : AchievementCriteriaScript("achievement_egg_cellent") { }
+
+    bool OnCheck(Player* /*player*/, Unit* target) override
+    {
+        if (!target)
+            return false;
+
+        if (Creature* boss = target->ToCreature())
+            if (boss->AI()->GetData(ABOMINATION_KILLED))
+                return true;
+
+        return false;
     }
 };
 
 void AddSC_boss_dresaron()
 {
-    RegisterCreatureAI(boss_dresaron);
-    RegisterCreatureAI(npc_dresaron_corrupted_dragon_egg);
-
-    RegisterAreaTriggerAI(at_dresaron_down_draft);
+    new boss_dresaron();
+    new npc_dresaron_corrupted_dragon_egg();
+    new npc_dresaron_acid_breath_stalker();
+    new npc_dresaron_hatespawn_whelpling();
+    new npc_dresaron_emerald_dragon_egg();
+    new npc_dresaron_hatespawn_abomination();
+    new achievement_egg_cellent();
 }

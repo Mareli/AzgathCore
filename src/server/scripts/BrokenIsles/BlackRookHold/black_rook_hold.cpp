@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,9 +28,9 @@ enum Spells
 };
 
 // 100485
-struct npc_brh_boulder : public ScriptedAI
+struct npc_brh_boulder_instance_trash : public ScriptedAI
 {
-    npc_brh_boulder(Creature* creature) : ScriptedAI(creature) { }
+    npc_brh_boulder_instance_trash(Creature* creature) : ScriptedAI(creature) { }
 
     // The instance will spawn it at top of stairs & make it move by spline
 
@@ -58,6 +58,6 @@ struct at_brh_boulder : AreaTriggerAI
 
 void AddSC_black_rook_hold()
 {
-    RegisterCreatureAI(npc_brh_boulder);
+    RegisterCreatureAI(npc_brh_boulder_instance_trash);
     RegisterAreaTriggerAI(at_brh_boulder);
 }

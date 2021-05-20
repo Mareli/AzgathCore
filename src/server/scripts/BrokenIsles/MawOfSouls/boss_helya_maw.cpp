@@ -1,1480 +1,1476 @@
-/*
- Latincore bfa 2020
- ---MistiX----
- 85%
- 
- */
-
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "AreaTriggerTemplate.h"
-#include "AreaTriggerAI.h"
 #include "maw_of_souls.h"
-#include "Vehicle.h"
 #include "GameObject.h"
-#include "SpellHistory.h"
-#include "SpellPackets.h"
-#include <G3D/ConvexPolyhedron.h>
-#include "G3D/Vector2.h"
-#include "G3D/Vector3.h"
-#include "SpellAuras.h"
-
-enum Spells
-{
-    // Helya
-    SPELL_SUBMERGED = 196947,
-    SPELL_PIERCING_TENTACLE_TARGETING = 197597,
-    SPELL_TAINT_OF_SEA = 197262,
-    SPELL_TAINT_OF_SEA_DISPEL_DMG = 197264,
-    SPELL_TAINTED_ESSENCE_TRIGGER = 202470,
-    SPELL_TAINTED_ESSENCE_DMG = 202472,
-    SPELL_TORRENT = 197805,
-    SPELL_TURBULENT_WATERS_AURA = 197753,
-    SPELL_TURBULENT_WATERS_MISSILE = 197752,
-    SPELL_TURBULENT_WATERS_DMG = 197858,
-    SPELL_BRACKWATER_BARRAGE = 202088,
-    SPELL_BRACKWATER_BARRAGE_DMG = 202098,
-
-    // Phase Two
-    SPELL_TORRENT_INTERRUPTIBLE = 198495,
-    SPELL_WING_BUFFET = 198520,
-    SPELL_CORRUPTED_BELLOW = 227233,
-    SPELL_HELYA_EMERGE = 195231,
-    SPELL_HELYA_MODEL_PHASE_TWO = 197734,
-    SPELL_SMASH_HELYA = 197677,
-    SPELL_SMASH_HELYA_MISSILE = 197689,
-    SPELL_SMASH_HELYA_KNOCK = 197653,
-
-    // Destructor Tentacle
-    SPELL_SMASH = 196534,
-    SPELL_RAPID_RUPTURE = 197952,
-    SPELL_RAPID_RUPTURE_AURA = 185539,
-
-    // Grasping Tentacle
-    SPELL_RIDE_VEHICLE = 46598,
-    SPELL_HELYA_TENTACLE = 198180,
-    SPELL_HELYA_TENTACLE_2 = 196450,
-
-    // Piercing Tentacle
-    SPELL_PIERCING_TENTACLE = 197112,
-    SPELL_PIERCING_TENTACLE_DMG = 197117,
-    SPELL_SWIRLING_POOL = 195167,
-    SPELL_SWRILING_WATER = 195309,
-    SPELL_KNOCKDOWN = 194839,
-};
-
-enum Events
-{
-    // First Phase
-    EVENT_DESTRUCTOR_TENTACLE = 1,
-    EVENT_GRASPING_TENTACLE = 2,
-    EVENT_TAINT_OF_SEA = 3,
-    EVENT_BRACKWATER_BARRAGE = 4,
-    EVENT_PIERCING_TENTACLE = 5,
-    EVENT_SUBMERGED = 6,
-
-    // Second Phase
-    EVENT_SECOND_PHASE = 7,
-    EVENT_CORRUPTED_BELLOW = 8,
-    EVENT_TORRENT = 9,
-    EVENT_WING_BUFFET = 10,
-
-    // Destructor Tentacle
-    EVENT_SMASH = 11,
-    EVENT_RAPID_RUPTURE = 12,
-
-};
-
-enum Adds
-{
-    NPC_PIERCING_TENTACLE = 100188,
-    NPC_DESTRUCTOR_TENTACLE = 99801,
-    NPC_DESTRUCTOR_TENTACLE_DUMMY = 99803,
-    NPC_GRASPING_TENTACLE = 100360,
-    NPC_GRASPING_TENTACLE_2 = 100362,
-    NPC_GRASPING_TENTACLE_3 = 98363,
-    NPC_GRASPING_TENTACLE_DUMMY = 100359,
-    NPC_GRASPING_TENTACLE_DUMMY_2 = 100361,
-    NPC_GRASPING_TENTACLE_DUMMY_3 = 99800,
-    NPC_SWIRLING_POOL_DUMMY = 97099,
-    NPC_SWIRLING_POOL_DUMMY_2 = 102306,
-    NPC_CORRUPTED_BELLOW_DUMMY = 59018,
-};
 
 enum Says
 {
     SAY_INTRO = 0,
     SAY_AGGRO = 1,
-    SAY_TAINT = 2,
-    SAY_TENTACLE = 3,
-    SAY_CORRUPTED = 4,
-    SAY_KILL = 5,
-    SAY_WIPE = 6,
-    SAY_DEATH = 7,
-    SAY_BRACKWATER = 8,
-    SAY_CORRUPTED_EMOTE = 10,
+    SAY_TAINT_SEA = 2,
+    SAY_97 = 3,
+    SAY_94 = 4,
+    SAY_90 = 5,
+    SAY_87 = 6,
+    SAY_PHASE2 = 7,
+    SAY_WARN_WING_BUFFET = 8,
+    SAY_DEATH = 9,
+    SAY_SUBMERGED_2 = 10
+};
+
+enum Spells
+{
+    //Intro
+    SPELL_SOULLESS_SCREAM = 194603,
+
+    SPELL_INTERFERE_TARGETTING = 197710,
+    SPELL_TAINT_OF_THE_SEA = 197517,
+    SPELL_TORRENT = 197805,
+    SPELL_TAINTED_ESSENCE = 202470,
+    //Phase 2
+    SPELL_SUBMERGED = 196947, //32:34
+    SPELL_TRANSFORM = 197734, //32:44 - Self hit
+                        //SMSG_MOVE_UPDATE_TELEPORT 32:44 - 2933.5 Y: 961.792 Z: 510.38 O: 4.712389
+                        SPELL_SMASH = 197689, //Force cast all players
+                        SPELL_WING_BUFFET = 198520,
+                        SPELL_TORRENT_2 = 198495,
+                        SPELL_CORRUPTED_BELLOW = 227233,
+
+                        //Tentacle
+                        SPELL_GRASPING_STUN_LEFT = 198180,
+                        SPELL_GRASPING_STUN_RIGHT = 196450,
+                        SPELL_PIERCING_TENTACLE = 197112,
+                        SPELL_SWIRLING_POOL_AT = 195167,
+                        SPELL_SWIRLING_POOL_DMG = 195309,
+                        SPELL_SWIRLING_POOL_JUMP = 194839,
+
+                        //Swirling Pool
+                        SPELL_TURBULENT_WATERS = 197753,
+
+                        //Heroic
+                        SPELL_BRACKWATER_BARRAGE = 202088,
+                        SPELL_BRACKWATER_BARRAGE_DMG = 202098,
+
+                        //Trash
+                        SPELL_GIVE_NO = 196885,
+                        SPELL_DEBILITATING = 195293,
+                        SPELL_BIND = 195279,
+};
+
+enum eEvents
+{
+    EVENT_INTRO = 1,
+    EVENT_TAINT_SEA = 2,
+    EVENT_TORRENT = 3,
+    EVENT_SUM_DESTRUCTOR_TENTACLE = 4,
+    EVENT_SUM_PIERCING_TENTACLE = 5,
+    EVENT_P1_SUBMERGED_START = 6,
+    EVENT_P1_SUBMERGED_END = 7,
+    EVENT_WING_BUFFET = 8,
+    EVENT_ACTION_SWIRLING_POOL = 9,
+    EVENT_BRACKWATER_BARRAGE = 10,
+    EVENT_TORRENT_2 = 11, //Second phase
+    EVENT_CORRUPTED_BELLOW = 12,
+    EVENT_P2_SUBMERGED_START = 13,
+    EVENT_P2_SUBMERGED_END = 14,
+
+    //Trash
+    EVENT_SUMMON_1 = 1,
+    EVENT_SUMMON_2 = 2,
+    EVENT_GIVE_NO = 3,
+    EVENT_DEBILITATING = 4,
+    EVENT_BIND = 5,
+
+    EVENT_1,
+    EVENT_2,
+    EVENT_3,
+    EVENT_4,
+    EVENT_5,
+    EVENT_6,
+};
+
+enum eVisualKits
+{
+    VISUAL_KIT_1 = 60920, //30:14 - visual spawn
+    VISUAL_KIT_2 = 62877, //30:22 - start intro
+    VISUAL_KIT_3 = 60222, //30:28
+    VISUAL_KIT_4 = 63777, //Brackwater barrage?
+
+    //Brackwater missle
+    VISUAL_BW_MIS_RIGHT = 52865,
+    VISUAL_BW_MIS_LEFT = 52868,
+    //Heroic
+    VISUAL_H_BRACKWATER_LEFT = 52869,
+    VISUAL_H_BRACKWATER_RIGHT = 52870,
+    //Mythic
+    VISUAL_M_BRACKWATER_LEFT = 65462,
+    VISUAL_M_BRACKWATER_RIGHT = 65463,
+};
+
+enum eMisk
+{
+    DATA_POOL_ACTIVE = 0,
+    DATA_POOL_IDX
+};
+
+std::vector<std::pair<uint32, Position>> graspingPos =
+{
+    //Left
+    {NPC_GRASPING_TENTACLE_3, {2917.30f, 950.65f, 512.26f, 5.73f}},
+    {NPC_GRASPING_TENTACLE_2, {2921.71f, 959.25f, 513.21f, 5.85f}},
+    {NPC_GRASPING_TENTACLE_3, {2925.54f, 965.84f, 512.26f, 5.65f}},
+
+    //Right
+    {NPC_GRASPING_TENTACLE_1, {2941.37f, 966.34f, 513.79f, 4.08f}},
+    {NPC_GRASPING_TENTACLE_4, {2945.93f, 958.59f, 513.23f, 3.58f}},
+    {NPC_GRASPING_TENTACLE_1, {2948.58f, 952.28f, 513.47f, 3.41f}}
+};
+
+std::vector<Position> swirlingPos =
+{
+    {2933.33f, 960.27f, 510.39f, 1.57f},
+    {2926.73f, 952.15f, 510.39f, 1.57f},
+    {2939.91f, 952.15f, 510.39f, 1.57f},
+    {2933.40f, 941.15f, 510.39f, 1.57f},
+    {2922.20f, 937.07f, 510.39f, 1.57f},
+    {2943.52f, 935.80f, 510.39f, 1.57f},
+    {2927.44f, 928.84f, 510.39f, 1.57f},
+    {2939.53f, 928.46f, 510.39f, 1.57f},
+    {2918.25f, 921.30f, 510.39f, 1.57f},
+    {2933.18f, 920.70f, 510.39f, 1.57f},
+    {2948.52f, 921.45f, 510.39f, 1.57f}
+};
+
+//Skyal
+Position const addsPos[18] =
+{
+    {2942.57f, 886.99f, 537.76f, 4.48f},
+    {2924.55f, 887.20f, 537.65f, 5.26f},
+
+    {2906.68f, 752.27f, 538.55f, 4.72f}, //97097
+    {2959.93f, 751.26f, 538.52f, 4.63f}, //97097
+    {2916.09f, 807.88f, 535.81f, 4.66f}, //97097
+    {2950.01f, 804.85f, 535.65f, 4.66f}, //97097
+    {2923.85f, 771.78f, 538.59f, 4.53f}, //98919
+    {2957.19f, 775.12f, 538.66f, 5.03f}, //98919
+    {2923.93f, 838.52f, 536.17f, 4.66f}, //98919
+    {2942.26f, 838.82f, 536.16f, 4.64f}, //98919
+    {2917.46f, 772.97f, 538.55f, 4.40f}, //99033
+    {2950.14f,  773.0f, 538.52f, 4.93f}, //99033
+    {2921.54f, 807.65f, 535.82f, 4.67f}, //99033
+    {2945.05f, 805.94f, 535.84f, 4.53f}, //99033
+    {2911.42f,  775.0f, 538.55f, 4.43f}, //97365
+    {2944.38f, 771.65f, 538.54f, 4.94f}, //97365
+    {2919.12f, 839.14f, 536.17f, 4.74f}, //97200
+    {2946.58f, 838.83f, 536.17f, 4.74f}  //97200
+};
+
+uint32 swirlingGO[11]
+{
+    GO_SWIRLING_POOL_1,
+    GO_SWIRLING_POOL_2,
+    GO_SWIRLING_POOL_3,
+    GO_SWIRLING_POOL_4,
+    GO_SWIRLING_POOL_5,
+    GO_SWIRLING_POOL_6,
+    GO_SWIRLING_POOL_7,
+    GO_SWIRLING_POOL_8,
+    GO_SWIRLING_POOL_9,
+    GO_SWIRLING_POOL_10,
+    GO_SWIRLING_POOL_11
+};
+
+std::vector<Position> brackwaterLeftPos =
+{
+    {2939.40f, 962.60f, 512.62f},
+    {2942.39f, 959.01f, 512.62f},
+    {2936.74f, 958.69f, 512.44f},
+    {2940.28f, 954.87f, 512.62f},
+    {2945.83f, 955.33f, 512.62f},
+    {2935.46f, 953.10f, 512.62f},
+    {2938.70f, 950.05f, 512.44f},
+    {2944.88f, 950.54f, 512.62f},
+    {2935.38f, 946.62f, 512.62f},
+    {2949.86f, 946.64f, 512.62f},
+    {2941.57f, 945.62f, 512.62f},
+    {2939.18f, 942.02f, 512.62f},
+    {2947.10f, 941.91f, 512.62f},
+    {2936.93f, 938.13f, 512.62f},
+    {2943.34f, 937.14f, 512.62f},
+    {2950.44f, 936.89f, 512.62f},
+    {2936.81f, 931.11f, 512.62f},
+    {2947.02f, 931.25f, 512.62f},
+    {2941.39f, 929.56f, 512.44f},
+    {2936.53f, 924.82f, 512.62f},
+    {2943.62f, 924.13f, 512.62f},
+    {2950.87f, 923.85f, 512.62f},
+    {2939.42f, 917.48f, 512.62f},
+    {2946.80f, 916.83f, 512.62f}
+};
+
+std::vector<Position> brackwaterRightPos =
+{
+    {2925.56f, 963.48f, 512.62f},
+    {2929.07f, 960.50f, 512.62f},
+    {2923.64f, 958.06f, 512.62f},
+    {2919.76f, 956.44f, 512.96f},
+    {2928.60f, 955.48f, 512.62f},
+    {2922.82f, 953.38f, 512.62f},
+    {2930.63f, 950.74f, 512.62f},
+    {2918.42f, 950.52f, 512.62f},
+    {2925.68f, 949.56f, 512.44f},
+    {2920.87f, 946.22f, 512.62f},
+    {2929.98f, 945.46f, 512.62f},
+    {2925.92f, 944.20f, 512.62f},
+    {2917.76f, 944.13f, 512.62f},
+    {2929.15f, 940.10f, 512.62f},
+    {2921.97f, 939.96f, 512.62f},
+    {2925.20f, 937.02f, 512.44f},
+    {2916.68f, 937.24f, 512.62f},
+    {2921.16f, 934.19f, 512.62f},
+    {2927.87f, 932.90f, 512.62f},
+    {2916.64f, 931.38f, 512.62f},
+    {2923.48f, 929.93f, 512.44f},
+    {2927.61f, 925.69f, 512.62f},
+    {2918.18f, 925.71f, 512.62f},
+    {2922.55f, 922.01f, 512.62f},
+    {2913.16f, 922.54f, 512.62f},
+    {2931.84f, 921.01f, 512.34f},
+    {2917.70f, 919.10f, 512.54f},
+    {2927.18f, 918.08f, 512.62f}
+};
+
+Position const smashPos[5] =
+{
+    {2947.05f, 914.22f, 513.0f},
+    {2950.39f, 914.91f, 512.26f},
+    {2933.61f, 914.46f, 512.38f},
+    {2923.04f, 914.18f, 512.26f},
+    {2915.98f, 914.39f, 512.26f}
 };
 
 enum Actions
 {
-    ACTION_TENTACLE_DEAD = 1,
-    ACTION_PIERCING_TENTACLE = 2,
+    ACTION_1 = 1,
+    ACTION_2,
+    ACTION_3,
 };
 
-constexpr uint32 BRACKWATER_BARRAGE_LEFT_ANIM = 52869;
-constexpr uint32 BRACKWATER_BARRAGE_RIGHT_ANIM = 52870;
-constexpr uint32 CORRUPTED_BELLOW_ANIM = 61273;
-
-constexpr uint32 DATA_BRACKWATER_SIDE = 1;
-constexpr uint32 DATA_CORRUPTED_BELLOW_SIDE = 2;
-
-uint32 TrapDoor[] =
+//96759
+struct boss_helya : public BossAI
 {
-    GO_TRAP_DOOR_01,
-    GO_TRAP_DOOR_02,
-    GO_TRAP_DOOR_03,
-    GO_TRAP_DOOR_04,
-    GO_TRAP_DOOR_05,
-    GO_TRAP_DOOR_06,
-    GO_TRAP_DOOR_07,
-    GO_TRAP_DOOR_09,
-    GO_TRAP_DOOR_10,
-    GO_TRAP_DOOR_11,
-};
-
-uint32 TrapDoorSecondPhase[] =
-{
-    GO_TRAP_DOOR_01,
-    GO_TRAP_DOOR_02,
-    GO_TRAP_DOOR_03,
-    GO_TRAP_DOOR_04,
-    GO_TRAP_DOOR_06,
-    GO_TRAP_DOOR_07,
-    GO_TRAP_DOOR_11,
-};
-
-const Position CombatPositionPhaseTwo = { 2933.5f, 961.792f, 512.0f, 4.712389f };
-const Position BrackWaterBarrageVisualPos = { 2934.499f, 1055.943f, 510.5183f };
-
-const Position JumpingPosPhaseTwo[] =
-{
-    { 2951.605f, 914.6163f, 512.9623f },
-{ 2946.643f, 914.5208f, 512.8687f },
-{ 2954.132f, 914.6719f, 512.838f },
-{ 2951.605f, 914.6163f, 512.9623f },
-{ 2951.469f, 924.5151f, 512.2851f },
-};
-
-const Position CorruptedBellowPos[] =
-{
-    { 2918.5f, 935.8112f, 512.332f, 4.18879f }, // Left
-{ 2933.5f, 931.792f, 512.332f, 4.712389f }, // Mid
-{ 2948.5f, 935.8112f, 512.332f, 5.23f },    // Right
-};
-
-const Position BrackWaterBarrageRight[] =
-{
-    { 2926.323f, 954.963f, 512.336f },
-{ 2922.935f, 933.973f, 512.339f },
-{ 2921.662f, 920.746f, 512.319f },
-};
-
-const Position BrackWaterBarrageLeft[] =
-{
-    { 2941.427f, 953.688f, 512.336f },
-{ 2942.143f, 939.082f, 512.323f },
-{ 2944.178f, 923.068f, 512.412f },
-};
-
-Position CorruptedBellowMidVisualPacketPos[] =
-{
-    { 2926.093f, 938.0075f,  512.332f },
-{ 2932.856f, 936.2736f,  512.332f },
-{ 2939.905f, 937.373f,  512.332f },
-{ 2925.066f, 933.538f,  512.332f },
-{ 2933.052f, 932.4249f,  512.332f },
-{ 2940.663f, 933.2015f,  512.332f },
-{ 2923.892f, 929.2588f,  512.332f },
-{ 2929.537f, 927.931f,  512.332f },
-{ 2935.557f, 927.357f,  512.332f },
-{ 2941.715f, 928.4929f,  512.332f },
-{ 2922.882f, 924.9178f,  512.332f },
-{ 2929.581f, 923.3671f,  512.332f },
-{ 2935.623f, 923.5207f,  512.332f },
-{ 2942.438f, 924.9455f,  512.332f },
-{ 2921.475f, 920.1981f,  512.332f },
-{ 2926.588f, 919.7137f,  512.332f },
-{ 2932.152f, 919.1714f,  512.332f },
-{ 2938.219f, 918.7126f,  512.332f },
-{ 2944.007f, 920.145f,  512.332f },
-{ 2920.565f, 916.2735f,  512.332f },
-{ 2926.06f, 14.7321f,  512.332f },
-{ 2932.37f, 14.3811f,  512.332f },
-{ 2938.812f, 914.1826f,  512.332f },
-{ 2944.204f, 915.7855f,  512.332f },
-};
-
-Position CorruptedBellowRightVisualPacketPos[] =
-{
-    { 2940.244f,  937.6467f, 512.332f },
-{ 2946.176f,  940.5653f, 512.332f },
-{ 2951.501f,  943.9856f, 512.332f },
-{ 2940.84f,  933.6932f, 512.332f },
-{ 2948.65f,  935.9445f, 512.332f },
-{ 2954.534f,  940.79f, 512.332f },
-{ 2941.993f,  928.8289f, 512.332f },
-{ 2947.367f,  930.741f, 512.332f },
-{ 2953.447f,  934.0718f, 512.332f },
-{ 2957.582f,  938.2676f, 512.332f },
-{ 2943.735f,  924.3937f, 512.332f },
-{ 2949.589f,  927.2983f, 512.332f },
-{ 2955.588f,  930.3094f, 512.332f },
-{ 2960.539f,  934.8585f, 512.332f },
-{ 2944.431f,  920.7468f, 512.332f },
-{ 2950.383f,  921.7795f, 512.332f },
-{ 2955.09f,  924.2549f, 512.332f },
-{ 2959.828f,  928.2885f, 512.332f },
-{ 2963.685f,  931.6357f, 512.332f },
-{ 2945.518f,  916.344f, 512.332f },
-{ 2951.708f,  917.4258f, 512.332f },
-{ 2956.785f,  920.8843f, 512.332f },
-{ 2962.582f,  924.3431f, 512.332f },
-{ 2967.163f,  928.5035f, 512.332f },
-};
-
-Position CorruptedBellowLeftVisualPacketPos[] =
-{
-    { 2916.247f, 943.9583f, 512.332f },
-{ 2921.348f, 940.188f, 512.332f },
-{ 2926.536f, 937.4523f, 512.332f },
-{ 2912.938f, 941.2333f, 512.332f },
-{ 2919.143f, 936.2292f, 512.332f },
-{ 2925.388f, 933.0137f, 512.332f },
-{ 2909.453f, 938.0602f, 512.332f },
-{ 2913.688f, 934.0811f, 512.332f },
-{ 2918.845f, 931.1264f, 512.332f },
-{ 2924.693f, 928.9584f, 512.332f },
-{ 2906.485f, 934.7266f, 512.332f },
-{ 2911.516f, 929.8664f, 512.332f },
-{ 2917.21f, 926.6036f, 512.332f },
-{ 2923.307f, 925.0822f, 512.332f },
-{ 2903.385f, 931.6449f, 512.332f },
-{ 2906.978f, 927.9473f, 512.332f },
-{ 2912.381f, 924.1951f, 512.332f },
-{ 2917.106f, 922.7062f, 512.332f },
-{ 2922.387f, 920.3773f, 512.332f },
-{ 2899.681f, 927.7511f, 512.332f },
-{ 2904.948f, 924.1798f, 512.332f },
-{ 2909.838f, 920.5865f, 512.332f },
-{ 2915.148f, 917.9834f, 512.332f },
-{ 2920.968f, 916.4552f, 512.332f },
-};
-
-void PlayVisual(Player * receiver, Unit * caster, Unit * target, uint32 visualKitID, Position * pos, float travelSpeed, bool speedAsTime)
-{
-    WorldPackets::Spells::PlaySpellVisual playSpellVisual;
-    playSpellVisual.Source = caster->GetGUID();
-    playSpellVisual.SpeedAsTime = speedAsTime;
-    playSpellVisual.TravelSpeed = travelSpeed;
-    playSpellVisual.Target = target ? target->GetGUID() : ObjectGuid::Empty;
-    playSpellVisual.SpellVisualID = visualKitID;
-    receiver->SendDirectMessage(playSpellVisual.Write());
-}
-
-
-class boss_helya_maw : public CreatureScript
-{
-public:
-    boss_helya_maw() : CreatureScript("boss_helya_maw")
-    {}
-
-    struct boss_helya_maw_AI : public BossAI
+    boss_helya(Creature* creature) : BossAI(creature, DATA_HELYA)
     {
-        boss_helya_maw_AI(Creature* creature) : BossAI(creature, DATA_HELYA)
-        {
-            me->SetDisableGravity(true);
-            me->AddUnitState(UNIT_STATE_ROOT);
-        }
+        me->SetStandState(UNIT_STAND_STATE_SUBMERGED);
+        SetCombatMovement(false);
+    }
 
-        void Reset() override
-        {
-            me->SetDisableGravity(true);
-            me->AddUnitState(UNIT_STATE_ROOT);
-            _Reset();
-            _submerged = false;
-            _secondPhase = false;
-            Initialize();
-        }
+    std::list<ObjectGuid> playerGUIDList;
+    std::set<uint8> graspingRand;
+    std::vector<ObjectGuid> poolGUID;
+    std::list<uint8> poolRandList;
+    std::map<ObjectGuid, uint8> poolSaveMap; //Guid, idx
+    bool introSpawn = false;
+    bool introEvent = false;
+    bool eventDelay = false;
+    bool submerged = false;
+    bool encounterComplete = false;
+    uint8 tentacleDiedCound = 0;
+    uint8 healthSwitch = 0;
+    uint8 healthSay = 0;
+    uint8 BWrand = 0;
+    uint32 piercingTentacleTimer = 0;
 
-        void EnterEvadeMode(EvadeReason reason) override
-        {
-            for (auto & it : _pools)
+    void Reset() override
+    {
+        _Reset();
+        submerged = false;
+        encounterComplete = false;
+        tentacleDiedCound = 0;
+        healthSwitch = 0;
+        healthSay = healthSwitch + 3;
+        piercingTentacleTimer = 8000;
+        UpdateShipState(STATE_REBUILDING);
+        me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+        me->SetUnitFlags(UNIT_FLAG_NOT_ATTACKABLE_1);
+        me->SetReactState(REACT_AGGRESSIVE);
+
+        std::list<Creature*> poolList;
+        GetCreatureListWithEntryInGrid(poolList, me, NPC_SWIRLING_POOL_TRIG, 200.0f);
+        for (auto const& pool : poolList)
+            pool->DespawnOrUnsummon();
+
+        ChangePoolState(GO_STATE_READY);
+
+        graspingRand = { 0, 1, 2, 3, 4, 5 };
+        poolRandList = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        Trinity::Containers::RandomResize(poolRandList, 3);
+        poolSaveMap.clear();
+        poolGUID.clear();
+
+        uint8 idx = 0;
+        for (auto pos : swirlingPos)
+            if (auto pool = me->SummonCreature(NPC_SWIRLING_POOL_VEH, pos))
             {
-                it->RemoveAllAreaTriggers();
-                it->RemoveAurasDueToSpell(SPELL_SWIRLING_POOL);
+                poolGUID.push_back(pool->GetGUID());
+                pool->AI()->SetData(DATA_POOL_IDX, idx++);
             }
 
-            _pools.clear();
-            _destructors.clear();
-            _graspings.clear();
-
-            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-            RestoreShip();
-            _EnterEvadeMode();
-            me->NearTeleportTo(me->GetHomePosition());
-            JustReachedHome();
-            Reset();
-        }
-
-        void RestoreShip()
+        if (introEvent)
         {
-            for (uint8 i = 0; i < 10; ++i)
+            SummonGrasping(true);
+            SummonDestructor(true);
+        }
+    }
+
+    void EnterCombat(Unit* /*who*/) override
+    {
+        Talk(SAY_AGGRO);
+        _EnterCombat();
+        events.RescheduleEvent(EVENT_TAINT_SEA, 0);
+        events.RescheduleEvent(EVENT_SUM_DESTRUCTOR_TENTACLE, 26000);
+        events.RescheduleEvent(EVENT_SUM_PIERCING_TENTACLE, piercingTentacleTimer);
+
+        if (me->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+            events.RescheduleEvent(EVENT_BRACKWATER_BARRAGE, 15000);
+        else
+            events.RescheduleEvent(EVENT_TORRENT, 3000);
+
+        std::list<Creature*> tentacleList;
+        GetCreatureListWithEntryInGrid(tentacleList, me, 99801, 200.0f); //DESTRUCTOR_TENTACLE
+        GetCreatureListWithEntryInGrid(tentacleList, me, 98363, 200.0f); //NPC_GRASPING_TENTACLE_1
+        GetCreatureListWithEntryInGrid(tentacleList, me, 100362, 200.0f); //NPC_GRASPING_TENTACLE_2
+        for (auto tentacle : tentacleList)
+            if (!tentacle->IsInCombat())
+                tentacle->AI()->DoZoneInCombat(tentacle, 150.0f);
+    }
+
+    void EnterEvadeMode(EvadeReason w)
+    {
+        me->NearTeleportTo(me->GetHomePosition());
+        _DespawnAtEvade(15);
+    }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (!who->IsPlayer() || who->ToPlayer()->IsGameMaster())
+            return;
+
+        if (me->GetDistance(who) < 140.0f && !introSpawn)
+        {
+            introSpawn = true;
+            eventDelay = true;
+            me->SendPlaySpellVisualKit(0, VISUAL_KIT_1, 100);
+            me->GetScheduler().Schedule(5s, [this](TaskContext /*context*/)
             {
-                if (GameObject* trapDoor = me->FindNearestGameObject(TrapDoor[i], 500.0f))
-                    trapDoor->SetGoState(GO_STATE_READY);
-            }
-
-            if (GameObject* ship = me->FindNearestGameObject(GO_NAGLFAR, 500.0f))
-                ship->SetDestructibleState(GO_DESTRUCTIBLE_INTACT);
+                eventDelay = false;
+            });
+            return;
         }
 
-        void JustReachedHome() override
+        if (me->GetDistance(who) < 130.0f && !introEvent && !eventDelay)
         {
-            Talk(SAY_WIPE);
-            _JustReachedHome();
+            introEvent = true;
+            Talk(SAY_INTRO); //You ALL will regret trespassing in my realm.
+            me->SendPlaySpellVisualKit(0, VISUAL_KIT_2, 100);
+            events.RescheduleEvent(EVENT_INTRO, 5000);
         }
+    }
 
-        void DamageTaken(Unit* /**/, uint32 &) override
+    void SummonGrasping(bool restart = false)
+    {
+        if (tentacleDiedCound >= 6 || graspingRand.empty())
+            return;
+
+        if (restart)
         {
-            if (me->HealthBelowPct(80) && !_submerged)
+            uint8 lRand = urand(0, 2);
+            uint8 rRand = urand(3, 5);
+            graspingRand.erase(lRand);
+            graspingRand.erase(rRand);
+            me->SummonCreature(graspingPos[lRand].first, graspingPos[lRand].second);
+            me->SummonCreature(graspingPos[rRand].first, graspingPos[rRand].second);
+        }
+        else
+        {
+            auto idx = Trinity::Containers::SelectRandomContainerElement(graspingRand);
+            graspingRand.erase(idx);
+            me->SummonCreature(graspingPos[idx].first, graspingPos[idx].second);
+        }
+    }
+
+    void SummonDestructor(bool restart = false)
+    {
+        if (tentacleDiedCound >= 6 || poolRandList.empty())
+            return;
+
+        if (restart)
+        {
+            if (auto destructor = me->SummonCreature(NPC_DESTRUCTOR_TENTACLE, swirlingPos[0]))
+                poolSaveMap[destructor->GetGUID()] = 0;
+        }
+        else
+        {
+            uint8 idx = Trinity::Containers::SelectRandomContainerElement(poolRandList);
+            poolRandList.remove(idx);
+
+            if (auto destructor = me->SummonCreature(NPC_DESTRUCTOR_TENTACLE, swirlingPos[idx]))
+                poolSaveMap[destructor->GetGUID()] = idx;
+        }
+    }
+
+    void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
+    {
+        switch (summon->GetEntry())
+        {
+        case NPC_DESTRUCTOR_TENTACLE:
+        case NPC_GRASPING_TENTACLE_1:
+        case NPC_GRASPING_TENTACLE_2:
+        case NPC_GRASPING_TENTACLE_3:
+        case NPC_GRASPING_TENTACLE_4:
+        {
+            if (++tentacleDiedCound == 6)
             {
-                _submerged = true;
+                for (uint32 entry : {NPC_DESTRUCTOR_TENTACLE, NPC_GRASPING_TENTACLE_1, NPC_GRASPING_TENTACLE_2, NPC_GRASPING_TENTACLE_3, NPC_GRASPING_TENTACLE_4})
+                    summons.DespawnEntry(entry);
                 events.Reset();
-                events.ScheduleEvent(EVENT_SUBMERGED, Seconds(1));
+                events.RescheduleEvent(EVENT_P1_SUBMERGED_START, 1000);
+                Talk(SAY_87);
             }
-            else if (me->HealthBelowPct(70) && _submerged && me->HasReactState(REACT_AGGRESSIVE))
-                FinalizeEncounter();
-        }
-
-        void Initialize()
-        {
-            me->GetCreatureListWithEntryInGrid(_destructors, NPC_DESTRUCTOR_TENTACLE_DUMMY);
-            me->GetCreatureListWithEntryInGrid(_pools, NPC_SWIRLING_POOL_DUMMY);
-            me->GetCreatureListWithEntryInGrid(_pools, NPC_SWIRLING_POOL_DUMMY_2);
-            me->GetCreatureListWithEntryInGrid(_graspings, NPC_GRASPING_TENTACLE_DUMMY);
-            me->GetCreatureListWithEntryInGrid(_graspings, NPC_GRASPING_TENTACLE_DUMMY_2);
-            me->GetCreatureListWithEntryInGrid(_graspings, NPC_GRASPING_TENTACLE_DUMMY_3);
-
-            Creature* destructor = nullptr;
-            Creature* grasp_one = nullptr;
-            Creature* grasp_two = nullptr;
-            Creature* tentacle = nullptr;
-
-            grasp_one = me->FindNearestCreature(NPC_GRASPING_TENTACLE_DUMMY, 250.0f);
-            grasp_two = me->FindNearestCreature(NPC_GRASPING_TENTACLE_DUMMY_3, 250.0f);
-
-            if (grasp_one)
+            else if (tentacleDiedCound < 6)
             {
-                tentacle = DoSummon(NPC_GRASPING_TENTACLE, grasp_one->GetPosition(), 5 * IN_MILLISECONDS);
-
-                if (tentacle)
-                    tentacle->EnterVehicle(grasp_one);
-            }
-
-            if (grasp_two)
-            {
-                tentacle = DoSummon(NPC_GRASPING_TENTACLE_3, grasp_two->GetPosition(), 5 * IN_MILLISECONDS);
-
-                if (tentacle)
-                    tentacle->EnterVehicle(grasp_two);
-            }
-
-            destructor = me->FindNearestCreature(NPC_DESTRUCTOR_TENTACLE_DUMMY, 250.0f);
-
-            if (destructor)
-            {
-                tentacle = DoSummon(NPC_DESTRUCTOR_TENTACLE, destructor->GetPosition(), 5 * IN_MILLISECONDS);
-                DestroyTrapDoor(destructor);
-
-                if (tentacle)
-                    tentacle->EnterVehicle(destructor);
-            }
-        }
-
-        Creature* FindAvailableDummy(uint32 id)
-        {
-            switch (id)
-            {
-            case NPC_GRASPING_TENTACLE_DUMMY:
-                return Trinity::Containers::SelectRandomContainerElement(_graspings);
-
-            case NPC_DESTRUCTOR_TENTACLE_DUMMY:
-                return Trinity::Containers::SelectRandomContainerElement(_destructors);
-
-            case NPC_SWIRLING_POOL_DUMMY:
-                return Trinity::Containers::SelectRandomContainerElement(_pools);
-
-            default: return nullptr;
-            }
-        }
-
-        Creature* SummonTentacle(uint32 id)
-        {
-            Creature* dummy = FindAvailableDummy(id);
-            Creature* tentacle = nullptr;
-
-            if (!dummy)
-                return nullptr;
-
-            Vehicle* vec = dummy->GetVehicleKit();
-
-            if (vec && !vec->IsVehicleInUse())
-            {
-                switch (dummy->GetEntry())
+                if (summon->GetEntry() == NPC_DESTRUCTOR_TENTACLE)
                 {
-                case NPC_GRASPING_TENTACLE_DUMMY:
-                    tentacle = DoSummon(NPC_GRASPING_TENTACLE, dummy->GetPosition(), 5 * IN_MILLISECONDS, TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-                    break;
-
-                case NPC_GRASPING_TENTACLE_DUMMY_2:
-                    tentacle = DoSummon(NPC_GRASPING_TENTACLE_2, dummy->GetPosition(), 5 * IN_MILLISECONDS, TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-                    break;
-
-                case NPC_GRASPING_TENTACLE_DUMMY_3:
-                    tentacle = DoSummon(NPC_GRASPING_TENTACLE_3, dummy->GetPosition(), 5 * IN_MILLISECONDS, TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-                    break;
-
-                case NPC_DESTRUCTOR_TENTACLE_DUMMY:
-                {
-                    DestroyTrapDoor(dummy);
-                    tentacle = DoSummon(NPC_DESTRUCTOR_TENTACLE, dummy->GetPosition(), 5 * IN_MILLISECONDS, TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-                    break;
-                }
-
-
-                default: break;
-                }
-            }
-            else
-                return nullptr;
-
-            if (tentacle)
-                tentacle->EnterVehicle(vec->GetBase());
-
-            return tentacle;
-        }
-
-        uint32 GetData(uint32 id) const override
-        {
-            if (id == DATA_BRACKWATER_SIDE)
-                return _brackwaterSide;
-            else if (id == DATA_CORRUPTED_BELLOW_SIDE)
-                return _bellowSide;
-
-            return 0;
-        }
-
-        void DoAction(int32 action) override
-        {
-            if (action == ACTION_TENTACLE_DEAD && !_submerged)
-            {
-                me->SetHealth(me->GetHealth() - (me->GetHealth() * 0.033));
-                Talk(SAY_TENTACLE);
-                uint32 dmg = 0;
-                DamageTaken(nullptr, dmg);
-            }
-            else if (action == ACTION_PIERCING_TENTACLE)
-            {
-                GameObject* ship = me->FindNearestGameObject(GO_NAGLFAR, 250.f);
-
-                if (ship && ship->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED)
-                {
-                    GameObject* door = me->FindNearestGameObject(TrapDoorSecondPhase[urand(0, 6)], 100.f);
-
-                    if (door && door->GetGoState() == GO_STATE_ACTIVE)
-                        DoSummon(NPC_PIERCING_TENTACLE, door->GetPosition(), 10 * IN_MILLISECONDS, TEMPSUMMON_TIMED_DESPAWN);
+                    uint8 idx = poolSaveMap[summon->GetGUID()];
+                    poolRandList.push_back(idx);
+                    poolSaveMap.erase(summon->GetGUID());
                 }
                 else
                 {
-                    auto* dummy = FindAvailableDummy(NPC_SWIRLING_POOL_DUMMY);
-
-                    if (dummy)
+                    me->GetScheduler().Schedule(5s, [this](TaskContext /*context*/)
                     {
-                        DestroyTrapDoor(dummy);
-                        DoSummon(NPC_PIERCING_TENTACLE, dummy->GetPosition(), 10 * IN_MILLISECONDS, TEMPSUMMON_TIMED_DESPAWN);
-                    }
+                        SummonGrasping();
+                    });
+                }
+            }
+            break;
+        }
+        default:
+            return;
+        }
+
+        if (healthSwitch < 2)
+        {
+            me->SetHealth(me->GetHealth() - me->CountPctFromMaxHealth(3));
+            ++healthSwitch;
+            healthSay = healthSwitch + 3;
+            Talk(healthSay);
+        }
+        else
+        {
+            me->SetHealth(me->GetHealth() - me->CountPctFromMaxHealth(4));
+            healthSwitch = 0;
+            healthSay = healthSwitch + 3;
+            Talk(healthSay);
+        }
+    }
+
+    void UpdateShipState(uint8 state)
+    {
+        if (auto pGo = instance->instance->GetGameObject(instance->GetGuidData(DATA_SHIP)))
+        {
+            if (state == STATE_DESTROY)
+            {
+                pGo->SetDisplayId(31853);
+                pGo->SetDestructibleState(GO_DESTRUCTIBLE_DESTROYED, nullptr, true);
+            }
+            else if (state == STATE_REBUILDING)
+            {
+                pGo->SetDisplayId(31852);
+                pGo->SetDestructibleState(GO_DESTRUCTIBLE_REBUILDING, nullptr, true);
+            }
+        }
+    }
+
+    bool CheckAura()
+    {
+        auto const& players = me->GetMap()->GetPlayers();
+        uint32 size = 0;
+        if (!players.isEmpty())
+        {
+            size = players.getSize();
+            if (size < 5)
+                return false;
+
+            for (auto const& itr : players)
+            {
+                if (auto player = itr.GetSource())
+                {
+                    if (!player->HasAura(213413))
+                        return false;
                 }
             }
         }
+        return true;
+    }
 
-        void FinalizeEncounter()
+    bool GetObjectData(ObjectGuid const& guid)
+    {
+        bool find = false;
+
+        for (auto targetGuid : playerGUIDList)
+            if (targetGuid == guid)
+                find = true;
+
+        if (!find)
+            playerGUIDList.push_back(guid);
+
+        return find;
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage)
+    {
+        if (me->HealthBelowPct(71) && !encounterComplete)
         {
-            Talk(SAY_DEATH);
-            me->SetReactState(REACT_PASSIVE);
-            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
-            events.Reset();
-
-            _pools.clear();
-            _destructors.clear();
-            _graspings.clear();
-
-            instance->SetBossState(DATA_HELYA, DONE);
-            summons.DespawnAll();
-            me->CastStop();
+            encounterComplete = true;
             me->AttackStop();
-            me->DespawnOrUnsummon(5000);
+            Talk(SAY_DEATH);
+            _JustDied();
+            instance->DoUpdateAchievementCriteria(CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER, 1824);
 
-            _destructors.clear();
-            _graspings.clear();
-            _pools.clear();
-        }
-
-        void EnterCombat(Unit* /**/) override
-        {
-            Talk(SAY_AGGRO);
-            _EnterCombat();
-            _secondPhase = false;
-            _submerged = false;
-            events.ScheduleEvent(EVENT_GRASPING_TENTACLE, Seconds(15));
-            events.ScheduleEvent(EVENT_DESTRUCTOR_TENTACLE, Seconds(50));
-            events.ScheduleEvent(EVENT_TAINT_OF_SEA, Seconds(12));
-            events.ScheduleEvent(EVENT_TORRENT, Seconds(6));
-            events.ScheduleEvent(EVENT_PIERCING_TENTACLE, Seconds(15));
-
-            if (IsHeroic())
-                events.ScheduleEvent(EVENT_BRACKWATER_BARRAGE, Seconds(40));
-
-            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
-        }
-
-        void DestroyTrapDoor(Creature* pool_near)
-        {
-            for (uint8 i = 0; i < 10; ++i)
+            // for quest need "kill"
+            instance->DoOnPlayers([this](Player* player)
             {
-                if (GameObject* trapDoor = pool_near->FindNearestGameObject(TrapDoor[i], 5.0f))
+                player->KilledMonsterCredit(me->GetEntry());
+
+                if (CheckAura())
                 {
-                    if (trapDoor->GetGoState() != GO_STATE_ACTIVE)
+                    if (me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC || me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE)
+                        instance->DoUpdateAchievementCriteria(CRITERIA_TYPE_BE_SPELL_TARGET, 213415);
+                }
+            });
+            me->DespawnOrUnsummon(100);
+        }
+    }
+
+    void SpellHit(Unit* caster, const SpellInfo* spell) override
+    {
+        if (spell->Id == SPELL_BRACKWATER_BARRAGE)
+        {
+            std::vector<Position> brackwaterPos = !BWrand ? brackwaterLeftPos : brackwaterRightPos;
+            uint8 count = 0;
+
+            for (auto const& pos : brackwaterPos)
+            {
+                ++count;
+                if (me)
+                {
+                    for(uint8 i = 0; i < count; ++i)
+                        me->CastSpell(pos, SPELL_BRACKWATER_BARRAGE_DMG, true);
+                }
+
+            }
+        }
+    }
+
+    void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+    {
+        if (spell->Id == SPELL_SMASH)
+            target->GetMotionMaster()->MoveJump(smashPos[urand(0, 4)], 30.0f, 10.0f);
+    }
+
+    void ChangePoolState(GOState state)
+    {
+        for (uint8 i = 0; i < 11; ++i)
+            if (auto go = me->FindNearestGameObject(swirlingGO[i], 200.0f))
+            {
+                go->SetGoState(state);
+            }
+    }
+
+    void OpenNewPool(bool closeOldPull = false)
+    {
+        std::list<ObjectGuid> tempGuid;
+
+        for (auto guid : poolGUID)
+        {
+            if (auto pool = Creature::GetCreature(*me, guid))
+            {
+                if (pool->AI()->GetData(DATA_POOL_IDX) < 4)
+                {
+                    if (closeOldPull)
                     {
-                        pool_near->CastSpell(pool_near, SPELL_SWIRLING_POOL, true);
-                        trapDoor->SetGoState(GO_STATE_ACTIVE);
-                        break;
+                        if (auto pool = Creature::GetCreature(*me, guid))
+                            pool->AI()->DoAction(ACTION_3);
                     }
+                    continue;
                 }
+
+                if (pool->AI()->GetData(DATA_POOL_ACTIVE))
+                    continue;
+
+                tempGuid.push_back(guid);
             }
         }
 
-        void DestroyRestantShip()
-        {
-            if (GameObject* ship = me->FindNearestGameObject(GO_NAGLFAR, 1000.0f))
-                ship->SetDestructibleState(GO_DESTRUCTIBLE_DESTROYED);
+        if (tempGuid.empty())
+            return;
 
-            for (auto & it : _pools)
+        Trinity::Containers::RandomResize(tempGuid, 1);
+
+        for (auto guid : tempGuid)
+            if (auto pool = Creature::GetCreature(*me, guid))
+                pool->AI()->DoAction(ACTION_1);
+    }
+
+    void CheckActivePool()
+    {
+        poolRandList.clear();
+
+        for (auto guid : poolGUID)
+        {
+            if (auto pool = Creature::GetCreature(*me, guid))
             {
-                if (it->GetExactDist2d(CombatPositionPhaseTwo) <= 22.f)
-                {
-                    it->RemoveAllAreaTriggers();
-                    it->RemoveAurasDueToSpell(SPELL_SWIRLING_POOL);
-                }
+                if (!pool->AI()->GetData(DATA_POOL_ACTIVE))
+                    continue;
+
+                uint8 index = pool->AI()->GetData(DATA_POOL_IDX);
+                if (pool->AI()->GetData(DATA_POOL_IDX) > 3)
+                    poolRandList.push_back(index);
             }
+        };
+    }
 
-        }
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim() && me->IsInCombat())
+            return;
 
-        void ExecuteEvent(uint32 eventId) override
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING) && !submerged)
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
         {
-            me->GetSpellHistory()->ResetAllCooldowns();
-
             switch (eventId)
             {
-            case EVENT_GRASPING_TENTACLE:
-            {
-                if (SummonTentacle(NPC_GRASPING_TENTACLE_DUMMY))
-                    events.ScheduleEvent(EVENT_GRASPING_TENTACLE, Seconds(30));
-                else
-                    events.ScheduleEvent(EVENT_GRASPING_TENTACLE, Seconds(5));
-
+            case EVENT_INTRO:
+                me->SendPlaySpellVisualKit(0, VISUAL_KIT_3, 100);
+                DoCast(me, SPELL_SOULLESS_SCREAM, true);
+                DoCast(me, SPELL_INTERFERE_TARGETTING, true);
+                SummonGrasping(true);
+                SummonDestructor(true);
                 break;
-            }
-
-            case EVENT_DESTRUCTOR_TENTACLE:
-            {
-                if (SummonTentacle(NPC_DESTRUCTOR_TENTACLE_DUMMY))
-                    events.ScheduleEvent(EVENT_DESTRUCTOR_TENTACLE, Seconds(35));
-                else
-                    events.ScheduleEvent(EVENT_DESTRUCTOR_TENTACLE, Seconds(5));
+            case EVENT_TAINT_SEA:
+                DoCast(SPELL_TAINT_OF_THE_SEA);
+                events.RescheduleEvent(EVENT_TAINT_SEA, 12000);
+                Talk(SAY_TAINT_SEA);
                 break;
-            }
-
-            case EVENT_PIERCING_TENTACLE:
+            case EVENT_TORRENT:
+                DoCast(SPELL_TORRENT);
+                events.RescheduleEvent(EVENT_TORRENT, 5000);
+                break;
+            case EVENT_TORRENT_2: //Second Phase
+                DoCast(SPELL_TORRENT_2);
+                events.RescheduleEvent(EVENT_TORRENT_2, 8000);
+                break;
+            case EVENT_SUM_DESTRUCTOR_TENTACLE:
+                SummonDestructor();
+                events.RescheduleEvent(EVENT_SUM_DESTRUCTOR_TENTACLE, 26000);
+                break;
+            case EVENT_SUM_PIERCING_TENTACLE:
             {
-                if (Creature* pool = FindAvailableDummy(NPC_SWIRLING_POOL_DUMMY))
+                if (!poolRandList.empty())
                 {
-                    if (pool->FindNearestCreature(NPC_DESTRUCTOR_TENTACLE, 5.0f))
+                    uint8 idx = 0;
+                    if (piercingTentacleTimer > 2000)
+                        idx = Trinity::Containers::SelectRandomContainerElement(poolRandList);
+                    else
                     {
-                        events.ScheduleEvent(EVENT_PIERCING_TENTACLE, Seconds(5));
-                        break;
+                        idx = poolRandList.front();
+                        poolRandList.pop_front();
+                        poolRandList.push_back(idx);
                     }
-                    DestroyTrapDoor(pool);
-                    DoSummon(NPC_PIERCING_TENTACLE, pool->GetPosition(), 10 * IN_MILLISECONDS, TEMPSUMMON_TIMED_DESPAWN);
+                    if (auto pool = Creature::GetCreature(*me, poolGUID[idx]))
+                        pool->AI()->DoAction(ACTION_1);
                 }
-                events.ScheduleEvent(EVENT_PIERCING_TENTACLE, Seconds(20));
+                events.RescheduleEvent(EVENT_SUM_PIERCING_TENTACLE, piercingTentacleTimer);
                 break;
             }
-
+            case EVENT_P1_SUBMERGED_START:
+                submerged = true;
+                me->InterruptNonMeleeSpells(false);
+                me->CastSpell(me, SPELL_SUBMERGED, true);
+                Talk(SAY_PHASE2);
+                events.RescheduleEvent(EVENT_SUM_PIERCING_TENTACLE, piercingTentacleTimer = 2000);
+                events.RescheduleEvent(EVENT_P1_SUBMERGED_END, 15000);
+                break;
+            case EVENT_P1_SUBMERGED_END:
+                submerged = false;
+                OpenNewPool(true);
+                DoTeleportTo(2933.5f, 961.79f, 512.38f, 4.71f);
+                me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                me->RemoveUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
+                DoCast(me, SPELL_TRANSFORM, true);
+                DoCast(me, SPELL_SMASH, true);
+                UpdateShipState(STATE_DESTROY);
+                events.CancelEvent(EVENT_SUM_PIERCING_TENTACLE);
+                events.RescheduleEvent(EVENT_ACTION_SWIRLING_POOL, 1000);
+                events.RescheduleEvent(EVENT_WING_BUFFET, 10000);
+                events.RescheduleEvent(EVENT_TORRENT_2, 16000);
+                events.RescheduleEvent(EVENT_CORRUPTED_BELLOW, 15000);
+                events.RescheduleEvent(EVENT_P2_SUBMERGED_START, 70000);
+                break;
+            case EVENT_P2_SUBMERGED_START: //In Phase 2
+                submerged = true;
+                me->InterruptNonMeleeSpells(false);
+                me->CastSpell(me, SPELL_SUBMERGED, true);
+                me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+                me->SetUnitFlags(UNIT_FLAG_NOT_ATTACKABLE_1);
+                OpenNewPool();
+                CheckActivePool();
+                Trinity::Containers::SelectRandomContainerElement(poolRandList);
+                Talk(SAY_SUBMERGED_2);
+                events.Reset();
+                events.RescheduleEvent(EVENT_P2_SUBMERGED_END, 15000);
+                events.RescheduleEvent(EVENT_SUM_PIERCING_TENTACLE, piercingTentacleTimer);
+                break;
+            case EVENT_P2_SUBMERGED_END: //In Phase 2
+                submerged = false;
+                me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                me->RemoveUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
+                events.CancelEvent(EVENT_SUM_PIERCING_TENTACLE);
+                events.RescheduleEvent(EVENT_ACTION_SWIRLING_POOL, 1000);
+                events.RescheduleEvent(EVENT_WING_BUFFET, 10000);
+                events.RescheduleEvent(EVENT_TORRENT_2, 14000);
+                events.RescheduleEvent(EVENT_CORRUPTED_BELLOW, 16000);
+                events.RescheduleEvent(EVENT_P2_SUBMERGED_START, 70000);
+                break;
+            case EVENT_WING_BUFFET:
+                if (auto target = me->GetVictim())
+                {
+                    if (!me->IsWithinMeleeRange(target))
+                    {
+                        Talk(SAY_WARN_WING_BUFFET);
+                        me->CastSpell(me, SPELL_WING_BUFFET);
+                    }
+                }
+                events.RescheduleEvent(EVENT_WING_BUFFET, 2000);
+                break;
+            case EVENT_ACTION_SWIRLING_POOL:
+            {
+                std::list<Creature*> poolList;
+                GetCreatureListWithEntryInGrid(poolList, me, NPC_SWIRLING_POOL_TRIG, 150.0f);
+                for (auto pool : poolList)
+                {
+                    if (!pool->HasAura(SPELL_TURBULENT_WATERS) && pool->AI()->GetData(DATA_POOL_ACTIVE) && pool->AI()->GetData(DATA_POOL_IDX) > 4)
+                        pool->CastSpell(pool, SPELL_TURBULENT_WATERS, true);
+                }
+                break;
+            }
             case EVENT_BRACKWATER_BARRAGE:
             {
-                _brackwaterSide = urand(BRACKWATER_BARRAGE_LEFT_ANIM, BRACKWATER_BARRAGE_RIGHT_ANIM);
-
-                Talk(SAY_BRACKWATER);
-                DoCast(me, SPELL_BRACKWATER_BARRAGE);
-
-                std::list<Player*> players;
-                me->GetPlayerListInGrid(players, 250.f);
-                Position pos(BrackWaterBarrageVisualPos);
-
-                if (!players.empty())
-                {
-                    for (auto & it : players)
-                    {
-                        if (it)
-                            PlayVisual(it, me, me, _brackwaterSide, &pos, 9.0f, true);
-                    }
-                }
-
-                events.ScheduleEvent(EVENT_BRACKWATER_BARRAGE, Seconds(55));
+                playerGUIDList.clear();
+                Position pos = { 2934.49f, 1055.94f, 510.51f, 0.0f };
+                BWrand = urand(0, 1);
+                uint32 visualBrackwater = 0;
+                if (me->GetMap()->GetDifficultyID() == DIFFICULTY_HEROIC)
+                    visualBrackwater = VISUAL_H_BRACKWATER_LEFT + BWrand;
+                else if (me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC || me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE)
+                    visualBrackwater = VISUAL_M_BRACKWATER_LEFT + BWrand;
+                DoCast(SPELL_BRACKWATER_BARRAGE);
+                events.RescheduleEvent(EVENT_BRACKWATER_BARRAGE, 22000);
                 break;
             }
-
-            case EVENT_TAINT_OF_SEA:
-            {
-                Talk(SAY_TAINT);
-                Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, NonTankTargetSelector(me, true));
-
-                if (target)
-                    DoCast(target, SPELL_TAINT_OF_SEA);
-                else
-                    DoCastVictim(SPELL_TAINT_OF_SEA);
-
-                events.ScheduleEvent(EVENT_TAINT_OF_SEA, Seconds(12));
-                break;
-            }
-
-            case EVENT_SUBMERGED:
-            {
-                summons.DespawnAll();
-                DoCast(me, SPELL_SUBMERGED, true);
-
-                if (!_secondPhase)
-                    events.ScheduleEvent(EVENT_SECOND_PHASE, Seconds(16));
-
-                events.ScheduleEvent(EVENT_SUBMERGED, Seconds(90));
-                break;
-            }
-
-            case EVENT_SECOND_PHASE:
-            {
-                _secondPhase = true;
-                me->RemoveAurasDueToSpell(SPELL_TURBULENT_WATERS_AURA);
-
-                DoCast(me, SPELL_HELYA_MODEL_PHASE_TWO, true);
-
-                me->SetDisableGravity(true);
-                me->AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
-
-                DoCast(me, SPELL_HELYA_EMERGE, true);
-                DoCast(me, SPELL_SMASH_HELYA, true);
-                DestroyRestantShip();
-
-                events.ScheduleEvent(EVENT_CORRUPTED_BELLOW, Seconds(18));
-                events.ScheduleEvent(EVENT_TORRENT, Seconds(6));
-                events.ScheduleEvent(EVENT_TAINT_OF_SEA, Seconds(12));
-                events.ScheduleEvent(EVENT_WING_BUFFET, Seconds(5));
-
-                break;
-            }
-
             case EVENT_CORRUPTED_BELLOW:
             {
-                Talk(SAY_CORRUPTED);
-                Talk(SAY_CORRUPTED_EMOTE);
-
-                _bellowSide = urand(0, 2);
-                Position pos = CorruptedBellowPos[_bellowSide];
-
-                me->SetReactState(REACT_PASSIVE);
                 me->AttackStop();
-                me->SetFacingTo(pos.GetOrientation(), true);
-                me->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_CORRUPTED_BELLOW, false);
-                events.ScheduleEvent(EVENT_CORRUPTED_BELLOW, Seconds(20));
+                float facing[3] = { 4.26f, 4.71f, 5.16f };
+                me->SetFacingTo(facing[urand(0, 2)]);
+                me->CastSpell(me, SPELL_CORRUPTED_BELLOW);
+                events.RescheduleEvent(EVENT_CORRUPTED_BELLOW, 21000);
+                me->GetScheduler().Schedule(8s, [this](TaskContext /*context*/)
+                {
+                    me->SetFacingTo(4.71f);
+                    me->SetReactState(REACT_AGGRESSIVE);
+                });
                 break;
             }
-
-            case EVENT_WING_BUFFET:
-            {
-                if (!me->IsWithinMeleeRange(me->GetVictim()))
-                    DoCast(me, SPELL_WING_BUFFET);
-
-                events.ScheduleEvent(EVENT_WING_BUFFET, 1500);
-                break;
             }
+        }
+        DoMeleeAttackIfReady();
+    }
+};
 
-            case EVENT_TORRENT:
+//98363, 99801, 100354, 100360, 100362, 100188
+struct npc_helya_tentacle : public ScriptedAI
+{
+    npc_helya_tentacle(Creature* creature) : ScriptedAI(creature)
+    {
+        instance = me->GetInstanceScript();
+        me->SetDisableGravity(true);
+        me->SetCollision(true);
+        me->SetReactState(REACT_DEFENSIVE);
+        SetCombatMovement(false);
+    }
+
+    InstanceScript* instance;
+    EventMap events;
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        switch (me->GetEntry())
+        {
+        case 100360: //On NPC_GRASPING_TENTACLE_3
+        case 100362: //On NPC_GRASPING_TENTACLE_2
+            events.RescheduleEvent(EVENT_1, 1000);
+            break;
+        case 98363:  //On NPC_GRASPING_TENTACLE_1
+        case 100354: //On NPC_GRASPING_TENTACLE_4
+            events.RescheduleEvent(EVENT_2, 1000);
+            break;
+        case NPC_PIERCING_TENTACLE:
+            events.RescheduleEvent(EVENT_3, 1000);
+            return;
+        default:
+            break;
+        }
+        if (instance->GetBossState(DATA_HELYA) == IN_PROGRESS)
+        {
+            me->SetReactState(REACT_AGGRESSIVE);
+            DoZoneInCombat(me, 100.0f);
+        }
+    }
+
+    void Reset() override {}
+
+    void EnterCombat(Unit* /*who*/) override
+    {
+        if (instance && instance->GetBossState(DATA_HELYA) != IN_PROGRESS)
+            if (auto helya = instance->instance->GetCreature(instance->GetGuidData(DATA_HELYA)))
+                helya->SetInCombatWithZone();
+
+        switch (me->GetEntry())
+        {
+        case 99801: //DESTRUCTOR_TENTACLE
+            Talk(0);
+            events.RescheduleEvent(EVENT_5, 2000);
+            events.RescheduleEvent(EVENT_6, 2000);
+            break;
+        default:
+            break;
+        }
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        if (auto summoner = me->GetOwner())
+            summoner->Kill(summoner);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim() && me->IsInCombat())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
             {
-                if (_submerged)
-                    DoCast(me, SPELL_TORRENT_INTERRUPTIBLE);
+            case EVENT_1:
+                DoCast(me, SPELL_GRASPING_STUN_LEFT, true);
+                break;
+            case EVENT_2:
+                DoCast(me, SPELL_GRASPING_STUN_RIGHT, true);
+                break;
+            case EVENT_3:
+                me->CastSpell(me, SPELL_PIERCING_TENTACLE, TriggerCastFlags(TRIGGERED_IGNORE_CASTER_MOUNTED_OR_ON_VEHICLE));
+                events.RescheduleEvent(EVENT_4, 4000);
+                break;
+            case EVENT_4:
+                me->SetDisplayId(11686);
+                break;
+            case EVENT_5:
+            {
+                Unit* target = me->GetVictim();
+                if (target && me->IsWithinMeleeRange(target))
+                    me->CastSpell(target, 185539, TriggerCastFlags(TRIGGERED_IGNORE_CASTER_MOUNTED_OR_ON_VEHICLE));
                 else
-                    DoCast(me, SPELL_TORRENT);
-
-                events.ScheduleEvent(EVENT_TORRENT, Seconds(urand(10, 15)));
-
+                {
+                    events.RescheduleEvent(EVENT_5, 3000);
+                    break;
+                }
+                events.RescheduleEvent(EVENT_5, 12000);
+                break;
+            }
+            case EVENT_6:
+            {
+                Unit* target = me->GetVictim();
+                if (!target || !me->IsWithinMeleeRange(target))
+                {
+                    if (me->GetReactState() != REACT_PASSIVE)
+                        me->AttackStop();
+                    me->CastSpell(me, 196534, TriggerCastFlags(TRIGGERED_IGNORE_CASTER_MOUNTED_OR_ON_VEHICLE | TRIGGERED_IGNORE_CASTER_AURASTATE));
+                }
+                else
+                    me->SetReactState(REACT_AGGRESSIVE);
+                events.RescheduleEvent(EVENT_6, 2000);
                 break;
             }
             }
         }
-
-    private:
-        uint32 _bellowSide;
-        uint32 _brackwaterSide;
-        std::list<Creature*> _pools, _destructors, _graspings;
-        bool _submerged, _secondPhase;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new boss_helya_maw_AI(creature);
-    }
-};
-
-class npc_mos_grasping_tentacle : public CreatureScript
-{
-public:
-    npc_mos_grasping_tentacle() : CreatureScript("npc_mos_grasping_tentacle")
-    {}
-
-    struct npc_mos_grasping_tentacle_AI : public ScriptedAI
-    {
-        npc_mos_grasping_tentacle_AI(Creature* creature) : ScriptedAI(creature)
-        {
-            me->SetDisableGravity(true);
-            me->SetCollision(true);
-            me->AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
-        }
-
-        void Reset() override
-        {
-            me->SetDisableGravity(true);
-            me->SetCollision(true);
-            me->AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
-        }
-
-        void EnterCombat(Unit* /**/) override
-        {
-            if (Creature* helya = me->FindNearestCreature(BOSS_HELYA, 250.0f))
-                DoZoneInCombat(helya);
-        }
-
-        void JustDied(Unit* /**/) override
-        {
-            if (Creature* helya = me->FindNearestCreature(BOSS_HELYA, 500.0f))
-                helya->GetAI()->DoAction(ACTION_TENTACLE_DEAD);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_grasping_tentacle_AI(creature);
-    }
-};
-
-class npc_mos_destructor_tentacle : public CreatureScript
-{
-public:
-    npc_mos_destructor_tentacle() : CreatureScript("npc_mos_destructor_tentacle")
-    {}
-
-    struct npc_mos_destructor_tentacle_AI : public ScriptedAI
-    {
-        npc_mos_destructor_tentacle_AI(Creature* creature) : ScriptedAI(creature)
-        {
-            me->SetDisableGravity(true);
-            me->SetCollision(true);
-            me->AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
-        }
-
-        void Reset() override
-        {
-            me->SetDisableGravity(true);
-            me->SetCollision(true);
-            me->AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
-            _events.Reset();
-        }
-
-        void JustDied(Unit* /**/) override
-        {
-            if (Creature* helya = me->FindNearestCreature(BOSS_HELYA, 500.0f))
-                helya->GetAI()->DoAction(ACTION_TENTACLE_DEAD);
-        }
-
-        void EnterCombat(Unit* /**/) override
-        {
-            if (Creature* helya = me->FindNearestCreature(BOSS_HELYA, 250.0f))
-                DoZoneInCombat(helya);
-
-            _events.ScheduleEvent(EVENT_SMASH, Seconds(5));
-            _events.ScheduleEvent(EVENT_RAPID_RUPTURE, Seconds(4));
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (!UpdateVictim())
-                return;
-
-            _events.Update(diff);
-
-            if (me->HasUnitState(UNIT_STATE_CASTING))
-                return;
-
-            while (uint32 eventId = _events.ExecuteEvent())
-            {
-                if (eventId == EVENT_SMASH)
-                {
-                    if (!me->IsWithinMeleeRange(me->GetVictim()))
-                        DoCast(me, SPELL_SMASH);
-
-                    _events.ScheduleEvent(EVENT_SMASH, 100);
-                }
-                else if (eventId == EVENT_RAPID_RUPTURE)
-                {
-                    for (uint8 i = 0; i < 3; ++i)
-                        DoCastVictim(SPELL_RAPID_RUPTURE);
-
-                    DoCastVictim(SPELL_RAPID_RUPTURE_AURA);
-                    _events.ScheduleEvent(EVENT_RAPID_RUPTURE, Seconds(urand(10, 13)));
-                }
-            }
-
+        if (me->GetEntry() == 99801)
             DoMeleeAttackIfReady();
-        }
-
-    private:
-        EventMap _events;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_destructor_tentacle_AI(creature);
     }
 };
 
-class npc_mos_piercing_tentacle : public CreatureScript
+//97099
+struct npc_helya_tentacle_veh : public ScriptedAI
 {
-public:
-    npc_mos_piercing_tentacle() : CreatureScript("npc_mos_piercing_tentacle")
-    {}
-
-    struct npc_mos_piercing_tentacle_AI : public ScriptedAI
+    npc_helya_tentacle_veh(Creature* creature) : ScriptedAI(creature)
     {
-    public:
-        npc_mos_piercing_tentacle_AI(Creature* creature) : ScriptedAI(creature)
+        me->SetReactState(REACT_PASSIVE);
+        me->SetUnitFlags(UNIT_FLAG_NOT_SELECTABLE);
+        me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC); 
+        me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_NPC);
+        me->SetUnitFlags(UNIT_FLAG_NOT_ATTACKABLE_1);
+    }
+
+    ObjectGuid poolGUID;
+    bool createAT = false;
+    uint8 index = 0;
+
+    void Reset() override {}
+
+    void SetData(uint32 id, uint32 value) override
+    {
+        if (id == DATA_POOL_IDX)
+            index = value;
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        switch (type)
         {
-            me->AddUnitState(UNIT_STATE_ROOT);
+        case DATA_POOL_ACTIVE:
+            return createAT;
+        case DATA_POOL_IDX:
+            return index;
+        }
+        return 0;
+    }
+
+    void ActivateGo(bool anim = false)
+    {
+        for (uint8 i = 0; i < 11; ++i)
+            if (auto go = me->FindNearestGameObject(swirlingGO[i], 1.0f))
+            {
+                if (anim)
+                    go->SetGoState(GO_STATE_ACTIVE);
+            }
+    }
+
+    void DoAction(int32 const action) override
+    {
+        if (action == ACTION_3)
+        {
+            ActivateGo(true);
+            me->RemoveAllAuras();
+            if (auto pool = Creature::GetCreature(*me, poolGUID))
+                pool->DespawnOrUnsummon();
+            return;
+        }
+
+        if (!createAT)
+        {
+            createAT = true;
+            DoCast(me, SPELL_SWIRLING_POOL_AT, true);
+            ActivateGo();
+        }
+
+        if (auto owner = me->GetOwner())
+        {
+            if (action == ACTION_1)
+                owner->SummonCreature(NPC_PIERCING_TENTACLE, me->GetPosition(), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 6 * IN_MILLISECONDS);
+
+            if (auto pool = owner->SummonCreature(NPC_SWIRLING_POOL_TRIG, me->GetPosition()))
+                poolGUID = pool->GetGUID();
+        }
+    }
+
+    void UpdateAI(uint32 diff) override {}
+};
+
+//99803
+struct npc_helya_destructor_tentacle_veh : public ScriptedAI
+{
+    npc_helya_destructor_tentacle_veh(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void Reset() override {}
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        if (auto pool = me->FindNearestCreature(NPC_SWIRLING_POOL_VEH, 3.0f))
+            pool->AI()->DoAction(ACTION_2);
+    }
+
+    void UpdateAI(uint32 diff) override {}
+};
+
+//99307
+struct npc_skyal : public ScriptedAI
+{
+    npc_skyal(Creature* creature) : ScriptedAI(creature)
+    {
+        instance = me->GetInstanceScript();
+    }
+
+    void Reset() override
+    {
+        instance->SetBossState(DATA_SKJAL, NOT_STARTED);
+
+        if (instance->GetBossState(DATA_HARBARON) != DONE)
+        {
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_NPC);
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NOT_ATTACKABLE_1);
             me->SetReactState(REACT_PASSIVE);
+            me->SetVisible(false);
         }
-
-        void DoAction(int32 action) override
-        {
-        }
-
-        void IsSummonedBy(Unit* /**/) override
-        {
-            DoCast(me, SPELL_PIERCING_TENTACLE);
-            _events.ScheduleEvent(EVENT_PIERCING_TENTACLE, Seconds(3));
-        }
-
-        void EnterEvadeMode(EvadeReason) override
-        {
-
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            _events.Update(diff);
-
-            if (me->HasUnitState(UNIT_STATE_CASTING))
-                return;
-
-            while (uint32 eventId = _events.ExecuteEvent())
-            {
-                if (eventId == EVENT_PIERCING_TENTACLE)
-                    DoCast(me, SPELL_PIERCING_TENTACLE_DMG);
-            }
-        }
-
-    private:
-        EventMap _events;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_piercing_tentacle_AI(creature);
     }
-};
 
-class npc_mos_helya_dummy : public CreatureScript
-{
-public:
-    npc_mos_helya_dummy() : CreatureScript("npc_mos_helya_dummy")
-    {}
-
-    struct npc_mos_helya_dummy_AI : public ScriptedAI
+    void DoAction(int32 const action) override
     {
-        npc_mos_helya_dummy_AI(Creature* creature) : ScriptedAI(creature)
+        if (action == ACTION_1)
         {
-            me->SetDisableGravity(true);
-            me->SetCollision(true);
-            me->AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
+            me->SetVisible(true);
+            me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC);
+            me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+            me->RemoveUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
+            me->SetReactState(REACT_AGGRESSIVE);
 
-            if (me->GetEntry() == NPC_SWIRLING_POOL_DUMMY || me->GetEntry() == NPC_SWIRLING_POOL_DUMMY_2)
+            for (uint8 i = 2; i < 18; ++i)
             {
-                me->AddExtraUnitMovementFlag(MOVEMENTFLAG2_NO_STRAFE | MOVEMENTFLAG2_NO_JUMPING | MOVEMENTFLAG2_FULL_SPEED_TURNING);
-            }
-        }
-
-        void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool /*apply*/) override
-        {
-            if (!passenger)
-                return;
-
-            switch (passenger->GetEntry())
-            {
-            case NPC_GRASPING_TENTACLE:
-            case NPC_GRASPING_TENTACLE_2:
-                passenger->CastSpell(passenger, SPELL_HELYA_TENTACLE, true);
-                break;
-
-            case NPC_GRASPING_TENTACLE_3:
-                passenger->CastSpell(passenger, SPELL_HELYA_TENTACLE_2, true);
-                break;
-
-            default: break;
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mos_helya_dummy_AI(creature);
-    }
-};
-
-class at_mos_swirling_water : public AreaTriggerEntityScript
-{
-public:
-    at_mos_swirling_water() : AreaTriggerEntityScript("at_mos_swirling_water")
-    {}
-
-    struct at_mos_swirling_water_AI : public AreaTriggerAI
-    {
-        at_mos_swirling_water_AI(AreaTrigger* at) : AreaTriggerAI(at)
-        {}
-
-        void OnUnitEnter(Unit* unit) override
-        {
-            if (!unit)
-                return;
-
-            if (unit->GetTypeId() == TYPEID_PLAYER)
-            {
-                unit->CastSpell(unit, SPELL_KNOCKDOWN, true);
-                unit->CastSpell(unit, SPELL_SWRILING_WATER, true);
-            }
-        }
-    };
-
-    AreaTriggerAI* GetAI(AreaTrigger* at) const override
-    {
-        return new at_mos_swirling_water_AI(at);
-    }
-};
-
-class spell_helya_maw_taint_of_sea : public SpellScriptLoader
-{
-public:
-    spell_helya_maw_taint_of_sea() : SpellScriptLoader("spell_helya_maw_taint_of_sea")
-    {}
-
-    class spell_helya_maw_taint_of_sea_AuraScript : public AuraScript
-    {
-    public:
-        PrepareAuraScript(spell_helya_maw_taint_of_sea_AuraScript);
-
-        void HandleDispel(DispelInfo* dispelInfo)
-        {
-            if (!GetCaster() || !GetUnitOwner())
-                return;
-
-            Unit* caster = GetCaster();
-            Unit* owner = GetUnitOwner();
-
-            if (caster->GetMap()->IsHeroic())
-                caster->CastSpell(owner, SPELL_TAINTED_ESSENCE_TRIGGER, true);
-            else
-                caster->CastSpell(owner, SPELL_TAINT_OF_SEA_DISPEL_DMG, true);
-        }
-
-        void Register() override
-        {
-            OnDispel += AuraDispelFn(spell_helya_maw_taint_of_sea_AuraScript::HandleDispel);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_helya_maw_taint_of_sea_AuraScript();
-    }
-};
-
-class spell_helya_maw_submerged : public SpellScriptLoader
-{
-public:
-    spell_helya_maw_submerged() : SpellScriptLoader("spell_helya_maw_submerged")
-    {}
-
-    class spell_submerged_AuraScript : public AuraScript
-    {
-    public:
-        PrepareAuraScript(spell_submerged_AuraScript);
-
-        void HandleOnApply(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-        {
-            if (GetCaster())
-                GetCaster()->CastSpell(GetCaster(), SPELL_TURBULENT_WATERS_AURA, true);
-        }
-
-        void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-        {
-            GetCaster()->RemoveAurasDueToSpell(SPELL_TURBULENT_WATERS_AURA);
-            GetCaster()->NearTeleportTo(CombatPositionPhaseTwo, false);
-        }
-
-        void HandlePeriodic(AuraEffect const* /**/)
-        {
-            if (!GetCaster())
-                return;
-
-            GetCaster()->GetAI()->DoAction(ACTION_PIERCING_TENTACLE);
-        }
-
-        void Register()
-        {
-            OnEffectApply += AuraEffectApplyFn(spell_submerged_AuraScript::HandleOnApply, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
-            OnEffectRemove += AuraEffectRemoveFn(spell_submerged_AuraScript::HandleOnRemove, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_submerged_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_submerged_AuraScript();
-    }
-};
-
-class spell_helya_maw_turbulent_waters : public SpellScriptLoader
-{
-public:
-    spell_helya_maw_turbulent_waters() : SpellScriptLoader("spell_helya_maw_turbulent_waters")
-    {}
-
-    class spell_helya_maw_turbulent_waters_AuraScript : public AuraScript
-    {
-    public:
-        PrepareAuraScript(spell_helya_maw_turbulent_waters_AuraScript);
-
-        void HandlePeriodic(AuraEffect const* aurEff)
-        {
-            if (!GetCaster())
-                return;
-
-            Unit* caster = GetCaster();
-
-            std::list<Creature*> creatures;
-
-            caster->GetCreatureListWithEntryInGrid(creatures, NPC_SWIRLING_POOL_DUMMY_2, 500.f);
-
-            if (creatures.empty())
-                return;
-
-            for (auto & it : creatures)
-            {
-                Position pos = it->GetNearPosition(10.0f, frand(0, 2 * float(M_PI)));
-                caster->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_TURBULENT_WATERS_MISSILE, true);
-            }
-        }
-
-        void Register() override
-        {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_helya_maw_turbulent_waters_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_helya_maw_turbulent_waters_AuraScript();
-    }
-};
-
-class spell_helya_maw_corrupted_bellow : public SpellScriptLoader
-{
-public:
-    spell_helya_maw_corrupted_bellow() : SpellScriptLoader("spell_helya_maw_corrupted_bellow")
-    {}
-
-    class spell_helya_maw_corrupted_bellow_AuraScript : public AuraScript
-    {
-    public:
-        PrepareAuraScript(spell_helya_maw_corrupted_bellow_AuraScript);
-
-        using spell_corrupted_bellow = spell_helya_maw_corrupted_bellow_AuraScript;
-
-        void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-        {
-            if (GetCaster() && GetCaster()->ToCreature())
-                GetCaster()->ToCreature()->SetReactState(REACT_AGGRESSIVE);
-        }
-
-        void HandlePeriodic(AuraEffect const* /**/)
-        {
-            if (!GetCaster())
-                return;
-
-            std::list<Player*> players;
-            GetCaster()->GetPlayerListInGrid(players, 150.f);
-
-            if (players.empty())
-                return;
-
-            for (auto & it : players)
-            {
-                for (uint8 i = 0; i < 24; ++i)
+                if (i < 6)
                 {
-                    switch (GetCaster()->GetAI()->GetData(DATA_CORRUPTED_BELLOW_SIDE))
+                    if (auto summon = instance->instance->SummonCreature(NPC_HELARJAR_CHAMPION, me->GetPosition()))
                     {
-                    case 0:
-                    {
-                        PlayVisual(it, GetCaster(), nullptr, CORRUPTED_BELLOW_ANIM, &CorruptedBellowLeftVisualPacketPos[i], 95, false);
-                        break;
+                        summon->SetHomePosition(addsPos[i]);
+                        summon->GetMotionMaster()->MoveTargetedHome();
                     }
-
-                    case 1:
+                }
+                else if (i < 10)
+                {
+                    if (auto summon = instance->instance->SummonCreature(NPC_SEACURSED_SWIFTBLADE, me->GetPosition()))
                     {
-                        PlayVisual(it, GetCaster(), nullptr, CORRUPTED_BELLOW_ANIM, &CorruptedBellowMidVisualPacketPos[i], 95, false);
-                        break;
+                        summon->SetHomePosition(addsPos[i]);
+                        summon->GetMotionMaster()->MoveTargetedHome();
                     }
-
-                    case 2:
+                }
+                else if (i < 14)
+                {
+                    if (auto summon = instance->instance->SummonCreature(NPC_HELARJAR_MISTCALLER, me->GetPosition()))
                     {
-                        PlayVisual(it, GetCaster(), nullptr, CORRUPTED_BELLOW_ANIM, &CorruptedBellowRightVisualPacketPos[i], 95, false);
-                        break;
+                        summon->SetHomePosition(addsPos[i]);
+                        summon->GetMotionMaster()->MoveTargetedHome();
                     }
+                }
+                else if (i < 16)
+                {
+                    if (auto summon = instance->instance->SummonCreature(NPC_SEACURSED_MISTMENDER, me->GetPosition()))
+                    {
+                        summon->SetHomePosition(addsPos[i]);
+                        summon->GetMotionMaster()->MoveTargetedHome();
+                    }
+                }
+                else if (i < 18)
+                {
+                    if (auto summon = instance->instance->SummonCreature(NPC_SEACURSED_SOULKEEPER, me->GetPosition()))
+                    {
+                        summon->SetHomePosition(addsPos[i]);
+                        summon->GetMotionMaster()->MoveTargetedHome();
                     }
                 }
             }
         }
+    }
 
-        void Register() override
-        {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_corrupted_bellow::HandlePeriodic, EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
-            OnEffectRemove += AuraEffectRemoveFn(spell_corrupted_bellow::HandleOnRemove, EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
+    void EnterCombat(Unit* /*who*/) override
     {
-        return new spell_helya_maw_corrupted_bellow_AuraScript();
+        events.RescheduleEvent(EVENT_SUMMON_1, 1000);
+        events.RescheduleEvent(EVENT_SUMMON_2, 10000);
+        events.RescheduleEvent(EVENT_GIVE_NO, 7000);
+        events.RescheduleEvent(EVENT_DEBILITATING, 13000);
+        events.RescheduleEvent(EVENT_BIND, 17000);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        Talk(2);
+        instance->SetBossState(DATA_SKJAL, DONE);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_SUMMON_1:
+                for (uint8 i = 0; i < 2; ++i)
+                {
+                    if (auto sum = me->SummonCreature(98973, addsPos[i], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 4000))
+                        sum->AI()->DoZoneInCombat(sum, 90.0f);
+                }
+                Talk(1);
+                events.RescheduleEvent(EVENT_SUMMON_1, 18000);
+                break;
+            case EVENT_SUMMON_2:
+                for (uint8 i = 0; i < 2; ++i)
+                {
+                    if (auto sum = me->SummonCreature(99447, addsPos[i], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 4000))
+                        sum->AI()->DoZoneInCombat(sum, 90.0f);
+                }
+                Talk(1);
+                events.RescheduleEvent(EVENT_SUMMON_2, 18000);
+                break;
+            case EVENT_GIVE_NO:
+                if (auto target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                    me->CastSpell(target, SPELL_GIVE_NO);
+                events.RescheduleEvent(EVENT_GIVE_NO, 13000);
+                break;
+            case EVENT_DEBILITATING:
+                DoCast(SPELL_DEBILITATING);
+                events.RescheduleEvent(EVENT_DEBILITATING, 13000);
+                break;
+            case EVENT_BIND:
+                DoCast(SPELL_BIND);
+                events.RescheduleEvent(EVENT_BIND, 13000);
+                break;
+            }
+
+        }
+        DoMeleeAttackIfReady();
+    }
+private:
+    EventMap events;
+    InstanceScript* instance;
+};
+
+//97365
+struct npc_mos_seacursed_mistmender : public ScriptedAI
+{
+    npc_mos_seacursed_mistmender(Creature* creature) : ScriptedAI(creature) {}
+
+    EventMap events;
+
+    void Reset() override
+    {
+        events.Reset();
+    }
+
+    void EnterCombat(Unit* /*who*/) override
+    {
+        events.RescheduleEvent(EVENT_1, urandms(1, 2));
+        events.RescheduleEvent(EVENT_2, 1000);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_1:
+                DoCastVictim(194610);
+                events.RescheduleEvent(EVENT_1, urandms(6, 7));
+                break;
+            case EVENT_2:
+            {
+                std::list<Creature*> creatureList;
+                me->GetCreatureListWithEntryInGrid(creatureList, 97097, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 97200, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 98919, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 99307, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 97365, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 99033, 30.0f);
+
+                if (!creatureList.empty())
+                {
+                    for (auto creature : creatureList)
+                    {
+                        if (creature->IsInCombat() && creature->HealthBelowPct(80))
+                        {
+                            me->CastSpell(creature, 199514);
+                            events.RescheduleEvent(EVENT_2, urandms(17, 19));
+                            break;
+                        }
+                        else
+                            events.RescheduleEvent(EVENT_2, 1000);
+                    }
+                }
+                break;
+            }
+            }
+        }
+        DoMeleeAttackIfReady();
     }
 };
 
-class spell_helya_maw_corrupted_bellow_dmg : public SpellScriptLoader
+//99033
+struct npc_mos_helarjar_mistcaller : public ScriptedAI
 {
-public:
-    spell_helya_maw_corrupted_bellow_dmg() : SpellScriptLoader("spell_helya_maw_corrupted_bellow_dmg")
-    {}
+    npc_mos_helarjar_mistcaller(Creature* creature) : ScriptedAI(creature) {}
 
+    EventMap events;
 
-    class spell_helya_corrupted_bellow_SpellScript : public SpellScript
+    void Reset() override
     {
-    public:
-        PrepareSpellScript(spell_helya_corrupted_bellow_SpellScript);
+        events.Reset();
+    }
 
-        void FilterTargets(SpellTargets& targets)
+    void EnterCombat(Unit* /*who*/) override
+    {
+        events.RescheduleEvent(EVENT_1, urandms(1, 2));
+        events.RescheduleEvent(EVENT_2, urandms(5, 6));
+        events.RescheduleEvent(EVENT_3, 1000);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
         {
-            if (targets.empty())
-                return;
-
-            uint32 side = 0;
-
-            targets.remove_if([&](WorldObject*& target)
+            switch (eventId)
             {
-                return !GetCaster()->isInFront(target, float(M_PI) * 35.f / 180.f);
+            case EVENT_1:
+                DoCastVictim(194610);
+                events.RescheduleEvent(EVENT_1, urandms(6, 7));
+                break;
+            case EVENT_2:
+                DoCast(199589);
+                events.RescheduleEvent(EVENT_2, urandms(17, 19));
+                break;
+            case EVENT_3:
+            {
+                std::list<Creature*> creatureList;
+                me->GetCreatureListWithEntryInGrid(creatureList, 97097, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 97200, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 98919, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 99307, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 97365, 30.0f);
+                me->GetCreatureListWithEntryInGrid(creatureList, 99033, 30.0f);
+
+                if (!creatureList.empty())
+                {
+                    for (auto creature : creatureList)
+                    {
+                        if (creature->IsInCombat() && creature->HealthBelowPct(40))
+                        {
+                            me->CastSpell(creature, 216197);
+                            events.RescheduleEvent(EVENT_3, urandms(24, 25));
+                            break;
+                        }
+                        else
+                            events.RescheduleEvent(EVENT_3, 1000);
+                    }
+                }
+
+                break;
+            }
+            }
+        }
+        DoMeleeAttackIfReady();
+    }
+};
+
+//195309
+class spell_helya_swirling_water : public SpellScript
+{
+    PrepareSpellScript(spell_helya_swirling_water);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        if (auto caster = GetCaster()->ToPlayer())
+        {
+            caster->AddAura(SPELL_SWIRLING_POOL_JUMP, caster);
+
+            caster->GetScheduler().Schedule(1s, [this](TaskContext /*context*/)
+            {
+                Unit* caster = GetCaster()->ToPlayer();
+                if (!caster)
+                    return;
+
+                if (caster && caster->IsAlive() && caster->GetPositionZ() < 512.0f)
+                {
+                    float x, y, z;
+                    caster->GetClosePoint(x, y, z, caster->GetObjectSize(), 5.0f, frand(0.0f, 6.28f));
+                    caster->GetMotionMaster()->MoveCharge(x, y, z + 10.0f, 15.0f);
+                }
             });
         }
+    }
 
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_helya_corrupted_bellow_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_CONE_ENEMY_104);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
+    void Register() override
     {
-        return new spell_helya_corrupted_bellow_SpellScript();
+        OnEffectHitTarget += SpellEffectFn(spell_helya_swirling_water::HandleScript, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
     }
 };
 
-class spell_helya_maw_brackwater_barrage : public SpellScriptLoader
+//200208
+class spell_brackwater : public AuraScript
 {
-public:
-    spell_helya_maw_brackwater_barrage() : SpellScriptLoader("spell_helya_maw_brackwater_barrage")
-    {}
+    PrepareAuraScript(spell_brackwater);
 
-    class spell_helya_maw_brackwater_barrage_SpellScript : public SpellScript
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        PrepareSpellScript(spell_helya_maw_brackwater_barrage_SpellScript);
+        if (!GetTarget())
+            return;
 
-        void HandleDummy(SpellEffIndex /**/)
-        {
-            if (!GetCaster())
-                return;
+        if (auto pTarget = GetTarget()->FindNearestCreature(98919, 40.0f, true))
+            pTarget->CastSpell(GetTarget(), 201397, true);
+    }
 
-            uint32 side = GetCaster()->GetAI()->GetData(DATA_BRACKWATER_SIDE);
-            if (side == BRACKWATER_BARRAGE_LEFT_ANIM)
-            {
-                for (uint8 i = 0; i < 3; ++i)
-                {
-                    Position pos = BrackWaterBarrageLeft[i];
-                    GetCaster()->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_BRACKWATER_BARRAGE_DMG, true);
-                }
-            }
-            else if (side == BRACKWATER_BARRAGE_RIGHT_ANIM)
-            {
-                for (uint8 i = 0; i < 3; ++i)
-                {
-                    Position pos = BrackWaterBarrageRight[i];
-                    GetCaster()->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_BRACKWATER_BARRAGE_DMG, true);
-                }
-            }
-        }
-
-        void Register() override
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_helya_maw_brackwater_barrage_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
+    void Register() override
     {
-        return new spell_helya_maw_brackwater_barrage_SpellScript();
+        OnEffectRemove += AuraEffectRemoveFn(spell_brackwater::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
-class spell_helya_maw_phase_two_model : public SpellScriptLoader
+//197752
+class spell_helya_turbulent_waters : public SpellScript
 {
-public:
-    spell_helya_maw_phase_two_model() : SpellScriptLoader("spell_helya_maw_phase_two_model")
-    {}
+    PrepareSpellScript(spell_helya_turbulent_waters);
 
-    using spell_phase_two_model = spell_helya_maw_phase_two_model;
-
-    class spell_phase_two_model_SpellScript : public SpellScript
+    void HandleDummy(SpellEffIndex /*effIndex*/)
     {
-    public:
-        PrepareSpellScript(spell_phase_two_model_SpellScript);
+        PreventHitDefaultEffect(EFFECT_0);
 
-        void HandleTeleport()
-        {
-            if (!GetCaster())
-                return;
+        if (!GetCaster())
+            return;
 
-            WorldLocation pos = GetCaster()->GetWorldLocation();
-            pos.Relocate(CombatPositionPhaseTwo);
+        Position pos;
+        GetCaster()->GetRandomNearPosition(30.0f);
+        WorldLocation* dest = const_cast<WorldLocation*>(GetExplTargetDest());
+        dest->Relocate(pos);
+    }
 
-            SetExplTargetDest(pos);
-        }
-
-        void Register() override
-        {
-            BeforeCast += SpellCastFn(spell_phase_two_model_SpellScript::HandleTeleport);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
+    void Register() override
     {
-        return new spell_phase_two_model_SpellScript();
+        OnEffectLaunch += SpellEffectFn(spell_helya_turbulent_waters::HandleDummy, EFFECT_0, SPELL_EFFECT_TRIGGER_MISSILE);
     }
 };
 
-class spell_helya_maw_wing_buffet : public SpellScriptLoader
+//197262
+class spell_helya_taint_of_the_sea : public AuraScript
 {
-public:
-    spell_helya_maw_wing_buffet() : SpellScriptLoader("spell_helya_maw_wing_buffet")
-    {}
+    PrepareAuraScript(spell_helya_taint_of_the_sea);
 
-    class spell_helya_maw_wing_buffet_SpellScript : public SpellScript
+    void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
     {
-    public:
-        PrepareSpellScript(spell_helya_maw_wing_buffet_SpellScript);
+        if (!GetCaster() || !GetTarget())
+            return;
 
-        void CalculateDmg(SpellEffIndex /**/)
-        {
-            if (!GetCaster())
-                return;
+        if (GetCaster()->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL && GetCaster()->IsInCombat())
+            GetCaster()->CastSpell(GetTarget(), SPELL_TAINTED_ESSENCE, true);
+    }
 
-            Aura* wing = GetCaster()->GetAura(SPELL_WING_BUFFET);
-
-            if (wing)
-                SetHitDamage(GetHitDamage() * (1.0f + (wing->GetStackAmount() * 0.25f)));
-        }
-
-        void Register() override
-        {
-            OnEffectLaunchTarget += SpellEffectFn(spell_helya_maw_wing_buffet_SpellScript::CalculateDmg, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
-        }
-    };
-
-    SpellScript* GetSpellScript() const
+    void Register() override
     {
-        return new spell_helya_maw_wing_buffet_SpellScript();
+        OnEffectRemove += AuraEffectRemoveFn(spell_helya_taint_of_the_sea::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
-class spell_helya_maw_knockdown : public SpellScriptLoader
+
+//trash 199589
+class spell_whirpool_of_souls : public AuraScript
 {
-public:
-    spell_helya_maw_knockdown() : SpellScriptLoader("spell_helya_maw_knockdown")
-    {}
+    PrepareAuraScript(spell_whirpool_of_souls);
 
-    class spell_helya_maw_knockdown_SpellScript : public SpellScript
+    Position pos;
+
+    void OnPereodic(AuraEffect const* aurEff)
     {
-        PrepareSpellScript(spell_helya_maw_knockdown_SpellScript);
+        if (!GetCaster())
+            return;
 
-        void HandleJumps()
+        PreventDefaultAction();
+        for (uint8 itr = 0; itr < 3; ++itr)
         {
-            if (!GetCaster())
-                return;
-
-            WorldLocation pos = GetCaster()->GetWorldLocation();
-
-            pos.Relocate((JumpingPosPhaseTwo[urand(0, 4)]));
-            SetExplTargetDest(pos);
-
+            GetCaster()->GetNearPosition(2.0f, frand(0.0f, 360.0f));
+            GetCaster()->CastSpell(pos, 199516, true);
         }
+    }
 
-        void Register() override
-        {
-            BeforeCast += SpellCastFn(spell_helya_maw_knockdown_SpellScript::HandleJumps);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
+    void Register() override
     {
-        return new spell_helya_maw_knockdown_SpellScript();
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_whirpool_of_souls::OnPereodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 
-class spell_mos_smash : public SpellScriptLoader
+//trash 199514
+class spell_torrent_of_souls : public AuraScript
 {
-public:
-    spell_mos_smash() : SpellScriptLoader("spell_mos_smash")
-    {}
+    PrepareAuraScript(spell_torrent_of_souls);
 
-    class spell_mos_smash_SpellScript : public SpellScript
+    void OnPereodic(AuraEffect const* aurEff)
     {
-    public:
-        PrepareSpellScript(spell_mos_smash_SpellScript);
+        if (!GetCaster() || !GetTarget())
+            return;
 
-        void CalculateDmg(SpellEffIndex)
-        {
-            if (!GetCaster())
-                return;
-
-            Aura* smash = GetCaster()->GetAura(SPELL_SMASH);
-
-            if (smash)
-                SetHitDamage(GetEffectInfo(EFFECT_0)->BasePoints * (1.0f + (smash->GetStackAmount() * 0.20f)));
-        }
-
-        void Register() override
-        {
-            OnEffectLaunchTarget += SpellEffectFn(spell_mos_smash_SpellScript::CalculateDmg, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_mos_smash_SpellScript();
+        for (uint8 itr = 0; itr < 3; ++itr)
+            GetCaster()->CastSpell(GetTarget(), 199516, true);
     }
-};
 
-class spell_mos_knockdown : public SpellScriptLoader
-{
-public:
-    spell_mos_knockdown() : SpellScriptLoader("spell_mos_knockdown")
-    {}
-
-    class spell_mos_knockdown_SpellScript : public SpellScript
+    void Register() override
     {
-    public:
-        PrepareSpellScript(spell_mos_knockdown_SpellScript);
-
-        void HandleJump()
-        {
-            if (!GetCaster())
-                return;
-
-            WorldLocation pos = GetCaster()->GetWorldLocation();
-
-            float radius = 10.0f;
-
-            pos.Relocate(GetCaster()->GetNearPosition(radius, frand(0, static_cast<float>(M_PI))));
-
-            pos.m_positionZ += 2.0f;
-
-            SetExplTargetDest(pos);
-        }
-
-        void Register()
-        {
-            BeforeCast += SpellCastFn(spell_mos_knockdown_SpellScript::HandleJump);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_mos_knockdown_SpellScript();
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_torrent_of_souls::OnPereodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 
 void AddSC_boss_helya_maw()
 {
-    new boss_helya_maw();
-
-    //Creatures for Event
-    new npc_mos_piercing_tentacle();
-    new npc_mos_grasping_tentacle();
-    new npc_mos_destructor_tentacle();
-    new npc_mos_helya_dummy();
-    new at_mos_swirling_water();
-
-    // Spell for Boss - By MistiX
-    new spell_mos_knockdown();
-    new spell_mos_smash();
-    new spell_helya_maw_submerged();
-    new spell_helya_maw_taint_of_sea();
-    new spell_helya_maw_turbulent_waters();
-    new spell_helya_maw_brackwater_barrage();
-    new spell_helya_maw_phase_two_model();
-    new spell_helya_maw_knockdown();
-    new spell_helya_maw_corrupted_bellow();
-    new spell_helya_maw_corrupted_bellow_dmg();
-    new spell_helya_maw_wing_buffet();
-    
+    RegisterCreatureAI(boss_helya);
+    RegisterCreatureAI(npc_helya_tentacle);
+    RegisterCreatureAI(npc_helya_tentacle_veh);
+    RegisterCreatureAI(npc_helya_destructor_tentacle_veh);
+    RegisterCreatureAI(npc_skyal);
+    RegisterCreatureAI(npc_mos_seacursed_mistmender);
+    RegisterCreatureAI(npc_mos_helarjar_mistcaller);
+    RegisterSpellScript(spell_helya_swirling_water);
+    RegisterAuraScript(spell_brackwater);
+    RegisterSpellScript(spell_helya_turbulent_waters);
+    RegisterAuraScript(spell_helya_taint_of_the_sea);
+    RegisterAuraScript(spell_whirpool_of_souls);
+    RegisterAuraScript(spell_torrent_of_souls);
 }

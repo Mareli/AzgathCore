@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -70,6 +70,10 @@ enum Talks
     SAY_MALFURION_OUTRO   = 0
 };
 
+enum Actions
+{
+    ACTION_MALFURION_OUTRO = 1,
+};
 #define GOSSIP_MALFURION_OUTRO "Teleport me to Dalaran!"
 
 // Vile Mushroom

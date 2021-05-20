@@ -1,22 +1,5 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#ifndef EMERALD_NIGHTMARE_H
-#define EMERALD_NIGHTMARE_H
+#ifndef EMERALD_NIGHTMARE_H_
+#define EMERALD_NIGHTMARE_H_
 
 enum eData
 {
@@ -28,7 +11,7 @@ enum eData
     DATA_CENARIUS = 5,
     DATA_XAVIUS = 6,
     DATA_PRE_EVENT_XAVIUS = 7,
-    MAX_ENCOUNTERS,
+    MAX_ENCOUNTER,
 
     DATA_EYE_ILGYNOTH,
 };
@@ -44,8 +27,8 @@ enum eCreatures
 
     //Elerethe Renferal
     NPC_ELERETHE_RENFERAL = 106087,
-    NPC_TWISTING_SHADOWS = 106350,
-    NPC_TWISTING_SHADOWS_BRIDGE = 111439,
+    NPC_TWISTING_SHADOWS = 106350, //Суммонится под игроком
+    NPC_TWISTING_SHADOWS_BRIDGE = 111439, //Суммонятся на паучих мостах
     NPC_VILE_AMBUSH_STALKER = 107969,
     NPC_WEB = 109519,
     NPC_VENOMOUS_SPIDERLING = 107459,
@@ -129,11 +112,6 @@ enum eCreatures
 
 enum eGameObjects
 {
-    //Entrances
-    //Need to get GUID
-    GOB_NYTHENDRA_ENTRANCE_1 = 0,
-    GOB_NYTHENDRA_ENTRANCE_2 = 0,
-
     //Nythendra
     GO_NYTHENDRA_DOOR_1 = 251533,
     GO_NYTHENDRA_DOOR_2 = 251534,

@@ -1,578 +1,635 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "AreaTrigger.h"
-#include "AreaTriggerAI.h"
-#include "GameObject.h"
-#include "ScriptMgr.h"
+#include "GameTables.h"
 #include "halls_of_valor.h"
+#include "ScenarioMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptMgr.h"
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
 
-enum hyrjaSpells
+enum Says
 {
-    SPELL_MYSTIC_EMPOWEREMENT_THUNDER_VISUAL    = 192008,
-    SPELL_MYSTIC_EMPOWEREMENT_THUNDER           = 192132,
-    SPELL_MYSTIC_EMPOWEREMENT_HOLY_VISUAL       = 191924,
-    SPELL_MYSTIC_EMPOWEREMENT_HOLY              = 192133,
+    SAY_AGGRO = 0,
+    SAY_EXPEL_LIGHT = 1,
+    SAY_DEATH = 2,
 };
 
-enum hyrjaEvents
+enum Spells
 {
-    EVENT_MYSTIC_EMPOWEREMENT,
-    EVENT_CHOOSE_SPECIAL,
+    SPELL_ASCENDANCE = 191475,
+    SPELL_ASCENDANCE_JUMP = 191478,
+    SPELL_EMPOWERMENT_TRACKER = 192130,
+    SPELL_EXPEL_LIGHT = 192044, //192095 - 29:16?
+    SPELL_EXPEL_LIGHT_DMG = 192067,
+    SPELL_EXPEL_LIGHT_CONFUSE = 192070, //not used?
+    SPELL_EXPEL_LIGHT_DUMMY = 192095,
+    SPELL_SHIELD_OF_LIGHT = 192018,
+    SPELL_MYSTIC_MOD_DMG_THUNDER = 192132,
+    SPELL_MYSTIC_MOD_DMG_HOLY = 192133,
+
+    //Special Ability
+    SPELL_EYE_OF_THE_STORM = 192304, //Поиск ближайшего триггера
+    SPELL_EYE_OF_THE_STORM_DMG = 200901,
+    SPELL_EYE_OF_THE_STORM_AT = 203955,
+    SPELL_ARCING_BOLT_FILTER = 191978,
+    SPELL_SANCTIFY_TICK = 192158,
+    SPELL_SANCTIFY_AT = 192163,
+
+    //Defender
+    SPELL_OLMYR_VISUAL = 191899,
+    SPELL_SOLSTEN_VISUAL = 192147,
+    SPELL_OLMYR_LIGHT = 192288,
+
+    SPELL_CONVERSATION = 198226,
 };
 
-enum olmyrSpells
+enum eEvents
 {
-    SPELL_SANCTIFY                  = 192307,
-    SPELL_SANCTIFY_DAMAGE           = 192206,
-    SPELL_SANCTIFY_AREATRIGGER      = 192163,
-    SPELL_SEARING_LIGHT             = 192288,
-    SPELL_OLMYR_SPAWN_COSMETIC      = 191899,
-    SPELL_SHIELD_OF_LIGHT           = 192018,
-    SPELL_EXPEL_LIGHT               = 192048,
-    SPELL_EXPEL_LIGHT_EXPLODE       = 192067,
-    SPELL_EYE_OF_THE_STORM          = 200901,
-    SPELL_EYE_OF_THE_STORM_2        = 200902,
-    SPELL_EYE_OF_THE_STORM_ACTIVE   = 200906,
-    SPELL_EYE_OF_THE_STORM_DMG      = 200682,
-    SPELL_SOLSTEN_SPAWN_COSMETIC    = 192147,
-    SPELL_ARCING_BOLT               = 191976,
-    SPELL_EYE_OF_THE_STORM_ABSORB   = 203963,
+    EVENT_EXPEL_LIGHT = 1,
+    EVENT_SHIELD_OF_LIGHT = 2,
+    EVENT_SPECIAL_ABILITY = 3,
+    EVENT_ARCING_BOLT = 4,
+
+    EVENT_2,
+    EVENT_1,
 };
 
-enum olmyrEvents
+//95833
+class boss_hyrja : public CreatureScript
 {
-    EVENT_SANCTIFY,
-    EVENT_SEARING_LIGHT,
-    EVENT_SHIELD_OF_LIGHT,
-    EVENT_EYE_OF_THE_STORM,
-    EVENT_ARCING_BOLT,
-    EVENT_STORM,
-};
+public:
+    boss_hyrja() : CreatureScript("boss_hyrja") {}
 
-enum hyrjaSays
-{
-    SAY_COMBAT      = 0,
-    SAY_KILLED      = 1,
-    SAY_SANCTIFY    = 2,
-    SAY_STORM       = 3,
-    SAY_DIED        = 4,
-};
-
-struct boss_hyrja : public BossAI
-{
-    boss_hyrja(Creature* creature) : BossAI(creature, DATA_HYRJA)
+    struct boss_hyrjaAI : public BossAI
     {
-        me->SetReactState(REACT_DEFENSIVE);
-        me->SetCanFly(false);
-
-        me->AddUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-        me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
-    }
-
-    std::list<Creature*> creatureList;
-    bool inCombat = false;
-    uint8 count;
-
-    void Reset() override
-    {
-        _Reset();
-        count = 0;
-    }
-
-    void EnterCombat(Unit* /*who*/) override
-    {
-        _EnterCombat();
-
-        me->GetMotionMaster()->MoveJump(3148.366f, 325.743f, 655.16f, 0.80f, 15.0f, 15.0f);
-
-        events.ScheduleEvent(EVENT_MYSTIC_EMPOWEREMENT, 5 * IN_MILLISECONDS);
-        events.ScheduleEvent(EVENT_CHOOSE_SPECIAL, 10 * IN_MILLISECONDS);
-        events.ScheduleEvent(EVENT_SHIELD_OF_LIGHT, 16 * IN_MILLISECONDS);
-    }
-
-    void JustDied(Unit* /*killer*/) override
-    {
-        _JustDied();
-
-        if (GameObject* go = instance->GetGameObject(GOB_DOOR_ODYN_PASSAGE))
+        boss_hyrjaAI(Creature* creature) : BossAI(creature, DATA_HYRJA), summons(me)
         {
-            go->SetLootState(GO_READY);
-            go->UseDoorOrButton(3000000, false);
-            go->setActive(true);
-        }
-    }
-
-    void DoAction(int32 action) override
-    {
-        if (action == ACTION_CAN_JOIN_COMBAT)
-            CanJoinCombat();
-    }
-
-    void CanJoinCombat()
-    {
-        if (inCombat)
-            return;
-
-        uint8 count1 = 0;
-
-        if (instance->GetCreature(NPC_OLMYR_GHOST))
-            count1++;
-        else if (Creature* olmyr = instance->GetCreature(NPC_OLMYR_THE_ENLIGHTENED))
-        {
-            if (Creature* olmyrghost = me->SummonCreature(NPC_OLMYR_GHOST, olmyr->GetPositionX(), olmyr->GetPositionY(), olmyr->GetPositionZ(), olmyr->GetOrientation(), TEMPSUMMON_MANUAL_DESPAWN))
-                olmyrghost->CastSpell(olmyrghost, SPELL_OLMYR_SPAWN_COSMETIC, true);
-
-            count1++;
+            me->SetReactState(REACT_PASSIVE);
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
         }
 
-        if (instance->GetCreature(NPC_SOLSTEN_GHOST))
-            count1++;
-        else if (Creature* solsten = instance->GetCreature(NPC_SOLSTEN))
+        SummonList summons;
+        ObjectGuid defGUID[2];
+        bool eventComplete = false;
+        bool _introDone = false;
+        uint8 defenderComplete = 0;
+        uint8 lightStack = 0;
+
+        void Reset() override
         {
-            if (Creature* solstenghost = me->SummonCreature(NPC_SOLSTEN_GHOST, solsten->GetPositionX(), solsten->GetPositionY(), solsten->GetPositionZ(), solsten->GetOrientation(), TEMPSUMMON_MANUAL_DESPAWN))
-                solstenghost->CastSpell(solstenghost, SPELL_SOLSTEN_SPAWN_COSMETIC, true);
-
-            count1++;
-        }
-
-        if (count1 >= 2)
-        {
-            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
-            inCombat = true;
-            EnterCombat(me);
-        }
-    }
-
-    void ChooseSpecial()
-    {
-        uint32 spellId = 0;
-
-        switch (urand(1, 4))
-        {
-            case 1:
-                Talk(SAY_STORM);
-                me->CastSpell(me, SPELL_EYE_OF_THE_STORM_2, true);
-                events.ScheduleEvent(EVENT_STORM, 1 * IN_MILLISECONDS);
-                count = 0;
-                spellId = SPELL_EYE_OF_THE_STORM;
-                break;
-            case 2:
-                spellId = SPELL_ARCING_BOLT;
-                break;
-            case 3:
-                Talk(SAY_SANCTIFY);
-                spellId = SPELL_SANCTIFY;
-                break;
-            case 4:
-                spellId = SPELL_EXPEL_LIGHT;
-                break;
-        }
-
-        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 5.0f, true, 0))
-            me->CastSpell(target, spellId, true);
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (!UpdateVictim())
-            return;
-
-        events.Update(diff);
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
-
-        while (uint32 eventId = events.ExecuteEvent())
-        {
-            switch (eventId)
+            summons.DespawnAll();
+            _Reset();
+            SummonDefenders();
+            lightStack = 0;
+            me->RemoveAurasDueToSpell(SPELL_EMPOWERMENT_TRACKER);
+            if (eventComplete)
             {
-                case EVENT_CHOOSE_SPECIAL:
-                    ChooseSpecial();
+                DoCast(me, SPELL_ASCENDANCE, true);
+                me->SetReactState(REACT_AGGRESSIVE);
+            }
+        }
 
-                    if (me->HasAura(SPELL_MYSTIC_EMPOWEREMENT_HOLY) || me->HasAura(SPELL_MYSTIC_EMPOWEREMENT_THUNDER))
-                        events.ScheduleEvent(EVENT_MYSTIC_EMPOWEREMENT, 4 * IN_MILLISECONDS);
-                    else
-                        events.ScheduleEvent(EVENT_MYSTIC_EMPOWEREMENT, 30 * IN_MILLISECONDS);
+        void EnterCombat(Unit* /*who*/) override
+        {
+            Talk(SAY_AGGRO);
+            _EnterCombat();
+            DoCast(me, SPELL_EMPOWERMENT_TRACKER, true);
 
-                    events.ScheduleEvent(EVENT_CHOOSE_SPECIAL, 20 * IN_MILLISECONDS);
+            if (auto olmyr = me->GetCreature(*me, defGUID[0]))
+                olmyr->CastSpell(olmyr, 192152, true);
+
+            if (auto solsten = me->GetCreature(*me, defGUID[1]))
+                solsten->CastSpell(solsten, 192150, true);
+
+            events.RescheduleEvent(EVENT_EXPEL_LIGHT, 3000);
+            events.RescheduleEvent(EVENT_SHIELD_OF_LIGHT, 10000);
+            events.RescheduleEvent(EVENT_SPECIAL_ABILITY, 20000);
+            events.RescheduleEvent(EVENT_ARCING_BOLT, 12000);
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            Talk(SAY_DEATH);
+            _JustDied();
+            summons.DespawnAll();
+        }
+
+        void SummonDefenders()
+        {
+            me->SummonCreature(NPC_OLMYR_THE_ENLIGHTENED, 3141.80f, 362.52f, 655.27f, 4.66f);
+            me->SummonCreature(NPC_SOLSTEN, 3187.97f, 316.82f, 655.27f, 3.16f);
+        }
+
+        void JustSummoned(Creature* sum) override
+        {
+            summons.Summon(sum);
+
+            if (sum->GetEntry() == NPC_OLMYR_THE_ENLIGHTENED)
+            {
+                defGUID[0].Clear();
+                defGUID[0] = sum->GetGUID();
+            }
+
+            if (sum->GetEntry() == NPC_SOLSTEN)
+            {
+                defGUID[1].Clear();
+                defGUID[1] = sum->GetGUID();
+            }
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->GetTypeId() != TYPEID_PLAYER)
+                return;
+
+            if (!_introDone && me->IsWithinDistInMap(who, 45.0f))
+            {
+                _introDone = true;
+                DoCast(SPELL_CONVERSATION);
+            }
+        }
+
+        void DoAction(int32 const action) override
+        {
+            if (eventComplete)
+                return;
+
+            defenderComplete++;
+
+            if (defenderComplete == 2)
+                DoCast(SPELL_ASCENDANCE);
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_ASCENDANCE && !eventComplete)
+                DoCast(me, SPELL_ASCENDANCE_JUMP, true);
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type != EFFECT_MOTION_TYPE)
+                return;
+
+            if (id == SPELL_ASCENDANCE_JUMP)
+            {
+                eventComplete = true;
+                me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
+                me->SetReactState(REACT_AGGRESSIVE);
+                me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            }
+        }
+
+        uint32 GetData(uint32 type) const override
+        {
+            switch (type)
+            {
+            case DATA_HYRJA_EVENT_COMPLETE:
+                return eventComplete;
+            case DATA_HYRJA_LIGHT_STACK:
+                return lightStack;
+            }
+            return 0;
+        }
+
+        void SetData(uint32 type, uint32 value) override
+        {
+            switch (type)
+            {
+            case DATA_HYRJA_LIGHT_STACK:
+                lightStack = value;
+                break;
+            default:
+                break;
+            }
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim() || !CheckInRoom())
+                return;
+
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_EXPEL_LIGHT:
+                    lightStack = 3;
+                    DoCast(SPELL_EXPEL_LIGHT);
+                    Talk(SAY_EXPEL_LIGHT);
+                    events.RescheduleEvent(EVENT_EXPEL_LIGHT, 30000);
                     break;
-
                 case EVENT_SHIELD_OF_LIGHT:
-                    if (Unit* target = me->GetVictim())
-                        me->CastSpell(target, SPELL_SHIELD_OF_LIGHT, true);
-
-                    events.ScheduleEvent(EVENT_SHIELD_OF_LIGHT, 16 * IN_MILLISECONDS);
+                    me->CastSpell(me->GetVictim(), SPELL_SHIELD_OF_LIGHT);
+                    events.RescheduleEvent(EVENT_SHIELD_OF_LIGHT, 20000);
                     break;
+                case EVENT_SPECIAL_ABILITY:
+                {
+                    auto olmyr = me->GetCreature(*me, defGUID[0]);
+                    auto solsten = me->GetCreature(*me, defGUID[1]);
+                    if (!olmyr || !solsten)
+                        return;
 
-                case EVENT_STORM:
-                    me->CastSpell(me, SPELL_EYE_OF_THE_STORM_DMG, true);
+                    me->AttackStop();
 
-                    ++count;
-
-                    if (count <= 8)
-                        events.ScheduleEvent(EVENT_STORM, 1 * IN_MILLISECONDS);
+                    if (me->GetDistance(solsten) < me->GetDistance(olmyr))
+                    {
+                        me->CastSpell(me, SPELL_EYE_OF_THE_STORM, true);
+                        me->CastSpell(me, SPELL_EYE_OF_THE_STORM_AT, true);
+                        me->SetReactState(REACT_AGGRESSIVE);
+                    }
+                    else
+                    {
+                        DoCast(SPELL_SANCTIFY_TICK);
+                        me->SetReactState(REACT_AGGRESSIVE);
+                    }
+                    events.RescheduleEvent(EVENT_SPECIAL_ABILITY, 30000);
                     break;
-
-                default:
+                }
+                case EVENT_ARCING_BOLT:
+                    DoCast(SPELL_ARCING_BOLT_FILTER);
+                    events.RescheduleEvent(EVENT_ARCING_BOLT, 12000);
                     break;
+                }
             }
+            DoMeleeAttackIfReady();
         }
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-struct npc_olmyr_the_enlightened : public BossAI
-{
-    npc_olmyr_the_enlightened(Creature* creature) : BossAI(creature, DATA_OLMYR)
-    {
-        me->SetDisableGravity(false);
-        me->SetCanFly(false);
-    }
-
-    void EnterCombat(Unit* /*who*/) override
-    {
-        _EnterCombat();
-
-        events.ScheduleEvent(EVENT_SANCTIFY, 3 * IN_MILLISECONDS);
-        events.ScheduleEvent(EVENT_SEARING_LIGHT, 8 * IN_MILLISECONDS);
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        _JustDied();
-
-        if (Creature* creature = me->SummonCreature(NPC_OLMYR_GHOST, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_MANUAL_DESPAWN))
-            creature->CastSpell(creature, SPELL_OLMYR_SPAWN_COSMETIC, true);
-
-        if (Creature* hyrja = instance->GetCreature(BOSS_HYRJA))
-        {
-            hyrja->AI()->DoAction(ACTION_CAN_JOIN_COMBAT);
-            hyrja->SetTarget(killer->GetGUID());
-        }
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        events.Update(diff);
-
-        while (uint32 eventId = events.ExecuteEvent())
-        {
-            switch (eventId)
-            {
-                case EVENT_SANCTIFY:
-                    me->CastSpell(me, SPELL_SANCTIFY, true);
-                    events.ScheduleEvent(EVENT_SANCTIFY, 12 * IN_MILLISECONDS);
-                    break;
-                case EVENT_SEARING_LIGHT:
-                    me->CastSpell(me, SPELL_SEARING_LIGHT, true);
-                    events.ScheduleEvent(EVENT_SEARING_LIGHT, 21 * IN_MILLISECONDS);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-struct npc_olmyr_ghost : public ScriptedAI
-{
-    npc_olmyr_ghost(Creature* creature) : ScriptedAI(creature)
-    {
-        me->SetDisableGravity(false);
-        me->SetCanFly(false);
-    }
-
-    enum Events
-    {
-        EVENT_MYSTIC_EMPOWERMENT,
     };
 
-    void Reset() override
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        events.Reset();
-        events.ScheduleEvent(EVENT_MYSTIC_EMPOWERMENT, 1 * IN_MILLISECONDS);
+        return new boss_hyrjaAI(creature);
     }
+};
 
-    void UpdateAI(uint32 diff) override
+//97202, 97219
+class npc_hyrja_defenders : public CreatureScript
+{
+public:
+    npc_hyrja_defenders() : CreatureScript("npc_hyrja_defenders") {}
+
+    struct npc_hyrja_defendersAI : public ScriptedAI
     {
-        events.Update(diff);
-
-        while (uint32 eventId = events.ExecuteEvent())
+        npc_hyrja_defendersAI(Creature* creature) : ScriptedAI(creature)
         {
-            switch (eventId)
+            ascendance = false;
+        }
+
+        EventMap events;
+        bool ascendance;
+
+        void Reset() override
+        {
+            events.Reset();
+
+            if (Unit* summoner = me->GetOwner())
+                if (summoner->GetAI()->GetData(DATA_HYRJA_EVENT_COMPLETE) == 1)
+                    SpiritForm();
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage)
+        {
+            if (damage >= me->GetHealth())
             {
-            case EVENT_MYSTIC_EMPOWERMENT:
-                if (Creature* hyrja = instance->GetCreature(BOSS_HYRJA))
+                if (!ascendance)
                 {
-                    if (hyrja && me->GetDistance2d(hyrja->GetPositionX(), hyrja->GetPositionY()) < 5.0f)
-                        me->CastSpell(hyrja, SPELL_MYSTIC_EMPOWEREMENT_HOLY, true);
-                    else if (hyrja && me->GetDistance2d(hyrja->GetPositionX(), hyrja->GetPositionY()) < 20.0f)
-                    {
-                        me->CastSpell(hyrja, SPELL_MYSTIC_EMPOWEREMENT_HOLY_VISUAL, true);
+                    ascendance = true;
+                    if (Unit* summoner = me->GetOwner())
+                        summoner->ToCreature()->AI()->DoAction(true);
 
-                        /*if (hyrja->HasAura(SPELL_MYSTIC_EMPOWEREMENT_HOLY))
-                        hyrja->RemoveAurasDueToSpell(SPELL_MYSTIC_EMPOWEREMENT_HOLY);*/
-                    }
-                    /*else if (hyrja->HasAura(SPELL_MYSTIC_EMPOWEREMENT_HOLY_VISUAL))
-                    hyrja->RemoveAurasDueToSpell(SPELL_MYSTIC_EMPOWEREMENT_HOLY_VISUAL);*/
+                    EnterEvadeMode();
+                    SpiritForm();
                 }
-
-                events.ScheduleEvent(EVENT_MYSTIC_EMPOWERMENT, 5 * IN_MILLISECONDS);
-                break;
-            default:
-                break;
+                damage = 0;
             }
         }
-    }
-};
 
-struct npc_solsten : public BossAI
-{
-    npc_solsten(Creature* creature) : BossAI(creature, DATA_SOLSTEN)
-    {
-        me->SetDisableGravity(false);
-        me->SetCanFly(false);
-    }
-
-    uint8 count;
-
-    void Reset() override
-    {
-        _Reset();
-
-        count = 0;
-    }
-
-    void EnterCombat(Unit* /*who*/) override
-    {
-        _EnterCombat();
-
-        events.ScheduleEvent(EVENT_EYE_OF_THE_STORM, 5 * IN_MILLISECONDS);
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        _JustDied();
-
-        if (Creature* creature = me->SummonCreature(NPC_SOLSTEN_GHOST, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_MANUAL_DESPAWN))
-            creature->CastSpell(creature, SPELL_SOLSTEN_SPAWN_COSMETIC, true);
-
-        if (Creature* hyrja = instance->GetCreature(BOSS_HYRJA))
+        void EnterCombat(Unit* /*who*/) override
         {
-            hyrja->AI()->DoAction(ACTION_CAN_JOIN_COMBAT);
-            hyrja->SetTarget(killer->GetGUID());
+            Talk(0);
+            events.RescheduleEvent(EVENT_2, 30000);
+            events.RescheduleEvent(EVENT_1, 5000);
         }
-    }
 
-    void UpdateAI(uint32 diff) override
-    {
-        events.Update(diff);
-
-        while (uint32 eventId = events.ExecuteEvent())
+        void SpiritForm()
         {
-            switch (eventId)
+            Talk(1);
+            me->AttackStop();
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+
+            if (me->GetEntry() == NPC_OLMYR_THE_ENLIGHTENED)
+                DoCast(me, SPELL_OLMYR_VISUAL, true);
+            else
+                DoCast(me, SPELL_SOLSTEN_VISUAL, true);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (me->GetDistance(me->GetHomePosition()) >= 30.0f)
             {
-                case EVENT_STORM:
-                    me->CastSpell(me, SPELL_EYE_OF_THE_STORM_DMG, true);
-
-                    ++count;
-
-                    if (count <= 8)
-                        events.ScheduleEvent(EVENT_STORM, 1 * IN_MILLISECONDS);
-                    break;
-
-                case EVENT_EYE_OF_THE_STORM:
-                    if (Unit* target = me->GetVictim())
-                    {
-                        me->CastSpell(target, SPELL_EYE_OF_THE_STORM, true);
-                        me->CastSpell(me, SPELL_EYE_OF_THE_STORM_2, true);
-                        events.ScheduleEvent(EVENT_STORM, 1 * IN_MILLISECONDS);
-                    }
-
-                    events.ScheduleEvent(EVENT_EYE_OF_THE_STORM, 30 * IN_MILLISECONDS);
-                    break;
-                default:
-                    break;
+                EnterEvadeMode();
+                return;
             }
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_1:
+                    if (me->GetEntry() == NPC_OLMYR_THE_ENLIGHTENED)
+                        DoCast(SPELL_OLMYR_LIGHT);
+                    else
+                    {
+                        //DoCast(me, SPELL_MYSTIC_MOD_DMG_THUNDER, true);
+                        //DoCastVictim(SPELL_SOLSTEN_ARCING);
+                    }
+                    events.RescheduleEvent(EVENT_1, 7000);
+                    break;
+                case EVENT_2:
+                    if (me->GetEntry() == NPC_OLMYR_THE_ENLIGHTENED)
+                        DoCast(me, SPELL_SANCTIFY_TICK);
+                    else
+                    {
+                        DoCast(me, SPELL_EYE_OF_THE_STORM, true);
+                        DoCast(me, SPELL_EYE_OF_THE_STORM_AT, true);
+                        DoCast(SPELL_EYE_OF_THE_STORM_DMG);
+                    }
+                    events.RescheduleEvent(EVENT_2, 30000);
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
         }
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-struct npc_solsten_ghost : public ScriptedAI
-{
-    npc_solsten_ghost(Creature* creature) : ScriptedAI(creature)
-    {
-        me->SetDisableGravity(false);
-        me->SetCanFly(false);
-    }
-
-    enum Events
-    {
-        EVENT_MYSTIC_EMPOWERMENT,
     };
 
-    void Reset() override
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        events.Reset();
-        events.ScheduleEvent(EVENT_MYSTIC_EMPOWERMENT, 1 * IN_MILLISECONDS);
+        return new npc_hyrja_defendersAI(creature);
     }
+};
 
-    void UpdateAI(uint32 diff) override
+//192130
+class spell_hyrja_empowerment_tracker : public SpellScriptLoader
+{
+public:
+    spell_hyrja_empowerment_tracker() : SpellScriptLoader("spell_hyrja_empowerment_tracker") {}
+
+    class spell_hyrja_empowerment_tracker_AuraScript : public AuraScript
     {
-        events.Update(diff);
+        PrepareAuraScript(spell_hyrja_empowerment_tracker_AuraScript);
 
-        while (uint32 eventId = events.ExecuteEvent())
+            uint8 stack = 0;
+
+        void OnPereodic(AuraEffect const* aurEff)
         {
-            switch (eventId)
+            if (!GetTarget())
+                return;
+
+            //Thunder
+            if (GetTarget()->HasAura(192008))
             {
-            case EVENT_MYSTIC_EMPOWERMENT:
-                if (Creature* hyrja = instance->GetCreature(BOSS_HYRJA))
+                if (!GetTarget()->HasAura(191924))
                 {
-                    if (hyrja && me->GetDistance2d(hyrja->GetPositionX(), hyrja->GetPositionY()) < 5.0f)
-                        me->CastSpell(hyrja, SPELL_MYSTIC_EMPOWEREMENT_THUNDER, true);
-
-                    else if (hyrja && me->GetDistance2d(hyrja->GetPositionX(), hyrja->GetPositionY()) < 20.0f)
+                    if (Aura* aura = GetTarget()->GetAura(SPELL_MYSTIC_MOD_DMG_HOLY))
                     {
-                        me->CastSpell(hyrja, SPELL_MYSTIC_EMPOWEREMENT_THUNDER_VISUAL, true);
+                        stack = aura->GetStackAmount();
 
-                        /*if (hyrja->HasAura(SPELL_MYSTIC_EMPOWEREMENT_THUNDER))
-                        hyrja->RemoveAurasDueToSpell(SPELL_MYSTIC_EMPOWEREMENT_THUNDER);*/
+                        if (stack > 2 && GetTarget()->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                            aura->SetStackAmount(stack - 2);
+                        else
+                            aura->Remove();
                     }
-                    /*else if (hyrja->HasAura(SPELL_MYSTIC_EMPOWEREMENT_THUNDER_VISUAL))
-                    hyrja->RemoveAurasDueToSpell(SPELL_MYSTIC_EMPOWEREMENT_THUNDER_VISUAL);*/
                 }
+                GetTarget()->CastSpell(GetTarget(), SPELL_MYSTIC_MOD_DMG_THUNDER, true);
+            }
 
-                events.ScheduleEvent(EVENT_MYSTIC_EMPOWERMENT, 5 * IN_MILLISECONDS);
-                break;
-            default:
-                break;
+            //Holy
+            if (GetTarget()->HasAura(191924))
+            {
+                if (!GetTarget()->HasAura(192008))
+                {
+                    if (Aura* aura = GetTarget()->GetAura(SPELL_MYSTIC_MOD_DMG_THUNDER))
+                    {
+                        stack = aura->GetStackAmount();
+
+                        if (stack > 2 && GetTarget()->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                            aura->SetStackAmount(stack - 2);
+                        else
+                            aura->Remove();
+                    }
+                }
+                GetTarget()->CastSpell(GetTarget(), SPELL_MYSTIC_MOD_DMG_HOLY, true);
             }
         }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_hyrja_empowerment_tracker_AuraScript::OnPereodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_hyrja_empowerment_tracker_AuraScript();
     }
 };
 
-// 10675
-struct at_center_eye_of_the_storm : AreaTriggerAI
+//192048
+class spell_hyrja_expel_light : public SpellScriptLoader
 {
-    at_center_eye_of_the_storm(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+public:
+    spell_hyrja_expel_light() : SpellScriptLoader("spell_hyrja_expel_light") {}
 
-    void OnUnitEnter(Unit* target) override
+    class spell_hyrja_expel_light_AuraScript : public AuraScript
     {
-        if (!target->HasAura(SPELL_EYE_OF_THE_STORM_ABSORB))
-            target->CastSpell(target, SPELL_EYE_OF_THE_STORM_ABSORB, true);
-    }
+        PrepareAuraScript(spell_hyrja_expel_light_AuraScript);
 
-    void OnUnitExit(Unit* target) override
+        void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            if (!GetTarget())
+                return;
+
+            if (InstanceScript* instance = GetTarget()->GetInstanceScript())
+            {
+                Creature* hyrja = instance->instance->GetCreature(instance->GetGuidData(DATA_HYRJA));
+                if (!hyrja)
+                    return;
+
+                if (hyrja->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                {
+                    if (hyrja->GetAI())
+                    {
+                        uint8 stack = hyrja->GetAI()->GetData(DATA_HYRJA_LIGHT_STACK);
+                        if (stack > 1)
+                            SetStackAmount(stack);
+
+                        GetTarget()->CastSpell(GetTarget(), SPELL_EXPEL_LIGHT_DUMMY, true);
+                    }
+                }
+            }
+        }
+
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            Unit* target = GetTarget();
+            if (!target)
+                return;
+
+            if (InstanceScript* instance = target->GetInstanceScript())
+            {
+                Creature* hyrja = instance->instance->GetCreature(instance->GetGuidData(DATA_HYRJA));
+                if (!hyrja)
+                    return;
+
+                if (hyrja->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                {
+                    if (hyrja->GetAI())
+                    {
+                        uint8 stack = hyrja->GetAI()->GetData(DATA_HYRJA_LIGHT_STACK);
+                        if (stack > 1)
+                        {
+                            hyrja->GetAI()->SetData(DATA_HYRJA_LIGHT_STACK, stack - 1);
+                            if (Unit* randTarget = hyrja->AI()->SelectTarget(SELECT_TARGET_RANDOM, 1, 100.0f, true, -SPELL_EXPEL_LIGHT_DUMMY))
+                                target->CastSpell(randTarget, GetId(), true, 0, 0, hyrja->GetGUID());
+                            //else if (Unit* randTarget = hyrja->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 80.0f, true))
+                            //    target->CastSpell(randTarget, GetId(), true, 0, 0, hyrja->GetGUID());
+                        }
+                    }
+                }
+                hyrja->CastSpell(target, SPELL_EXPEL_LIGHT_DMG, true);
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectApply += AuraEffectApplyFn(spell_hyrja_expel_light_AuraScript::OnApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+            OnEffectRemove += AuraEffectRemoveFn(spell_hyrja_expel_light_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
     {
-        target->RemoveAurasDueToSpell(SPELL_EYE_OF_THE_STORM_ABSORB);
+        return new spell_hyrja_expel_light_AuraScript();
     }
 };
 
-// 10374
-struct at_eye_of_the_storm : AreaTriggerAI
+//192158
+class spell_hyrja_sanctify : public SpellScriptLoader
 {
-    at_eye_of_the_storm(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+public:
+    spell_hyrja_sanctify() : SpellScriptLoader("spell_hyrja_sanctify") {}
 
-    void OnUnitEnter(Unit* target) override
+    class spell_hyrja_sanctify_AuraScript : public AuraScript
     {
-        if (!target->HasAura(SPELL_EYE_OF_THE_STORM_ACTIVE))
-            target->CastSpell(target, SPELL_EYE_OF_THE_STORM_ACTIVE, true);
-    }
+        PrepareAuraScript(spell_hyrja_sanctify_AuraScript);
 
-    void OnUnitExit(Unit* target) override
+            void OnPereodic(AuraEffect const* aurEff)
+        {
+            Unit* caster = GetCaster();
+            if (!caster)
+                return;
+
+            for (uint8 i = 0; i < 6; i++)
+                caster->CastSpell(caster, SPELL_SANCTIFY_AT, true);
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_hyrja_sanctify_AuraScript::OnPereodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
     {
-        target->RemoveAurasDueToSpell(SPELL_EYE_OF_THE_STORM_ACTIVE);
+        return new spell_hyrja_sanctify_AuraScript();
     }
 };
 
-struct at_sanctify : AreaTriggerAI
+//203963
+class spell_hyrja_eye_storm_absorb : public SpellScriptLoader
 {
-    at_sanctify(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+public:
+    spell_hyrja_eye_storm_absorb() : SpellScriptLoader("spell_hyrja_eye_storm_absorb") {}
 
-    void OnInitialize() override
+    class spell_hyrja_eye_storm_absorb_AuraScript : public AuraScript
     {
-        at->SetPeriodicProcTimer(2000);
-    }
+        /*PrepareAuraScript(spell_hyrja_eye_storm_absorb_AuraScript);
 
-    void OnUnitEnter(Unit* target) override
-    {
-        target->CastSpell(target, SPELL_SANCTIFY_DAMAGE, true);
-    }
+        uint32 absorbSave;
 
-    void OnPeriodicProc() override
+        bool Load() override
+        {
+            absorbSave = 0;
+            return true;
+        }
+
+        void CalculateAmount(AuraEffect const* auraEffect, int32& amount, bool&)
+        {
+            amount = -1;
+
+            absorbSave = GetSpellInfo()->GetEffect(EFFECT_0, GetCaster()->GetMap()->GetDifficultyID())->CalcValue(GetCaster());
+
+            // Calculation from Mythic+
+            if (auto instance = GetCaster()->GetInstanceScript())
+            {
+                if (auto hyrja = instance->instance->GetCreature(instance->GetGuidData(DATA_HYRJA)))
+                    if (auto effect = hyrja->GetAuraEffect(ChallengersMight, EFFECT_1))
+                        AddPct(absorbSave, effect->GetAmount());
+            }
+        }
+
+        void Absorb(AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
+        {
+            absorbAmount = absorbSave;
+        }
+
+        void Register() override
+        {
+            DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_hyrja_eye_storm_absorb_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+            OnEffectAbsorb += AuraEffectAbsorbFn(spell_hyrja_eye_storm_absorb_AuraScript::Absorb, EFFECT_0);
+        }*/
+    };
+
+    /*AuraScript* GetAuraScript() const override
     {
-        if (Unit* caster = at->GetCaster())
-            for (ObjectGuid guid : at->GetInsideUnits())
-                if (Unit* unit = ObjectAccessor::GetUnit(*at, guid))
-                    if (caster->IsValidAttackTarget(unit))
-                        caster->CastSpell(unit, SPELL_SANCTIFY_DAMAGE, true);
-    }
+        return new spell_hyrja_eye_storm_absorb_AuraScript();
+    }*/
 };
 
-// 192048 - Expel Light
-class spell_expel_light : public AuraScript
+//4885
+class at_sanctify : public AreaTriggerScript
 {
-    PrepareAuraScript(spell_expel_light);
+public:
+    at_sanctify() : AreaTriggerScript("at_sanctify") {}
 
-    void HandleEffectRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    bool OnTrigger(Player* player, const AreaTriggerEntry* /*at*/, bool /*enter*/) override
     {
-        GetCaster()->CastSpell(GetCaster(), SPELL_EXPEL_LIGHT_EXPLODE, true);
-    }
-
-    void Register() override
-    {
-        AfterEffectRemove += AuraEffectRemoveFn(spell_expel_light::HandleEffectRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
-    }
-};
-
-// 192307
-class spell_sanctify : public AuraScript
-{
-    PrepareAuraScript(spell_sanctify);
-
-    void HandleEffectPeriodic(AuraEffect const* /*aurEff*/)
-    {
-        Position pos = GetTarget()->GetRandomPoint(GetTarget()->GetPosition(), 30.0f);
-        GetTarget()->CastSpell(pos, SPELL_SANCTIFY_AREATRIGGER, true);
-    }
-
-    void Register() override
-    {
-        OnEffectPeriodic += AuraEffectPeriodicFn(spell_sanctify::HandleEffectPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        player->CastSpell(player, 192206, true);
+        return true;
     }
 };
 
 void AddSC_boss_hyrja()
 {
-    RegisterCreatureAI(boss_hyrja);
-    RegisterCreatureAI(npc_olmyr_the_enlightened);
-    RegisterCreatureAI(npc_solsten);
-    RegisterAreaTriggerAI(at_center_eye_of_the_storm);
-    RegisterAreaTriggerAI(at_eye_of_the_storm);
-    RegisterAreaTriggerAI(at_sanctify);
-    RegisterAuraScript(spell_expel_light);
-    RegisterAuraScript(spell_sanctify);
-    RegisterCreatureAI(npc_olmyr_ghost);
-    RegisterCreatureAI(npc_solsten_ghost);
+    new boss_hyrja();
+    new npc_hyrja_defenders();
+    new spell_hyrja_empowerment_tracker();
+    new spell_hyrja_expel_light();
+    new spell_hyrja_sanctify();
+    new spell_hyrja_eye_storm_absorb();
+    new at_sanctify();
 }

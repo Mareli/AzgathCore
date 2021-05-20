@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,192 +16,670 @@
  */
 
 #include "ScriptMgr.h"
-#include "eye_of_azshara.h"
+#include "ScriptedCreature.h"
+#include "AreaTriggerTemplate.h"
+#include "AreaTriggerAI.h"
 
 enum Spells
 {
-    SPELL_CRASHING_WAVE                     = 191900,
-    SPELL_THROW_SPEAR                       = 192131,
+	// Warlord Parjesh
+	SPELL_ENERGIZE = 202143,
+	SPELL_CRASHING_WAVE_CAST = 191900,
+	SPELL_CRASHING_WAVE_DMG = 191919,
+	SPELL_CRASHING_WAVE_CHARGE = 191902,
+	SPELL_QUICKSAND = 192053,
+	SPELL_QUICKSAND_AT = 192041,
+	SPELL_QUICKSAND_5_YARDS = 192040,
+	SPELL_QUICKSAND_10_YARDS = 192042,
+	SPELL_QUICKSAND_15_YARDS = 192043,
+	SPELL_QUICKSAND_20_YARDS = 192046,
+	SPELL_QUICKSAND_25_YARDS = 192047,
+	SPELL_IMPALING_SPEAR = 191946,
+	SPELL_IMPALING_SPEAR_MARK = 192094,
+	SPELL_IMPALING_SPEAR_KNOCK = 193183,
+	SPELL_IMPALING_SPEAR_DMG = 191977,
+	SPELL_IMPALING_SPEAR_ADD = 191975,
+	SPELL_THROW_SPEAR = 192131,
+	SPELL_CALL_REINFORCEMENTS = 196563,
+	SPELL_CALL_REINFORCEMENTS_M = 192072, // Summon The melee add
+	SPELL_CALL_REINFORCEMENTS_C = 192073, // Summon the caster add
+	SPELL_ENRAGE = 197064,
+	SPELL_EMPTY_ENERGY = 202146,
 
-    SPELL_IMPALING_SPEAR_CAST               = 191946,
-    SPELL_IMPALING_SPEAR_EFFECT             = 191977,
-    SPELL_IMPALING_SPEAR_TARGET             = 192094,
+	// HateCoil ShellBreaker
+	SPELL_BELLOWING_ROAR = 192135,
+	SPELL_MOTIVATED = 197495,
 
-    SPELL_CALL_REINFORCEMENTS_SHELLBREAKER  = 192072,
-    SPELL_SHELLBREAKER_BELLOWING_ROAR       = 192135,
-
-    SPELL_CALL_REINFORCEMENTS_CRESTRIDER    = 192073,
-    SPELL_CRESTRIDER_LIGHTNING_STRIKE       = 192138,
-
-    SPELL_ENRAGE                            = 197064,
+	// HateCoil Crestrider
+	SPELL_LIGHTING_STRIKE = 192138,
+	SPELL_RESTORATION = 197502,
 };
 
-// 91784
-struct boss_warlord_parjesh : public BossAI
+enum Events
 {
-    boss_warlord_parjesh(Creature* creature) : BossAI(creature, DATA_WARLORD_PARJESH), _moveInLosTalk(false)
-    {
-        me->SetPowerType(POWER_ENERGY);
-        me->SetPower(POWER_ENERGY, 100);
-    }
+	// Warlord Parjesh
+	EVENT_CALL_REINFORCEMENTS = 1,
+	EVENT_THROW_SPEAR = 2,
+	EVENT_IMPALING_SPEAR = 3,
+	EVENT_CRASHING_WAVE = 4,
 
-    void ScheduleTasks() override
-    {
-        events.ScheduleEvent(SPELL_CRASHING_WAVE, 20000, 24000);
-        events.ScheduleEvent(SPELL_IMPALING_SPEAR_CAST, 28000, 32000);
-        events.ScheduleEvent(SPELL_THROW_SPEAR, 8000, 12000);
-        events.ScheduleEvent(SPELL_CALL_REINFORCEMENTS_SHELLBREAKER, 3000);
-    }
+	// Hatecoil ShellBreaker
+	EVENT_BELLOWING_ROAR = 5,
 
-    void MoveInLineOfSight(Unit* mover) override
-    {
-        BossAI::MoveInLineOfSight(mover);
-
-        if (!_moveInLosTalk && mover->ToPlayer() && mover->GetDistance(me) <= 85.f)
-        {
-            Talk(0);
-            _moveInLosTalk = true;
-        }
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        BossAI::JustDied(killer);
-
-        me->GetInstanceScript()->SetData(DATA_BOSS_DIED, 0);
-    }
-
-    void ExecuteEvent(uint32 eventId) override
-    {
-        switch (eventId)
-        {
-            case SPELL_CRASHING_WAVE:
-                DoCastSelf(SPELL_CRASHING_WAVE, false);
-                events.Repeat(20000, 24000);
-                break;
-            case SPELL_IMPALING_SPEAR_CAST:
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1))
-                {
-                    DoCast(target, SPELL_IMPALING_SPEAR_TARGET, true);
-                    DoCast(target, SPELL_IMPALING_SPEAR_CAST, false);
-                }
-                events.Repeat(28000, 32000);
-                break;
-            case SPELL_THROW_SPEAR:
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1))
-                    DoCast(target, SPELL_THROW_SPEAR, false);
-                events.Repeat(8000, 12000);
-                break;
-            case SPELL_CALL_REINFORCEMENTS_SHELLBREAKER:
-                DoCastSelf(RAND(SPELL_CALL_REINFORCEMENTS_SHELLBREAKER, SPELL_CALL_REINFORCEMENTS_CRESTRIDER), false);
-                events.Repeat(28000, 32000);
-                break;
-        }
-    }
-
-    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
-    {
-        if (me->HealthWillBeBelowPctDamaged(30, damage))
-        {
-            Talk(1);
-            DoCastSelf(SPELL_ENRAGE, false);
-        }
-    }
-
-private:
-    bool _moveInLosTalk;
+	// Hatecoil Crestrider
+	EVENT_LIGHTING_STRIKE = 6,
+	EVENT_RESTORATION = 7,
 };
 
-//191946
-class spell_warlord_parjesh_impaling_spear : public SpellScript
+enum Timers
 {
-    PrepareSpellScript(spell_warlord_parjesh_impaling_spear);
+	TIMER_CRASHING_WAVE = 30 * IN_MILLISECONDS,
+	TIMER_IMPALE = 5 * IN_MILLISECONDS,
+	TIMER_CALLING_REINFORCEMENTS = 5 * IN_MILLISECONDS,
+	TIMER_CALLING_REINFORCEMENTS_AFTER = 20 * IN_MILLISECONDS,
+	TIMER_THROW_SPEAR = 15 * IN_MILLISECONDS,
 
-    void HandleHitTarget(SpellEffIndex /*effIndex*/)
-    {
-        Unit* caster = GetCaster();
-        Unit* target = GetHitUnit();
+	TIMER_BELLOWING_ROAR = 10 * IN_MILLISECONDS,
+	TIMER_RESTORATION = 15 * IN_MILLISECONDS,
+	TIMER_LIGHTING_STRIKE = 3 * IN_MILLISECONDS,
+};
+enum Creatures
+{	
+	BOSS_WARLORD_PARJESH = 91784,
 
-        if (!caster || !target)
-            return;
-
-        Unit* finalTarget = target;
-        float minimalDistance = caster->GetDistance(target);
-
-        std::list<Unit*> attackableUnitList;
-        caster->GetAttackableUnitListInRange(attackableUnitList, minimalDistance);
-
-        for (Unit* unit : attackableUnitList)
-        {
-            if (unit->IsInBetween(*caster, *target) && caster->GetDistance(unit) < minimalDistance)
-            {
-                minimalDistance = caster->GetDistance(unit);
-                finalTarget = unit;
-            }
-        }
-
-        caster->CastSpell(finalTarget, SPELL_IMPALING_SPEAR_EFFECT, false);
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_warlord_parjesh_impaling_spear::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
-    }
+	NPC_HATECOIL_SHELLBREAKER = 97264,
+	NPC_HATECOIL_CRESTRIDER = 97269,
 };
 
-// 97264
-struct npc_hatecoil_shellbreaker : public ScriptedAI
+enum Says
 {
-    npc_hatecoil_shellbreaker(Creature* creature) : ScriptedAI(creature) { }
-
-    void EnterCombat(Unit* /*who*/) override
-    {
-        me->GetScheduler().Schedule(Seconds(1), Seconds(1), [](TaskContext context)
-        {
-            GetContextUnit()->CastSpell(nullptr, SPELL_CRESTRIDER_LIGHTNING_STRIKE, false);
-            context.Repeat();
-        });
-    }
+	SAY_INTRO = 0,
+	SAY_AGGRO = 1,
+	SAY_REINFORCEMENTS = 2,
+	SAY_IMPALING_SPEAR = 3,
+	SAY_ENRAGE = 4,
+	SAY_KILL = 5,
+	SAY_DEATH = 6,
 };
 
-// 97269
-struct npc_hatecoil_crestrider : public ScriptedAI
+enum SoundIds
 {
-    npc_hatecoil_crestrider(Creature* creature) : ScriptedAI(creature) { }
+	SOUND_1 = 54181,
+	SOUND_2 = 54182,
+	SOUND_3 = 0, // will update asap i will find it
+	SOUND_4 = 54185,
+	SOUND_5 = 54187,
+	SOUND_6 = 54184,
+}; 
 
-    void EnterCombat(Unit* /*who*/) override
-    {
-        me->GetScheduler().Schedule(Seconds(1), Seconds(1), [this](TaskContext context)
-        {
-            if (SelectTarget(SELECT_TARGET_RANDOM, 1))
-                GetContextUnit()->CastSpell(nullptr, SPELL_SHELLBREAKER_BELLOWING_ROAR, false);
-
-            context.Repeat();
-        });
-    }
-};
-
-// Criteria ID: 29398
-class achievement_but_you_say_hes_just_a_friend : public AchievementCriteriaScript
+enum AreaTriggers
 {
-   public:
-       achievement_but_you_say_hes_just_a_friend() : AchievementCriteriaScript("achievement_but_you_say_hes_just_a_friend") { }
-
-       bool OnCheck(Player* /*player*/, Unit* /*target*/) override
-       {
-           // TODO
-           return false;
-       }
+	AREA_CRASHING_WAVE_MOVE = 4863,
+	AREA_CRASHING_WAVE_DMG = 4888,
 };
+
+#define AGGRO_TEXT "Ah, we meet again, weakling. Now it's just you and me... and my guards!"
+#define DEATH_TEXT "You can't stop.... the storm..."
+#define INTRO_TEXT "Hmph. Intruders. They will not get far."
+#define IMPALE_TEXT "Like fish in a net."
+#define REINFORCEMENTS_TEXT "Ha, nowhere to hide!"
+#define KILL_TEXT "Useless. All of you!"
+
+//cheaters 70yards
+// encounter unit 
+// crashing wave at spawn
+
+struct checkSpec : public std::unary_function<Unit*, bool>
+{
+	checkSpec() {}
+
+	bool operator() (const Unit* pTarget)
+	{
+		Player* player = const_cast<Player*>(pTarget->ToPlayer());
+		uint32 specialization = player->GetSpecializationId();
+		return ((player->getClass() == CLASS_DRUID && specialization == TALENT_SPEC_DRUID_BEAR)
+			|| (player->getClass() == CLASS_WARRIOR && specialization == TALENT_SPEC_WARRIOR_PROTECTION)
+			|| (player->getClass() == CLASS_PALADIN && specialization == TALENT_SPEC_PALADIN_PROTECTION)
+			|| (player->getClass() == CLASS_DEATH_KNIGHT && specialization == TALENT_SPEC_DEATHKNIGHT_BLOOD)
+			|| (player->getClass() == CLASS_DEMON_HUNTER && specialization == TALENT_SPEC_DEMON_HUNTER_VENGEANCE)
+			|| (player->getClass() == CLASS_MONK && specialization == TALENT_SPEC_MONK_BREWMASTER));
+	}
+};
+
+class bfa_boss_warlord_parjesh : public CreatureScript
+{
+public:
+	bfa_boss_warlord_parjesh() : CreatureScript("bfa_boss_warlord_parjesh")
+	{}
+
+	struct bfa_boss_warlord_parjesh_AI : public ScriptedAI
+	{
+		bfa_boss_warlord_parjesh_AI(Creature* creature) : ScriptedAI(creature), summons(me)
+		{
+			introText = false;
+			instance = creature->GetInstanceScript();
+		}
+
+		SummonList summons;
+		EventMap events;
+		bool enrage;
+		bool introText;
+		InstanceScript* instance;
+
+		void Reset() override
+		{
+			me->RemoveAllAreaTriggers();
+			me->RemoveAllAuras();
+			enrage = false;
+			events.Reset();
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+			DespawnCreatures(NPC_HATECOIL_CRESTRIDER);
+			DespawnCreatures(NPC_HATECOIL_SHELLBREAKER);
+		}
+
+		void MoveInLineOfSight(Unit* who) override
+		{
+			if (!introText)
+			{
+				Map::PlayerList const& lPlayers = me->GetMap()->GetPlayers();
+				for (Map::PlayerList::const_iterator itr = lPlayers.begin(); itr != lPlayers.end(); ++itr)
+					if (Player* pPlayer = itr->GetSource())
+						if (pPlayer->IsAlive() && pPlayer->IsWithinDist(me, 80.f))
+						{
+							SelectSoundAndText(me, 3);
+							introText = true;
+							return;
+						}
+			}
+		}
+
+		void SelectSoundAndText(Creature* me, uint32  selectedTextSound = 0)
+		{
+			if (!me)
+				return;
+
+			if (me)
+			{
+				switch (selectedTextSound)
+				{
+				case 1: // Aggro
+					me->PlayDirectSound(SOUND_1);
+					me->Yell(AGGRO_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 2: // Death
+					me->PlayDirectSound(SOUND_2);
+					me->Yell(DEATH_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 3: // Intro 
+					me->PlayDirectSound(SOUND_3);
+					me->Yell(INTRO_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 4: // Reinforcements
+					me->PlayDirectSound(SOUND_4);
+					me->Yell(REINFORCEMENTS_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 5: // Spear
+					me->PlayDirectSound(SOUND_5);
+					me->Yell(IMPALE_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 6: // Kill
+					me->PlayDirectSound(SOUND_6);
+					me->Yell(KILL_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				default:
+					break;
+				}
+			}
+		}
+
+		void DamageTaken(Unit* /**/, uint32 & /**/) override
+		{
+			if (me->HealthBelowPct(30) && !enrage)
+			{
+				SelectSoundAndText(me, 2);
+				enrage = true;
+				std::ostringstream str;
+				str << "Warlord Parjesh |cFFF00000|h[Enrages]|h|r!";
+				me->TextEmote(str.str().c_str(), 0, true);
+				me->CastSpell(me, SPELL_ENRAGE, true);
+			}
+		}
+
+		void KilledUnit(Unit* unit) override
+		{
+			SelectSoundAndText(me, 6);
+		}
+
+		void JustDied(Unit* /**/) override
+		{
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+			DespawnCreatures(NPC_HATECOIL_CRESTRIDER);
+			DespawnCreatures(NPC_HATECOIL_SHELLBREAKER);
+			me->RemoveAllAreaTriggers();
+			SelectSoundAndText(me, 2);
+		}
+
+		void JustSummoned(Creature* summon) override
+		{
+
+			summons.Summon(summon);
+
+			if (summon->GetEntry() == NPC_HATECOIL_CRESTRIDER || summon->GetEntry() == NPC_HATECOIL_SHELLBREAKER)
+			{
+				summon->SetInCombatWithZone();
+			}
+		}
+
+		void DespawnCreatures(uint32 entry)
+		{
+			std::list<Creature*> creatures;
+
+			me->GetCreatureListWithEntryInGrid(creatures, entry, 250.0f);
+
+			if (creatures.empty())
+				return;
+
+			for (auto & it : creatures)
+				if (it)
+					it->DespawnOrUnsummon();
+		}
+
+		void EnterCombat(Unit*) override
+		{
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+			SelectSoundAndText(me, 1);
+			events.ScheduleEvent(EVENT_CALL_REINFORCEMENTS, TIMER_CALLING_REINFORCEMENTS);
+			events.ScheduleEvent(EVENT_THROW_SPEAR, TIMER_THROW_SPEAR);
+			events.ScheduleEvent(EVENT_CRASHING_WAVE, TIMER_CRASHING_WAVE);
+		}
+
+
+		void SpellHit(Unit* caster, SpellInfo const* spell) override
+		{
+			if (spell->Id == SPELL_CALL_REINFORCEMENTS)
+			{
+				if (me->GetMap()->IsHeroic() || me->GetMap()->IsMythic())
+				{
+					me->CastSpell(me, SPELL_CALL_REINFORCEMENTS_M, true);
+					me->CastSpell(me, SPELL_CALL_REINFORCEMENTS_C, true);
+				}
+				else
+				{
+					if (roll_chance_f(50))
+						me->CastSpell(me, SPELL_CALL_REINFORCEMENTS_C, true);
+					else
+						me->CastSpell(me, SPELL_CALL_REINFORCEMENTS_M, true);
+				}
+			}
+		}
+
+		void UpdateAI(uint32 diff) override
+		{
+			if (!UpdateVictim())
+				return;
+
+			events.Update(diff);
+
+			if (me->HasUnitState(UNIT_STATE_CASTING))
+				return;
+
+			while (uint32 eventId = events.ExecuteEvent())
+			{
+				switch (eventId)
+				{
+				case EVENT_IMPALING_SPEAR:
+				{
+					if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
+					{
+						me->CastSpell(target, SPELL_IMPALING_SPEAR_MARK);
+						me->CastSpell(target, SPELL_IMPALING_SPEAR);
+
+						std::ostringstream str;
+						str << "Warlord Parjesh targets " << (target->GetName()) <<  " with an |cFFF00000|h[Impaling Spear]|h|r! Get behind someone!";
+						me->TextEmote(str.str().c_str(), 0, true);
+					}
+					break;
+				}
+				case EVENT_CALL_REINFORCEMENTS:
+					me->CastSpell(me, SPELL_CALL_REINFORCEMENTS); // spell handle
+					events.ScheduleEvent(EVENT_CALL_REINFORCEMENTS, TIMER_CALLING_REINFORCEMENTS_AFTER);
+					break;
+				case EVENT_THROW_SPEAR:
+				{
+					std::list<Unit*> targets;
+					SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true); // 5 players, random targets, alive > non-tank spec selector Nontankselector selects the current target
+					targets.remove_if(checkSpec());
+
+					if (!targets.empty())
+						if (targets.size() >= 1)
+							targets.resize(1);
+
+					for (std::list<Unit*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
+						me->CastSpell((*itr), SPELL_THROW_SPEAR);
+					events.ScheduleEvent(EVENT_THROW_SPEAR, TIMER_THROW_SPEAR);
+					break;
+				}
+				case EVENT_CRASHING_WAVE:
+					if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
+						me->CastSpell(target, SPELL_CRASHING_WAVE_CAST, true);
+					events.ScheduleEvent(EVENT_CRASHING_WAVE, TIMER_CRASHING_WAVE);
+					events.ScheduleEvent(EVENT_IMPALING_SPEAR, TIMER_IMPALE);
+					break;
+				}
+			}
+
+			DoMeleeAttackIfReady();
+		}
+
+		void OnSpellFinished(SpellInfo const* spellInfo) override
+		{
+			switch (spellInfo->Id)
+			{
+			case SPELL_CRASHING_WAVE_CAST:
+				me->CastSpell(me->GetPositionX() + 5.0f, me->GetPositionY(), me->GetPositionZ(), SPELL_QUICKSAND_AT, true);
+				me->CastSpell(me->GetPositionX() + 10.0f, me->GetPositionY(), me->GetPositionZ(), SPELL_QUICKSAND_AT, true);
+				me->CastSpell(me->GetPositionX() + 15.0f, me->GetPositionY(), me->GetPositionZ(), SPELL_QUICKSAND_AT, true);
+				me->CastSpell(me->GetVictim(), SPELL_CRASHING_WAVE_DMG, true);
+				break;
+			}
+		}
+
+	};
+
+	CreatureAI* GetAI(Creature* creature) const override
+	{
+		return new bfa_boss_warlord_parjesh_AI(creature);
+	}
+};
+
+class bfa_npc_hatecoil_shellbreaker : public CreatureScript
+{
+public:
+	bfa_npc_hatecoil_shellbreaker() : CreatureScript("bfa_npc_hatecoil_shellbreaker")
+	{}
+
+	struct bfa_npc_hatecoil_shellbreaker_AI : public ScriptedAI
+	{
+		bfa_npc_hatecoil_shellbreaker_AI(Creature* creature) : ScriptedAI(creature)
+		{
+
+		}
+
+		EventMap events;
+
+		void Reset() override
+		{
+			events.Reset();
+		}
+
+		void EnterCombat(Unit* who)
+		{
+			events.ScheduleEvent(EVENT_BELLOWING_ROAR, TIMER_BELLOWING_ROAR);
+		}
+
+		void UpdateAI(uint32 diff) override
+		{
+			events.Update(diff);
+
+			if (!UpdateVictim())
+				return;
+
+			if (me->HasUnitState(UNIT_STATE_CASTING))
+				return;
+
+			while (uint32 eventId = events.ExecuteEvent())
+			{
+				switch (eventId)
+				{
+				case EVENT_BELLOWING_ROAR:
+					me->CastSpell(me->GetVictim(), SPELL_BELLOWING_ROAR);
+					events.ScheduleEvent(EVENT_BELLOWING_ROAR, TIMER_BELLOWING_ROAR);
+					break;
+				}
+			}
+			DoMeleeAttackIfReady();
+		}
+	};
+
+	CreatureAI* GetAI(Creature* creature) const override
+	{
+		return new bfa_npc_hatecoil_shellbreaker_AI(creature);
+	}
+};
+
+class bfa_npc_hatecoil_crestrider : public CreatureScript
+{
+public:
+	bfa_npc_hatecoil_crestrider() : CreatureScript("bfa_npc_hatecoil_crestrider")
+	{}
+
+	struct bfa_npc_hatecoil_crestrider_AI : public ScriptedAI
+	{
+		bfa_npc_hatecoil_crestrider_AI(Creature* creature) : ScriptedAI(creature)
+		{
+
+		}
+
+		EventMap events;
+
+		void EnterCombat(Unit* who)
+		{
+			events.ScheduleEvent(EVENT_LIGHTING_STRIKE, TIMER_LIGHTING_STRIKE);
+			events.ScheduleEvent(EVENT_RESTORATION, TIMER_RESTORATION);
+		}
+
+		Creature* Warlord()
+		{
+			return me->FindNearestCreature(BOSS_WARLORD_PARJESH, 300.0f, true);
+		}
+
+		Creature* Crestrider()
+		{
+			return me->FindNearestCreature(NPC_HATECOIL_CRESTRIDER, 300.0f, true);
+		}
+
+		void Reset() override
+		{
+			events.Reset();
+		}
+
+		void UpdateAI(uint32 diff) override
+		{
+			events.Update(diff);
+
+			if (!UpdateVictim())
+				return;
+
+			if (me->HasUnitState(UNIT_STATE_CASTING))
+				return;
+
+			while (uint32 eventId = events.ExecuteEvent())
+			{
+				switch (eventId)
+				{
+				case EVENT_LIGHTING_STRIKE:
+				{
+					Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, NonTankTargetSelector(me));
+
+					me->CastSpell(target, SPELL_LIGHTING_STRIKE);
+					events.ScheduleEvent(EVENT_LIGHTING_STRIKE, TIMER_LIGHTING_STRIKE);
+					break;
+				}
+				case EVENT_RESTORATION:
+				{
+					switch (urand(1, 3)) // self, crestrider, boss
+					{
+					case 1:
+						me->CastSpell(me, SPELL_RESTORATION);
+						break;
+					case 2:
+						if (Creature* crestrider = Crestrider())
+							me->CastSpell(crestrider, SPELL_RESTORATION);
+						break;
+					case 3:
+						if (Creature* warlord = Warlord())
+							me->CastSpell(warlord, SPELL_RESTORATION);
+						break;
+					}
+					events.ScheduleEvent(EVENT_RESTORATION, TIMER_RESTORATION);
+					break;
+				}
+				}
+			}
+			DoMeleeAttackIfReady();
+		}
+	};
+
+	CreatureAI* GetAI(Creature* creature) const override
+	{
+		return new bfa_npc_hatecoil_crestrider_AI(creature);
+	}
+};
+
+class bfa_spell_bellowing_roar : public SpellScriptLoader
+{
+public:
+	bfa_spell_bellowing_roar() : SpellScriptLoader("bfa_spell_bellowing_roar")
+	{}
+
+	class bfa_spell_bellowing_roar_SpellScript : public SpellScript
+	{
+	public:
+		PrepareSpellScript(bfa_spell_bellowing_roar_SpellScript);
+
+		void HandleDummy(SpellEffIndex /**/)
+		{
+			if (!GetCaster())
+				return;
+
+			if (Map* map = GetCaster()->GetMap())
+			{
+				if (map->IsHeroic())
+					GetCaster()->CastSpell(GetCaster(), SPELL_MOTIVATED, true);
+			}
+		}
+
+		void Register()
+		{
+			OnEffectHitTarget += SpellEffectFn(bfa_spell_bellowing_roar_SpellScript::HandleDummy, EFFECT_1, SPELL_EFFECT_DUMMY);
+		}
+	};
+
+	SpellScript* GetSpellScript() const
+	{
+		return new bfa_spell_bellowing_roar_SpellScript();
+	}
+};
+
+class bfa_spell_impale_spear : public SpellScriptLoader
+{
+public:
+	bfa_spell_impale_spear() : SpellScriptLoader("bfa_spell_impale_spear")
+	{}
+
+	class bfa_spell_impale_spear_SpellScript : public SpellScript
+	{
+	public:
+		PrepareSpellScript(bfa_spell_impale_spear_SpellScript);
+
+		void HandleDummy(SpellEffIndex /**/)
+		{
+			if (!GetCaster() || !GetHitUnit())
+				return;
+
+			Unit* caster = GetCaster();
+			Unit* target = GetHitUnit();
+
+			std::list<Creature*> minions;
+
+			target->GetCreatureListWithEntryInGrid(minions, NPC_HATECOIL_CRESTRIDER, 100);
+			target->GetCreatureListWithEntryInGrid(minions, NPC_HATECOIL_SHELLBREAKER, 100);
+
+			if (!minions.empty())
+			{
+				for (auto & it : minions)
+				{
+					if (it && it->IsInBetween(GetCaster(), target, 5.0f))
+					{
+						target = it;
+						break;
+					}
+				}
+			}
+
+			if (target->ToPlayer())
+				caster->CastSpell(target, SPELL_IMPALING_SPEAR_DMG, true);
+			else if (target->ToCreature())
+			{
+				if (Creature* parjesh = caster->ToCreature())
+					parjesh->AI()->Talk(SAY_IMPALING_SPEAR);
+
+				caster->CastSpell(target, SPELL_IMPALING_SPEAR_ADD, true);
+			}
+		}
+
+		void Register()
+		{
+			OnEffectHitTarget += SpellEffectFn(bfa_spell_impale_spear_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+		}
+	};
+
+	SpellScript* GetSpellScript() const
+	{
+		return new bfa_spell_impale_spear_SpellScript();
+	}
+
+};
+
+// 4887
+class bfa_at_quicksand : public AreaTriggerEntityScript
+{
+public:
+	bfa_at_quicksand() : AreaTriggerEntityScript("bfa_at_quicksand")
+	{
+
+	}
+
+	struct bfa_at_quicksand_AI : public AreaTriggerAI
+	{
+		bfa_at_quicksand_AI(AreaTrigger* at) : AreaTriggerAI(at)
+		{}
+
+		void OnUnitEnter(Unit* unit) override
+		{
+			if (!unit)
+				return;
+
+			if (unit->GetTypeId() == TYPEID_PLAYER)
+				unit->CastSpell(unit, SPELL_QUICKSAND, true);
+		}
+
+		void OnUnitExit(Unit* unit) override
+		{
+			if (!unit)
+				return;
+
+			if (unit && unit->GetTypeId() == TYPEID_PLAYER)
+				unit->RemoveAurasDueToSpell(SPELL_QUICKSAND);
+	}
+	};
+
+	AreaTriggerAI* GetAI(AreaTrigger* at) const override
+	{
+		return new bfa_at_quicksand_AI(at);
+	}
+};
+
+
 
 void AddSC_boss_warlord_parjesh()
 {
-    RegisterCreatureAI(boss_warlord_parjesh);
+	new bfa_boss_warlord_parjesh();
+	new bfa_npc_hatecoil_shellbreaker();
+	new bfa_npc_hatecoil_crestrider();
 
-    RegisterSpellScript(spell_warlord_parjesh_impaling_spear);
+	new bfa_spell_bellowing_roar();
+	new bfa_spell_impale_spear();
 
-    RegisterCreatureAI(npc_hatecoil_shellbreaker);
-    RegisterCreatureAI(npc_hatecoil_crestrider);
-
-    new achievement_but_you_say_hes_just_a_friend();
+	new bfa_at_quicksand();
 }

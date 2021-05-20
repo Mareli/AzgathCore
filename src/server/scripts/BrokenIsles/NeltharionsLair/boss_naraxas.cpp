@@ -1,518 +1,427 @@
-/*
-* Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms of the GNU General Public License as published by the
-* Free Software Foundation; either version 2 of the License, or (at your
-* option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License along
-
-* with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#include "AreaTriggerAI.h"
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
 #include "neltharions_lair.h"
-#include "CreatureTextMgr.h"
-#include "EnumClassFlag.h"
-#include "ObjectAccessor.h"
-#include "GameObject.h"
-#include "PhasingHandler.h"
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
 
-class at_rancid_maw : public AreaTriggerEntityScript
+enum Says
 {
-public:
-    at_rancid_maw() : AreaTriggerEntityScript("at_rancid_maw") { }
-
-    struct at_rancid_mawAI : AreaTriggerAI
-    {
-        at_rancid_mawAI(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
-
-        void OnUnitEnter(Unit* unit) override
-        {
-            if (unit && unit->ToPlayer())
-                unit->AddAura(188494, unit);
-        }
-
-        void OnUnitExit(Unit* unit) override
-        {
-            if (unit && unit->ToPlayer() && unit->HasAura(188494))
-                unit->RemoveAura(188494);
-        }
-    };
-
-    AreaTriggerAI* GetAI(AreaTrigger* areatrigger) const override
-    {
-        return new at_rancid_mawAI(areatrigger);
-    }
+    SAY_SUM = 0,
+    SAY_EMOTE = 1,
 };
 
-class boss_naraxas : public CreatureScript
+enum Spells
 {
-public:
-    boss_naraxas() : CreatureScript("boss_naraxas") { }
+    SPELL_INTRO_MYSTIC = 209625, //Boss 03 Intro Mystic Cast - визуально прячется?
+    SPELL_INTRO_EMERGE = 209641, //Boss 03 Intro Emerge - hit npc 105766
+    SPELL_GAIN_ENERGY = 200086,
+    SPELL_PUTRID_SKIES = 198963,
+    SPELL_FRENZY = 199775,
+    SPELL_RANCID_MAW = 205549,
+    SPELL_TOXIC_WRETCH = 210150,
+    SPELL_TOXIC_WRETCH_AT = 210159,
+    SPELL_SPIKED_TONGUE_CHANNEL = 199178,
+    SPELL_SPIKED_TONGUE_CHECK_R = 199335, //Check Radius
+    SPELL_SPIKED_TONGUE_RIDE = 205417,
+    SPELL_SPIKED_TONGUE = 199176,
+    SPELL_SPIKED_TONGUE_AT = 199187,
+    SPELL_SPIKED_TONGUE_DMG = 199705,
+    SPELL_SPIKED_TONGUE_JUMP = 204136,
+    SPELL_RAVENOUS = 199246,
+    SPELL_DEVOUR_FANATIC = 216797,
 
-    CreatureAI* GetAI(Creature* creature) const override
+    //Heroic
+    SPELL_CALL_ANGRY_CROWD = 217028,
+
+    //Tresh
+    SPELL_JUMP_VISUAL = 184483,
+    SPELL_FANATICS_SACRIFICE = 209906,
+    SPELL_RANCID_MAW_ROOT = 205609, //Movement speed reduced by 80%.
+    SPELL_FANATIC_SACRIFICE = 209902,
+
+    SPELL_HURLING_ROCKS = 199245,
+};
+
+enum eEvents
+{
+    EVENT_RANCID_MAW = 1,
+    EVENT_TOXIC_WRETCH = 2,
+    EVENT_SUM_WORMSPEAKER = 3,
+
+    //Heroic
+    EVENT_CALL_ANGRY_CROWD = 4,
+
+    EVENT_1,
+    EVENT_2,
+};
+
+enum Misc
+{
+    DATA_ACHIEVEMENT,
+};
+
+Position const speakerPos[6] =
+{
+    {3045.07f, 1807.39f, -44.13f, 3.54f},
+    {3048.89f, 1799.60f, -45.43f, 3.35f},
+    {3033.45f, 1791.01f, -61.25f, 2.44f},
+    {3024.77f, 1802.29f, -60.10f, 2.44f},
+    {2995.22f, 1808.65f, -61.29f, 1.82f},
+    {3009.69f, 1826.31f, -60.35f, 3.08f}
+};
+
+//91005
+struct boss_naraxas : public BossAI
+{
+    boss_naraxas(Creature* creature) : BossAI(creature, DATA_NARAXAS), summons(me)
     {
-        return new boss_naraxas_AI(creature);
+        SetCombatMovement(false);
+        me->SetMaxPower(POWER_MANA, 100);
+        DoCast(me, SPELL_INTRO_MYSTIC, true);
     }
 
-    enum eTexts
-    {
-        TALK_DEVOUTERS_SPAWN                 = 0,
-    };
+    SummonList summons;
+    bool introDone = false;
+    bool introDone1 = false;
+    bool stacksdone = false;
+    uint8 berserkPct = 0;
+    uint16 checkMeleeTimer = 0;
 
-    enum eEvents
+    void Reset() override
     {
-        EVENT_MANAREGEN_TICK                 = 1,
-        EVENT_SUMMON_WORMSPEACKER_DEVOUT     = 2,
-        EVENT_RANCID_MAW                     = 3,
-        EVENT_TOXIC_RETCH                    = 4,
-        EVENT_SPIKED_TONGUE                  = 5,
-        EVENT_PLAYER_DEVOURING               = 6,
-        EVENT_TO_1_PHASE                     = 7
-    };
-    
-    enum eSpells
-    {
-        SPELL_DEVOURING                      = 199705,
-        SPELL_DEVOURING_BUFF                 = 199246,
-        SPELL_RANCID_MAW                     = 205549,
-        SPELL_TOXIC_RETCH                    = 210150,
-        SPELL_SPIKED_TONGUE                  = 199178,
-        SPELL_SPIKED_TONGUE_VEHICLE          = 205418,
-        SPELL_PUTRID_SKIES                   = 198963
-    };
+        _Reset();
+        summons.DespawnAll();
+        me->RemoveAurasDueToSpell(SPELL_GAIN_ENERGY);
+        me->RemoveAurasDueToSpell(SPELL_FRENZY);
+        me->RemoveAurasDueToSpell(SPELL_RAVENOUS);
+        me->SetPower(POWER_MANA, 0);
+        stacksdone = false;
+        berserkPct = 21;
+        checkMeleeTimer = 2000;
 
-    struct boss_naraxas_AI : public BossAI
+        if (auto sum = me->SummonCreature(NPC_ANGRY_CROWD, 3034.80f, 1815.17f, -32.28f))
+            sum->SetReactState(REACT_PASSIVE);
+    }
+
+    void EnterCombat(Unit* /*who*/) override
     {
-        boss_naraxas_AI(Creature* creature) : BossAI(creature, DATA_NARAXAS) 
+        _EnterCombat();
+        DoCast(me, SPELL_GAIN_ENERGY, true);
+
+        events.RescheduleEvent(EVENT_RANCID_MAW, 8000);
+        events.RescheduleEvent(EVENT_TOXIC_WRETCH, 12000);
+        events.RescheduleEvent(EVENT_SUM_WORMSPEAKER, 7000);
+
+        //Heroic
+        events.RescheduleEvent(EVENT_CALL_ANGRY_CROWD, 4000); //Не повторяется
+    }
+
+    void EnterEvadeMode(EvadeReason w)
+    {
+        _DespawnAtEvade(15);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        _JustDied();
+        summons.DespawnAll();
+
+        if (auto target = me->FindNearestCreature(100700, 50, true))
+            target->CastSpell(target, 208691); //conversation
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        switch (type)
         {
-            me->SetReactState(REACT_DEFENSIVE);
-            me->AddUnitState(UNIT_STATE_ROOT);
+        case DATA_ACHIEVEMENT:
+            return stacksdone ? 1 : 0;
+        }
+        return 0;
+    }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (!who->IsPlayer())
+            return;
+
+        if (!introDone && me->IsWithinDistInMap(who, 115.0f))
+        {
+            who->CastSpell(who, 209582, true);
+            introDone = true;
         }
 
-        EventMap events;
-        InstanceScript* instance;
-        bool manaRegenerated = false;
-        Unit* currentDevout = nullptr;
-        uint8 mawRepeating = urand(10, 14);
-        TempSummon* wormspeakerDevout1 = nullptr;
-        TempSummon* wormspeakerDevout2 = nullptr;
-        bool isInSecondPhase = false;
-
-        void InitializeAI() override
+        if (!introDone1 && me->IsWithinDistInMap(who, 80.0f))
         {
-            instance = me->GetInstanceScript();
-            me->SetPower(POWER_MANA, 0);
-        }
-
-        void Reset() override
-        {
-            _Reset();
-            events.Reset();
-            me->SetPower(POWER_MANA, 0);
-
-            if (instance)
-                instance->SetData(DATA_NARAXAS, NOT_STARTED);
-        }
-
-        void EnterCombat(Unit* /*who*/) override
-        {
-            me->SetInCombatWithZone();
-            me->SetPower(POWER_MANA, 0);
-            me->RemoveAllAuras();
-            
-            events.ScheduleEvent(EVENT_MANAREGEN_TICK, 1s);
-            events.ScheduleEvent(EVENT_SUMMON_WORMSPEACKER_DEVOUT, 5s);
-            events.ScheduleEvent(EVENT_RANCID_MAW, 4s);
-            events.ScheduleEvent(EVENT_TOXIC_RETCH, 7s);
-
-            if (instance)
+            me->CastSpell(me, 209629, true);
+            me->RemoveAurasDueToSpell(SPELL_INTRO_MYSTIC);
+            if (Creature* target = me->FindNearestCreature(105766, 30, true))
             {
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
-                instance->SetData(DATA_NARAXAS, IN_PROGRESS);
+                me->CastSpell(target, SPELL_INTRO_EMERGE);
+                target->SetVisible(false);
+            }
+            introDone1 = true;
+        }
+    }
+
+    void JustSummoned(Creature* summon) override
+    {
+        summons.Summon(summon);
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage)
+    {
+        if (me->HealthBelowPct(berserkPct))
+        {
+            berserkPct = 0;
+            DoCast(me, SPELL_FRENZY, true);
+        }
+
+        if (damage >= me->GetHealth())
+        {
+            if (Aura const* aura = me->GetAura(SPELL_RAVENOUS))
+            {
+                if (aura->GetStackAmount() >= 6)
+                    stacksdone = true;
             }
         }
+    }
 
-        void MoveInLineOfSight(Unit* who) override
+    void SpellHit(Unit* caster, const SpellInfo* spell) override
+    {
+        switch (spell->Id)
         {
-            if (!isInSecondPhase && who != currentDevout && who->ToCreature() && who->ToCreature()->GetEntry() == NPC_WORMSPEACKER_DEVOUT && me->IsWithinDistInMap(who, 5.0f))
+        case SPELL_TOXIC_WRETCH:
+        {
+            Position pos;
+            float dist;
+            for (uint8 i = 0; i < 12; ++i)
             {
-                currentDevout = who;
-                currentDevout->CastSpell(me, SPELL_SPIKED_TONGUE_VEHICLE, false);
-                me->CastSpell(who, SPELL_DEVOURING, false);
-                me->AddAura(SPELL_DEVOURING_BUFF, me);
-                who->ToCreature()->DespawnOrUnsummon();
+                dist = frand(10, 20);
+                me->GetNearPosition(dist, frand(-2.0f, 2.0f));
+                me->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_TOXIC_WRETCH_AT, true);
+            }
+            break;
+        }
+        case SPELL_FANATIC_SACRIFICE: //Trash Serach Boss
+            DoCast(caster, SPELL_DEVOUR_FANATIC);
+            break;
+        case SPELL_SPIKED_TONGUE:
+            DoCastVictim(SPELL_SPIKED_TONGUE_CHANNEL, true);
+            DoCast(me, SPELL_SPIKED_TONGUE_AT, true);
+            break;
+        }
+    }
+
+    void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+    {
+        if (spell->Id == SPELL_CALL_ANGRY_CROWD)
+            target->CastSpell(target, SPELL_HURLING_ROCKS, true);
+
+        if (spell->Id == SPELL_SPIKED_TONGUE_CHECK_R) //Check Radius
+        {
+            if (me->IsInCombat() && me->GetDistance(target) <= 10.0f)
+            {
+                target->RemoveAurasDueToSpell(SPELL_SPIKED_TONGUE_CHANNEL);
+                me->RemoveDynObject(SPELL_SPIKED_TONGUE_AT);
+                DoCast(target, SPELL_SPIKED_TONGUE_RIDE, true);
             }
         }
-
-        void JustDied(Unit* /*unit*/) override
-        {
-            if (GameObject* barrier = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_BARRIER_NARAXAS)))
-                PhasingHandler::AddPhase(barrier, 3, true);
-
-            if (GameObject* naraxasLoot = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_NARAXAS_LOOT)))
-                naraxasLoot->RemoveFlag(GameObjectFlags(GO_FLAG_LOCKED | GO_FLAG_NOT_SELECTABLE | GO_FLAG_NODESPAWN));
-
-            instance->SetData(DATA_NARAXAS, DONE);
-        }
-
-        void EnterEvadeMode(EvadeReason) override
-        {
-            //BossAI::EnterEvadeMode();
-            if (instance)
-            {
-                instance->SetData(DATA_NARAXAS, FAIL);
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-            }
-            manaRegenerated = false;
-            me->RemoveAllAuras();
-            me->SetPower(POWER_MANA, 0);
-            me->SetHealth(me->GetMaxHealth());
-            me->CombatStop();
-            currentDevout = nullptr;
-            mawRepeating = urand(10, 14);
-            wormspeakerDevout1 = nullptr;
-            wormspeakerDevout2 = nullptr;
-            isInSecondPhase = false;
-            while(Creature* _devout = me->FindNearestCreature(NPC_WORMSPEACKER_DEVOUT, 100.0f,true))
-                _devout->DespawnOrUnsummon();
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (!UpdateVictim())
-                return;
-
-            if (!me->SelectNearestPlayer(ATTACK_DISTANCE) && me->IsInCombat() && !isInSecondPhase)
-                me->CastSpell((Unit*)nullptr, SPELL_PUTRID_SKIES, false);
-
-            events.Update(diff);
-
-            switch (events.ExecuteEvent())
-            {
-                case EVENT_TO_1_PHASE:
-                    isInSecondPhase = false;
-                    manaRegenerated = false;
-                    me->SetPower(POWER_MANA, 0);
-                    events.ScheduleEvent(EVENT_MANAREGEN_TICK, 1s);
-                    events.ScheduleEvent(EVENT_SUMMON_WORMSPEACKER_DEVOUT, 5s);
-                    events.ScheduleEvent(EVENT_RANCID_MAW, 4s);
-                    events.ScheduleEvent(EVENT_TOXIC_RETCH, 7s);
-                    break;
-                case EVENT_MANAREGEN_TICK:
-                    if (!manaRegenerated && me->GetPower(POWER_MANA) < me->GetMaxPower(POWER_MANA) && !isInSecondPhase)
-                    {
-                        if (instance)
-                        {
-                            float manaRegenMod = 4;
-                            me->SetPower(POWER_MANA, me->GetPower(POWER_MANA)+(me->GetMaxPower(POWER_MANA)*manaRegenMod/100));
-
-                            if (me->GetPower(POWER_MANA) == me->GetMaxPower(POWER_MANA))
-                            {
-                                manaRegenerated = true;
-                                events.ScheduleEvent(EVENT_SPIKED_TONGUE, 3s);
-                            }
-                            else
-                                events.ScheduleEvent(EVENT_MANAREGEN_TICK, 2s);
-                        }
-                    }
-                    break;
-                case EVENT_SUMMON_WORMSPEACKER_DEVOUT:
-                    if (!isInSecondPhase)
-                    {
-                        Talk(TALK_DEVOUTERS_SPAWN);
-                        wormspeakerDevout1 = me->SummonCreature(NPC_WORMSPEACKER_DEVOUT, Position(WormspeakerDevoutPositions[0][0], WormspeakerDevoutPositions[0][1], WormspeakerDevoutPositions[0][2], WormspeakerDevoutPositions[0][3]), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 25000);
-                        wormspeakerDevout2 = me->SummonCreature(NPC_WORMSPEACKER_DEVOUT, Position(WormspeakerDevoutPositions[1][0], WormspeakerDevoutPositions[1][1], WormspeakerDevoutPositions[1][2], WormspeakerDevoutPositions[1][3]), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 25000);
-
-                        if (wormspeakerDevout1)
-                            wormspeakerDevout1->GetMotionMaster()->MoveFollow(me, 5.0f, (float)M_PI/2.f, MOTION_SLOT_ACTIVE);
-
-                        if (wormspeakerDevout2)
-                            wormspeakerDevout2->GetMotionMaster()->MoveFollow(me, 5.0f, (float)M_PI/2.f, MOTION_SLOT_ACTIVE);
-
-                        events.ScheduleEvent(EVENT_SUMMON_WORMSPEACKER_DEVOUT, 25s, 30s);
-                    }
-                    break;
-                case EVENT_RANCID_MAW:
-                    if (!isInSecondPhase)
-                    {
-                        me->CastSpell(me, SPELL_RANCID_MAW, false);
-                        if (me->GetHealthPct() <= 20)
-                            mawRepeating = 6;
-                        events.ScheduleEvent(EVENT_RANCID_MAW, 10s, 14s);
-                    }
-                    break;
-                case EVENT_TOXIC_RETCH:
-                    if (!isInSecondPhase)
-                    {
-                        me->CastSpell(me, SPELL_TOXIC_RETCH, false);
-                        events.ScheduleEvent(EVENT_TOXIC_RETCH, 9s, 11s);
-                    }
-                    break;
-                case EVENT_SPIKED_TONGUE:
-                    isInSecondPhase = true;
-                    if (me->GetVictim())
-                    {
-                        me->CastSpell(me->GetVictim(), SPELL_SPIKED_TONGUE, false);
-                        events.ScheduleEvent(EVENT_PLAYER_DEVOURING, 6s + 100ms);
-                    }
-                    break;
-                case EVENT_PLAYER_DEVOURING:
-                    if (me->GetVictim() && me->IsWithinDistInMap(me->GetVictim(), 30.0f))
-                    {
-                        me->GetVictim()->CastSpell(me, SPELL_SPIKED_TONGUE_VEHICLE, false);
-                        me->CastSpell(me->GetVictim(), SPELL_DEVOURING, false);
-                        me->AddAura(SPELL_DEVOURING_BUFF, me);
-                    }
-                    events.ScheduleEvent(EVENT_TO_1_PHASE, 3s + 500ms);
-                    break;
-            }
-
-            DoMeleeAttackIfReady();
-        }
-    }; 
-};
-
-// 101075
-class mob_wormspeaker_devout : public CreatureScript
-{
-public:
-    mob_wormspeaker_devout() : CreatureScript("mob_wormspeaker_devout") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new mob_wormspeaker_devout_AI(creature);
     }
 
-    enum eSpells { };
-
-    struct mob_wormspeaker_devout_AI : public ScriptedAI
+    void PassengerBoarded(Unit* who, int8 /*seatId*/, bool apply) override
     {
-        InstanceScript* instance;
-        bool phraseSayd = false;
+        if (!who || !me->IsInCombat() || !who->IsAlive())
+            return;
 
-        mob_wormspeaker_devout_AI(Creature* creature) : ScriptedAI(creature) 
+        if (apply)
         {
-            me->SetReactState(REACT_PASSIVE);
-            instance = me->GetInstanceScript();
+            DoCast(who, SPELL_SPIKED_TONGUE_DMG, true);
+            me->CastSpell(me, SPELL_RAVENOUS, true);
         }
-
-        void MoveInLineOfSight(Unit* who) override
+        else
         {
-            if (!phraseSayd && who->ToCreature() && who->ToCreature()->GetEntry() == NPC_NARAXAS && me->IsWithinDistInMap(who, 7.0f))
+            if (!who->IsPlayer())
+                who->Kill(who);
+            else
             {
-                phraseSayd = true;
-                Talk(0);
+                Position pos = { 3013.55f + frand(-1.5f, 1.5f), 1807.02f + frand(-1.5f, 1.5f), -60.5f };
+                who->CastSpell(pos, SPELL_SPIKED_TONGUE_JUMP, true);
             }
         }
-    };
-};
-
-// 109137
-class mob_angry_crowd : public CreatureScript
-{
-public:
-    mob_angry_crowd() : CreatureScript("mob_angry_crowd") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new mob_angry_crowd_AI(creature);
     }
 
-    struct mob_angry_crowd_AI : public ScriptedAI
+    void UpdateAI(uint32 diff) override
     {
-        
-        mob_angry_crowd_AI(Creature* creature) : ScriptedAI(creature) 
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING) || me->HasAura(SPELL_SPIKED_TONGUE_CHANNEL))
+            return;
+
+        if (checkMeleeTimer <= diff)
         {
-            me->SetReactState(REACT_PASSIVE);
+            if (me->GetVictim())
+                if (!me->IsWithinMeleeRange(me->GetVictim()))
+                    DoCast(SPELL_PUTRID_SKIES);
+
+            checkMeleeTimer = 2000;
         }
-    };
-};
+        else
+            checkMeleeTimer -= diff;
 
-// 113537
-class mob_emberhusk_dominator : public CreatureScript
-{
-public:
-    mob_emberhusk_dominator() : CreatureScript("mob_emberhusk_dominator") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new mob_emberhusk_dominator_AI(creature);
-    }
-
-    struct mob_emberhusk_dominator_AI : public ScriptedAI
-    {
-        
-        mob_emberhusk_dominator_AI(Creature* creature) : ScriptedAI(creature) 
+        if (uint32 eventId = events.ExecuteEvent())
         {
-            me->SetReactState(REACT_AGGRESSIVE);
-        }
-    };
-};
-
-// 205549
-class spell_naraxas_rancid_maw : public SpellScriptLoader
-{
-public:
-    spell_naraxas_rancid_maw() : SpellScriptLoader("spell_naraxas_rancid_maw") { }
-
-    class spell_naraxas_rancid_maw_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_naraxas_rancid_maw_SpellScript);
-
-        void CastTriggerSpell()
-        {
-            if (Unit* caster = GetCaster())
-                    caster->CastSpell(caster->GetVictim(), 188493, false);
-        }
-
-        void Register()
-        {
-            AfterCast += SpellCastFn(spell_naraxas_rancid_maw_SpellScript::CastTriggerSpell);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_naraxas_rancid_maw_SpellScript();
-    }
-};
-
-class at_toxic_retch : public AreaTriggerEntityScript
-{
-public:
-    at_toxic_retch() : AreaTriggerEntityScript("at_toxic_retch") { }
-
-    struct at_toxic_retchAI : AreaTriggerAI
-    {
-        at_toxic_retchAI(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
-
-        void OnUnitEnter(Unit* unit) override
-        {
-            if (unit && unit->ToPlayer())
-                unit->AddAura(210166, unit);
-        }
-
-        void OnUnitExit(Unit* unit) override
-        {
-            if (unit && unit->ToPlayer() && unit->HasAura(210166))
-                unit->RemoveAura(210166);
-        }
-    };
-
-    AreaTriggerAI* GetAI(AreaTrigger* areatrigger) const override
-    {
-        return new at_toxic_retchAI(areatrigger);
-    }
-};
-
-// 210150
-class spell_naraxas_toxic_retch : public SpellScriptLoader
-{
-public:
-    spell_naraxas_toxic_retch() : SpellScriptLoader("spell_naraxas_toxic_retch") { }
-
-    class spell_naraxas_toxic_retch_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_naraxas_toxic_retch_SpellScript);
-
-        void CastTriggerSpell()
-        {
-            if (Unit* caster = GetCaster())
-                caster->CastSpell(caster, 210164, false);
-        }
-
-        void Register()
-        {
-            AfterCast += SpellCastFn(spell_naraxas_toxic_retch_SpellScript::CastTriggerSpell);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_naraxas_toxic_retch_SpellScript();
-    }
-};
-
-// 199176
-class spell_naraxas_spiked_tongue : public SpellScriptLoader
-{
-public:
-    spell_naraxas_spiked_tongue() : SpellScriptLoader("spell_naraxas_spiked_tongue") { }
-
-    class spell_naraxas_spiked_tongue_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_naraxas_spiked_tongue_SpellScript);
-
-        void CastTriggerSpell()
-        {
-            if (Unit* caster = GetCaster())
-                if (Unit* victim = caster->GetVictim())
-                    caster->CastSpell(victim, 199178, false);
-        }
-
-        void Register()
-        {
-            AfterCast += SpellCastFn(spell_naraxas_spiked_tongue_SpellScript::CastTriggerSpell);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_naraxas_spiked_tongue_SpellScript();
-    }
-};
-
-// -199705, -205418
-class spell_naraxas_devourging_aura : public SpellScriptLoader
-{
-    public:
-        spell_naraxas_devourging_aura() : SpellScriptLoader("spell_naraxas_devourging_aura") { }
-
-        class spell_naraxas_devourging_aura_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_naraxas_devourging_aura_AuraScript);
-
-            void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            switch (eventId)
             {
-                if (Unit* target = GetTarget())
+            case EVENT_RANCID_MAW:
+                DoCast(SPELL_RANCID_MAW);
+                events.RescheduleEvent(EVENT_RANCID_MAW, 18000);
+                break;
+            case EVENT_TOXIC_WRETCH:
+                DoCast(SPELL_TOXIC_WRETCH);
+                events.RescheduleEvent(EVENT_TOXIC_WRETCH, 14000);
+                break;
+            case EVENT_SUM_WORMSPEAKER:
+                Talk(SAY_SUM);
+                for (uint8 i = 0; i < 2; ++i)
                 {
-                    if (target->ToCreature())
-                        target->ToCreature()->DespawnOrUnsummon();
+                    if (auto sum = me->SummonCreature(NPC_WORMSPEAKER_DEVOUT, speakerPos[i]))
+                        sum->AI()->DoAction(i);
                 }
+                events.RescheduleEvent(EVENT_SUM_WORMSPEAKER, 64000);
+                break;
+            case EVENT_CALL_ANGRY_CROWD:
+                DoCast(SPELL_CALL_ANGRY_CROWD);
+                break;
             }
-
-            void Register() override
-            {
-                AfterEffectRemove += AuraEffectRemoveFn(spell_naraxas_devourging_aura_AuraScript::HandleRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_naraxas_devourging_aura_AuraScript();
         }
+        DoMeleeAttackIfReady();
+    }
+};
+
+//101075
+struct npc_naraxas_wormspeaker_devout : public ScriptedAI
+{
+    npc_naraxas_wormspeaker_devout(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    EventMap events;
+    uint8 jumpIdx = 0;
+
+    void Reset() override
+    {
+        events.Reset();
+    }
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        DoZoneInCombat(me, 120.0f);
+        events.RescheduleEvent(EVENT_1, 1000);
+    }
+
+    void DoAction(int32 const actionId)
+    {
+        jumpIdx = actionId;
+        me->SetHomePosition(speakerPos[jumpIdx + 4]);
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type == EFFECT_MOTION_TYPE)
+        {
+            if (id == 0)
+            {
+                me->RemoveAurasDueToSpell(SPELL_JUMP_VISUAL);
+                events.RescheduleEvent(EVENT_2, 1000);
+            }
+        }
+        if (type == POINT_MOTION_TYPE && id == 1)
+        {
+            me->GetMotionMaster()->Clear();
+
+            if (me->GetDistance(speakerPos[jumpIdx + 4]) > 3.0f)
+                events.RescheduleEvent(EVENT_2, 1000);
+            else
+                DoCast(me, SPELL_FANATICS_SACRIFICE, true);
+        }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        events.Update(diff);
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_1:
+                DoCast(me, SPELL_JUMP_VISUAL, true);
+                me->GetMotionMaster()->MoveJump(speakerPos[jumpIdx + 2], 15.0f, 15.0f, 0);
+                break;
+            case EVENT_2:
+                me->GetMotionMaster()->MovePoint(1, speakerPos[jumpIdx + 4]);
+                break;
+            }
+        }
+    }
+};
+
+//200086
+class spell_naraxas_gain_energy : public AuraScript
+{
+    PrepareAuraScript(spell_naraxas_gain_energy);
+
+    void OnTick(AuraEffect const* aurEff)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        if (caster->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (caster->GetPower(POWER_MANA) >= 100)
+        {
+            caster->CastSpell(caster, SPELL_SPIKED_TONGUE);
+
+            if (Creature* target = caster->FindNearestCreature(91005, 50, true))
+                target->AI()->Talk(SAY_EMOTE);
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_naraxas_gain_energy::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_ENERGIZE);
+    }
+};
+
+//
+class achievement_cant_eat_just_one : public AchievementCriteriaScript
+{
+public:
+    achievement_cant_eat_just_one() : AchievementCriteriaScript("achievement_cant_eat_just_one") { }
+
+    bool OnCheck(Player* /*player*/, Unit* target) override
+    {
+        if (!target)
+            return false;
+
+        if (Creature* boss = target->ToCreature())
+            if (boss->IsAIEnabled && (boss->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC || boss->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE))
+                if (boss->AI()->GetData(DATA_ACHIEVEMENT))
+                    return true;
+
+        return false;
+    }
 };
 
 void AddSC_boss_naraxas()
 {
-    new boss_naraxas();
-    new mob_wormspeaker_devout();
-    new spell_naraxas_rancid_maw();
-    new spell_naraxas_toxic_retch();
-    new spell_naraxas_spiked_tongue();
-    new spell_naraxas_devourging_aura();
-    new at_toxic_retch();
-    new at_rancid_maw();
-    new mob_angry_crowd();
-    new mob_emberhusk_dominator();
+    RegisterCreatureAI(boss_naraxas);
+    RegisterCreatureAI(npc_naraxas_wormspeaker_devout);
+    RegisterAuraScript(spell_naraxas_gain_energy);
+    new achievement_cant_eat_just_one();
 }

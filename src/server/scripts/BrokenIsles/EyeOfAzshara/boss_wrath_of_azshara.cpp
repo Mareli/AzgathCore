@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,429 +20,778 @@
 #include "MoveSplineInit.h"
 #include <G3D/Vector3.h>
 #include "ScriptMgr.h"
-#include "eye_of_azshara.h"
+#include "Vehicle.h"
 
-enum SpellIds
+enum Spells
 {
-    SPELL_MASSIVE_DELUGE            = 192617, // On the tank
+	// Wrath of Azshara
+	SPELL_ARCANE_BOMB = 192706,
+	SPELL_ARCANE_BOMB_DMG = 192708,
+	SPELL_ARCANE_BOMB_VISUAL = 192711,
+	SPELL_SURGING_WATERS = 192633,
+	SPELL_MASSIVE_DELUGE = 192617,
+	SPELL_MASSIVE_DELUGE_DMG = 192619,
 
-    SPELL_MYSTIC_TORNADO            = 192680, // The one with implicit targets
-    SPELL_MYSTIC_TORNADO_AT         = 192673, // + Visual aura, the AT has random movement
-    SPELL_MYSTIC_TORNADO_DAMAGE     = 192675, // + Knock Back (cast by the AT)
-    SPELL_MYSTIC_TORNADO_MISSILE    = 192681,
+	SPELL_MYSTIC_TORNADO = 192680,
+	SPELL_MYSTIC_TORNADO_SUMMON = 192681,
 
-    SPELL_ARCANE_BOMB               = 192705, // The one with implicit targets, NOT the tank
-    SPELL_ARCANE_BOMB_VEHICLE       = 192706, // The one giving the debuff to dispel (+ ride vehicle)
-    SPELL_ARCANE_BOMB_DAMAGE        = 192708, // Cast by the arcane bomb NPC on itself
-    SPELL_ARCANE_BOMB_FOLLOW        = 192711, // Cast by the arcane bomb NPC on the player
-    SPELL_RIDE_VEHICLE_HARDCODED    = 46598,
+	SPELL_CRUSHING_DEPTHS = 197365,
+	SPELL_CRY_OF_WRATH = 192985,
+	SPELL_RAGING_STORMS = 192696,
+	SPELL_HEAVING_SANDS = 197165,
 
-    SPELL_RAGING_STORMS             = 192696, // Cast when no one is in melee range
+	SPELL_TIDAL_WAVE_AURA = 192940,
+	SPELL_TIDAL_WAVE_DUMMY = 192793,
+	SPELL_LIGHTING_STRIKES_AURA = 192737,
+	SPELL_LIGHTING_STRIKES_TARGET = 192966,
+	SPELL_LIGHTING_STRIKES_DMG = 192796,
 
-    // Mythic
-    SPELL_CRUSHING_DEPTHS           = 197365, // Mythic only, random target
-    SPELL_FROST_RESONANCE           = 196666,
-    SPELL_MAGIC_RESONANCE           = 196665,
-    // End Mythic
+	SPELL_TIDAL_WAVE_AURA_CRY = 197219,
+	SPELL_TIDAL_WAVE_CRY_DUMMY = 192797,
 
-    SPELL_TIDAL_WAVE_AT             = 192753,
-    SPELL_TIDAL_WAVE_DAMAGE         = 192801,
+	SPELL_LIGHTING_STRIKES_AURA_CRY = 192989,
+	SPELL_RIDE_VEHICLE = 46598,
 
-    SPELL_SURGING_WATERS_AT         = 192632, // Cast once, spawns AT
-    SPELL_SURGING_WATERS_DAMAGE     = 192633, // Cast by the AT upon entering
+	SPELL_VIOLET_WINDS_AURA = 191805,
+	SPELL_VIOLET_WINDS_AURA_CRY = 192649,
+	SPELL_VIOLET_WINDS_DEBUFF = 191797,
+	SPELL_VIOLET_WINDS_AREA = 191794,
 
-    SPELL_CRY_OF_WRATH              = 192985, // When reaching 10%
+	// Crushing Wave
+	SPELL_FROST_RESONANCE = 196666,
 
-    SPELL_TIDESTONE_OF_GOLGANNETH   = 241423,
+	// Mystic Tornado   
+	SPELL_MYSTIC_TORNADO_VISUAL = 192673,
+	SPELL_MYSTIC_TORNADO_DMG = 192675,
+	SPELL_MAGIC_RESONANCE = 196665,
 
-    // Spells for the 4 naga guardians
-    SPELL_STORM_CONDUIT             = 193196, // Visual from the naga to the boss
+	// Tidal Wave
+	SPELL_TIDAL_WAVE_TARGET = 192792,
+	SPELL_TIDAL_WAVE_DMG = 192801,
+	SPELL_TIDAL_WAVE_VISUAL = 192753,
 
-    SPELL_LIGHTNING_BLAST           = 196516,
-    SPELL_AQUA_SPOUT                = 196027,
-    SPELL_POLYMORPH_FISH            = 197105,
-    SPELL_MAGIC_BINDING             = 196515,
-    SPELL_STORM                     = 196870
+	// Ritualist Spells
+	SPELL_MAGIC_BINDING = 196515,
+	SPELL_POLYMORPH_FISH = 197105,
+	SPELL_AQUA_SPOT = 196027,
+	SPELL_STORM = 196870,
+	SPELL_LIGHTING_BLAST = 196516,
+	SPELL_STORM_CONDUIT = 193196,
 };
 
-enum CreatureIds
+enum Events
 {
-    NPC_MYSTIC_TORNADO              = 97673,
-    NPC_TIDAL_WAVE                  = 97739,
-    NPC_ARCANE_BOMB                 = 97691
+	EVENT_ARCANE_BOMB = 1,
+	EVENT_CRUSHING_DEPTHS = 2,
+	EVENT_MASSIVE_DELUGE = 3,
+	EVENT_MYSTIC_TORNADO = 4,
+	EVENT_RAGING_STORMS = 5,
+
+	// Mystic Tornado
+	EVENT_CHECK_DISTANCE = 6,
+	EVENT_FIND_POSITION = 7,
+	EVENT_BORN = 8,
+
+	// Tidal Wave
+	EVENT_TIDAL_WAVE = 9,
 };
 
-struct boss_wrath_of_azshara : public BossAI
+enum Adds
 {
-    boss_wrath_of_azshara(Creature* creature) : BossAI(creature, DATA_WRATH_OF_AZSHARA), _cryOfWrath(false) { }
+	BOSS_WRATH_OF_AZSHARA = 96028,
 
-    void Reset() override
-    {
-        BossAI::Reset();
-
-        SetCombatMovement(false);
-
-        _cryOfWrath = false;
-
-        me->GetScheduler().Schedule(1s, [](TaskContext context)
-        {
-            GetContextUnit()->SetHealth(GetContextUnit()->CountPctFromMaxHealth(20));
-            GetContextCreature()->LowerPlayerDamageReq(GetContextUnit()->CountPctFromMaxHealth(80));
-            GetContextUnit()->ToCreature()->DisableHealthRegen();
-        });
-
-        me->RemoveAllAreaTriggers();
-
-        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_FROST_RESONANCE);
-        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MAGIC_RESONANCE);
-
-        me->GetInstanceScript()->SetData(DATA_CRY_OF_WRATH, 1); // Trigger Violent Winds every 90s
-    }
-
-    void EnterCombat(Unit* who) override
-    {
-        BossAI::EnterCombat(who);
-
-        DoCastSelf(SPELL_SURGING_WATERS_AT, true);
-    }
-
-    void DamageTaken(Unit* /*attacker*/, uint32& damage) override
-    {
-        if (me->HealthWillBeBelowPctDamaged(10, damage))
-        {
-            Talk(1);
-            me->InterruptNonMeleeSpells(true);
-            DoCastSelf(SPELL_CRY_OF_WRATH, false);
-            _cryOfWrath = true;
-            me->GetInstanceScript()->SetData(DATA_CRY_OF_WRATH, 0); // Trigger Violent Winds every 10s
-        }
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        BossAI::JustDied(killer);
-
-        DoCastSelf(SPELL_TIDESTONE_OF_GOLGANNETH, true);
-
-        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_FROST_RESONANCE);
-        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MAGIC_RESONANCE);
-
-        me->GetInstanceScript()->SetData(DATA_CRY_OF_WRATH, 2); // Remove Violent Winds
-
-        me->RemoveAllAreaTriggers();
-    }
-
-    void ScheduleTasks() override
-    {
-        events.ScheduleEvent(SPELL_MASSIVE_DELUGE, 22s);
-        events.ScheduleEvent(SPELL_RAGING_STORMS, 5s);
-        events.ScheduleEvent(SPELL_TIDAL_WAVE_AT, 10s);
-        events.ScheduleEvent(SPELL_MYSTIC_TORNADO, 20s);
-        events.ScheduleEvent(SPELL_ARCANE_BOMB, 30s, 40s);
-
-        if (IsHeroic())
-            events.ScheduleEvent(SPELL_CRUSHING_DEPTHS, 25s, 45s);
-    }
-
-    void ExecuteEvent(uint32 eventId) override
-    {
-        switch (eventId)
-        {
-            case SPELL_MASSIVE_DELUGE:
-            {
-                if (Unit* target = SelectTarget(SELECT_TARGET_TOPAGGRO))
-                    DoCast(target, SPELL_MASSIVE_DELUGE, false);
-                events.Repeat(25s);
-                break;
-            }
-            case SPELL_RAGING_STORMS:
-            {
-                bool hasPlayerInRange = false;
-                Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
-                if (!playerList.isEmpty())
-                {
-                    for (Map::PlayerList::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
-                    {
-                        if (me->IsWithinMeleeRange(itr->GetSource()))
-                        {
-                            hasPlayerInRange = true;
-                            break;
-                        }
-                    }
-
-                    if (!hasPlayerInRange)
-                        DoCastSelf(SPELL_RAGING_STORMS, true);
-                }
-
-                events.Repeat(2s);
-                break;
-            }
-            case SPELL_MYSTIC_TORNADO:
-            {
-                Talk(2);
-                DoCastSelf(SPELL_MYSTIC_TORNADO, false);
-                events.Repeat(20s, 30s);
-                break;
-            }
-            case SPELL_TIDAL_WAVE_AT:
-            {
-                DoCastSelf(SPELL_TIDAL_WAVE_AT, true);
-                if (_cryOfWrath)
-                    events.Repeat(5s);
-                else
-                    events.Repeat(10s, 15s);
-                break;
-            }
-            case SPELL_ARCANE_BOMB:
-                DoCastSelf(SPELL_ARCANE_BOMB, true);
-                events.Repeat(55s, 60s);
-                break;
-            case SPELL_CRUSHING_DEPTHS:
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1, 0.0f, true))
-                    DoCast(target, SPELL_CRUSHING_DEPTHS, false);
-                events.Repeat(35s, 45s);
-                break;
-        }
-    }
-
-private:
-    bool _cryOfWrath;
+	NPC_ARCANE_BOMB = 97691,
+	NPC_MYSTIC_TORNADO = 97673,
+	NPC_TIDAL_WAVE = 97739,
 };
 
-// Spell: 192632
-// AT: 9640
-struct at_wrath_of_azshara_surging_waters : AreaTriggerAI
+enum Timers
 {
-    at_wrath_of_azshara_surging_waters(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+	TIMER_MYSTIC_TORNADO = 26 * IN_MILLISECONDS,
+	TIMER_MYSTIC_TORNADO_WRATH = 15 * IN_MILLISECONDS,
 
-    void OnUnitEnter(Unit* unit) override
-    {
-        Unit* caster = at->GetCaster();
-        if (caster && unit)
-            if (caster->IsValidAttackTarget(unit))
-                caster->CastSpell(unit, SPELL_SURGING_WATERS_DAMAGE, true);
-    }
+	TIMER_MASSIVE_DELUGE = 27 * IN_MILLISECONDS,
+
+	TIMER_TIDAL_WAVE_WRATH = 8 * IN_MILLISECONDS,
+	TIMER_TIDAL_WAVE = 15 * IN_MILLISECONDS,
+
+	TIMER_CRUSHING_DEPTHS = 43 * IN_MILLISECONDS,
+
+	TIMER_ARCANE_BOMB = 24 * IN_MILLISECONDS,
+	
+	TIMER_RAGING_STORM_CHECK = 5 *IN_MILLISECONDS,
 };
 
-// 192680
-class spell_wrath_of_azshara_mystic_tornado : public SpellScript
+enum Sounds
 {
-    PrepareSpellScript(spell_wrath_of_azshara_mystic_tornado);
-
-    void HandleDummy(SpellEffIndex /*effIndex*/)
-    {
-        Unit* caster = GetCaster();
-        Unit* target = GetHitUnit();
-
-        if (caster && target)
-        {
-            float x, y, z;
-            target->GetNearPoint(target, x, y, z, 1, 10.0f, frand(0.f, 2.f * float(M_PI)));
-            if (Creature* tornado = caster->SummonCreature(NPC_MYSTIC_TORNADO, x, y, z, 1.0f, TEMPSUMMON_MANUAL_DESPAWN))
-            {
-                tornado->setFaction(caster->getFaction());
-                tornado->SetLevel(caster->getLevel());
-                tornado->SetReactState(REACT_PASSIVE);
-                tornado->CastSpell(tornado, SPELL_MYSTIC_TORNADO_AT, false);
-                tornado->GetMotionMaster()->MoveRandom(25.0f);
-            }
-        }
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_wrath_of_azshara_mystic_tornado::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-    }
+	SOUND_1 = 54212, // intro
+	SOUND_2 = 54207, // aggro
+	SOUND_3 = 54209, // kill
+	SOUND_4 = 54206, //death
+	SOUND_5 = 54213, //massive deluge
+	SOUND_6 = 54214, // crushing depths
+	SOUND_7 = 54215, //arcane bomb
+	SOUND_8 = 54208, //cry of wrath
 };
 
-// Spell: 192673
-// AT: 9647
-struct at_wrath_of_azshara_mystic_tornado : AreaTriggerAI
+#define INTRO_TEXT "THE STORM AWAKENS."
+#define AGGRO_TEXT "THE TIDES RISE!"
+#define KILL_TEXT "WASHED AWAY!"
+#define DEATH_TEXT "WATER... ETERNAL..."
+#define MASSIVE_DELUGE_TEXT "CRUSH!"
+#define CRUSHING_DEPTHS_TEXT "DROWN!"
+#define ARCANE_BOMB_TEXT "SEEK... MAGIC..." 
+#define CRY_OF_WRATH_TEXT "TEMPEST!"
+
+const Position SurgingWatersCheck = { -3487.26f, 4385.58f, -3.60f }; // also cheaters check
+
+struct checkSpec : public std::unary_function<Unit*, bool>
 {
-    at_wrath_of_azshara_mystic_tornado(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+	checkSpec() {}
 
-    void OnUnitEnter(Unit* unit) override
-    {
-        Unit* caster = at->GetCaster();
-        if (caster && unit && caster->IsValidAttackTarget(unit))
-        {
-            caster->CastSpell(unit, SPELL_MYSTIC_TORNADO_DAMAGE, true);
-
-            Difficulty instanceDifficulty = caster->GetInstanceScript()->instance->GetDifficultyID();
-            if (instanceDifficulty == DIFFICULTY_HEROIC || instanceDifficulty == DIFFICULTY_MYTHIC)
-                caster->CastSpell(unit, SPELL_MAGIC_RESONANCE, true);
-        }
-    }
+	bool operator() (const Unit* pTarget)
+	{
+		Player* player = const_cast<Player*>(pTarget->ToPlayer());
+		uint32 specialization = player->GetSpecializationId();
+		return ((player->getClass() == CLASS_DRUID && specialization == TALENT_SPEC_DRUID_BEAR)
+			|| (player->getClass() == CLASS_WARRIOR && specialization == TALENT_SPEC_WARRIOR_PROTECTION)
+			|| (player->getClass() == CLASS_PALADIN && specialization == TALENT_SPEC_PALADIN_PROTECTION)
+			|| (player->getClass() == CLASS_DEATH_KNIGHT && specialization == TALENT_SPEC_DEATHKNIGHT_BLOOD)
+			|| (player->getClass() == CLASS_DEMON_HUNTER && specialization == TALENT_SPEC_DEMON_HUNTER_VENGEANCE)
+			|| (player->getClass() == CLASS_MONK && specialization == TALENT_SPEC_MONK_BREWMASTER));
+	}
 };
 
-// Spell: 192753
-// AT: 9671
-struct at_wrath_of_azshara_tidal_wave : AreaTriggerAI
+// arcane bomb visuals
+
+class bfa_boss_wrath_of_azshara : public CreatureScript
 {
-    at_wrath_of_azshara_tidal_wave(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+public:
+	bfa_boss_wrath_of_azshara() : CreatureScript("bfa_boss_wrath_of_azshara")
+	{}
 
-    void OnInitialize() override
-    {
-        at->InitSplines(_tidalWavesPoints, 80000);
-    }
+	struct bfa_boss_wrath_of_azshara_AI : public ScriptedAI
+	{
+		bfa_boss_wrath_of_azshara_AI(Creature* creature) : ScriptedAI(creature), summons(me)
+		{
+			introText = false;
+			instance = me->GetInstanceScript();
+		}
 
-    void OnUnitEnter(Unit* unit) override
-    {
-        Unit* caster = at->GetCaster();
-        if (caster && unit && caster->IsValidAttackTarget(unit))
-        {
-            caster->CastSpell(unit, SPELL_TIDAL_WAVE_DAMAGE, true);
+		EventMap events;
+		SummonList summons;
+		bool wrath;
+		InstanceScript* instance;
+		bool introText;
 
-            Difficulty instanceDifficulty = caster->GetInstanceScript()->instance->GetDifficultyID();
-            if (instanceDifficulty == DIFFICULTY_HEROIC || instanceDifficulty == DIFFICULTY_MYTHIC)
-                caster->CastSpell(unit, SPELL_FROST_RESONANCE, true);
-        }
-    }
+		bool CheckSurgingWaters()
+		{
+			Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+			for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+				if (Player* player = i->GetSource())
+					if (!player->IsGameMaster()) //gm check
+						if (player->GetDistance(SurgingWatersCheck.GetPositionX(), SurgingWatersCheck.GetPositionY(), SurgingWatersCheck.GetPositionZ()) < 15.0f)
+						{
+							me->CastSpell(player, SPELL_SURGING_WATERS, true);
+							return false;
+						}
 
-    void OnDestinationReached() override
-    {
-        at->Remove();
-    }
+			return true;
+		}
 
-private:
-    std::vector<G3D::Vector3> _tidalWavesPoints =
-    {
-        G3D::Vector3(-3484.453f, 4386.284f, 0.7607061f),
-        G3D::Vector3(-3484.453f, 4386.284f, 0.7607061f),
-        G3D::Vector3(-3482.290f, 4379.627f, 0.7607061f),
-        G3D::Vector3(-3471.979f, 4379.928f, 0.7607061f),
-        G3D::Vector3(-3464.481f, 4392.773f, 0.7607061f),
-        G3D::Vector3(-3471.742f, 4411.232f, 0.7607061f),
-        G3D::Vector3(-3495.269f, 4419.571f, 0.7607061f),
-        G3D::Vector3(-3521.876f, 4405.352f, 0.7607061f),
-        G3D::Vector3(-3531.055f, 4371.143f, 0.7607061f),
-        G3D::Vector3(-3509.877f, 4336.388f, 0.7607061f),
-        G3D::Vector3(-3464.985f, 4326.368f, 0.7607061f),
-        G3D::Vector3(-3422.083f, 4354.505f, 0.7607061f),
-        G3D::Vector3(-3411.222f, 4410.079f, 0.7607061f),
-        G3D::Vector3(-3446.318f, 4461.129f, 0.7607061f),
-        G3D::Vector3(-3512.574f, 4472.830f, 0.7607061f),
-        G3D::Vector3(-3571.772f, 4430.775f, 0.7607061f),
-        G3D::Vector3(-3584.314f, 4353.837f, 0.7607061f),
-        G3D::Vector3(-3535.300f, 4286.491f, 0.7607061f),
-        G3D::Vector3(-3447.680f, 4273.108f, 0.7607061f),
-        G3D::Vector3(-3372.187f, 4329.082f, 0.7607061f),
-        G3D::Vector3(-3357.963f, 4427.383f, 0.7607061f),
-        G3D::Vector3(-3420.895f, 4511.025f, 0.7607061f),
-        G3D::Vector3(-3420.895f, 4511.025f, 0.7607061f)
-    };
+		void MoveInLineOfSight(Unit* who) override
+		{
+			if (!introText)
+			{
+				Map::PlayerList const& lPlayers = me->GetMap()->GetPlayers();
+				for (Map::PlayerList::const_iterator itr = lPlayers.begin(); itr != lPlayers.end(); ++itr)
+					if (Player* pPlayer = itr->GetSource())
+						if (pPlayer->IsAlive() && pPlayer->IsWithinDist(me, 50.f))
+						{
+							SelectSoundAndText(me, 1);
+							introText = true;
+							return;
+						}
+			}
+		}
+
+		void DespawnCreature(uint32 entry)
+		{
+			std::list<Creature*> creatureList;
+			GetCreatureListWithEntryInGrid(creatureList, me, entry, 500.0f);
+			if (!creatureList.empty())
+				for (auto NowCreature : creatureList)
+					NowCreature->DespawnOrUnsummon();
+		}
+
+		void SelectSoundAndText(Creature* me, uint32  selectedTextSound = 0)
+		{
+			if (!me)
+				return;
+
+			if (me)
+			{
+				switch (selectedTextSound)
+				{
+				case 1:
+					me->PlayDirectSound(SOUND_1);
+					me->Yell(INTRO_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 2:
+					me->PlayDirectSound(SOUND_2);
+					me->Yell(AGGRO_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 3:
+					me->PlayDirectSound(SOUND_3);
+					me->Yell(KILL_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 4:
+					me->PlayDirectSound(SOUND_4);
+					me->Yell(DEATH_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 5:
+					me->PlayDirectSound(SOUND_5);
+					me->Yell(MASSIVE_DELUGE_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 6:
+					me->PlayDirectSound(SOUND_6);
+					me->Yell(CRUSHING_DEPTHS_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 7:
+					me->PlayDirectSound(SOUND_7);
+					me->Yell(ARCANE_BOMB_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				case 8:
+					me->PlayDirectSound(SOUND_8);
+					me->Yell(CRY_OF_WRATH_TEXT, LANG_UNIVERSAL, NULL);
+					break;
+				}
+			}
+		}
+
+		void Reset() override
+		{
+			me->SetHealth(me->GetMaxHealth() * 0.2);
+
+			DespawnCreature(NPC_MYSTIC_TORNADO);
+			DespawnCreature(NPC_ARCANE_BOMB);
+			me->RemoveAllAreaTriggers();
+			wrath = false;
+			me->SetObjectScale(0.6f);
+			summons.DespawnAll();
+			me->setRegeneratingHealth(false);
+			me->AddUnitState(UNIT_STATE_ROOT);
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+		}
+
+		void DamageTaken(Unit* attacker, uint32 & damage) override
+		{
+			if (me->HealthBelowPct(10) && !wrath)
+			{
+				SelectSoundAndText(me, 8);
+				me->CastSpell(me, SPELL_CRY_OF_WRATH);
+				wrath = true;
+			}
+
+			if (attacker)
+			{
+				if (me->IsWithinMeleeRange(attacker) && me->HasAura(SPELL_RAGING_STORMS))
+					me->CastStop();
+			}
+		}
+
+
+		void EnterEvadeMode(EvadeReason reason) override
+		{
+			Reset();
+		}
+
+		void EnterCombat(Unit* /**/) override
+		{
+			SelectSoundAndText(me, 2);
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+
+			events.ScheduleEvent(EVENT_ARCANE_BOMB, TIMER_ARCANE_BOMB);
+			events.ScheduleEvent(EVENT_MYSTIC_TORNADO, TIMER_MYSTIC_TORNADO);
+			events.ScheduleEvent(EVENT_MASSIVE_DELUGE, TIMER_MASSIVE_DELUGE);
+			events.ScheduleEvent(EVENT_TIDAL_WAVE, TIMER_TIDAL_WAVE);
+			events.ScheduleEvent(EVENT_RAGING_STORMS, TIMER_RAGING_STORM_CHECK);
+
+			if (me->GetMap()->IsHeroic() || me->GetMap()->IsMythic())
+				events.ScheduleEvent(EVENT_CRUSHING_DEPTHS, TIMER_CRUSHING_DEPTHS);
+		}
+
+		void KilledUnit(Unit* unit) override
+		{
+			SelectSoundAndText(me, 3);
+		}
+
+		void JustDied(Unit*) override
+		{
+			me->RemoveAllAreaTriggers();
+			SelectSoundAndText(me, 4);
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+		}
+
+		void DamageDealt(Unit* victim, uint32& /*damage*/, DamageEffectType damageType) override
+		{
+			if (victim)
+			{
+				if (victim == me->GetVictim() && damageType == DIRECT_DAMAGE)
+					me->CastSpell(me, SPELL_HEAVING_SANDS, true);
+			}
+		}
+
+		void UpdateAI(uint32 diff) override
+		{
+			if (!UpdateVictim())
+				return;
+
+			events.Update(diff);
+
+			if (me->HasUnitState(UNIT_STATE_CASTING))
+				return;
+
+			if (me->IsInCombat())
+				CheckSurgingWaters();
+
+			while (uint32 eventId = events.ExecuteEvent())
+			{
+				switch (eventId)
+				{
+				case EVENT_RAGING_STORMS:
+					if (!me->IsWithinMeleeRange(me->GetVictim()))
+						me->CastSpell(me, SPELL_RAGING_STORMS);
+					events.ScheduleEvent(EVENT_RAGING_STORMS, TIMER_RAGING_STORM_CHECK);
+					break;
+				case EVENT_ARCANE_BOMB:
+				{
+					std::list<Unit*> targets;
+					SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+					targets.remove_if(checkSpec()); //no tanks
+
+					if (!targets.empty())
+						if (targets.size() >= 1)
+							targets.resize(1);
+
+					for (std::list<Unit*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
+						me->CastSpell((*itr), SPELL_ARCANE_BOMB);
+					
+					events.ScheduleEvent(EVENT_ARCANE_BOMB, TIMER_ARCANE_BOMB);
+					break;
+				}
+				case EVENT_CRUSHING_DEPTHS:
+				{
+					std::list<Unit*> targets;
+					SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+					targets.remove_if(checkSpec()); //no tanks
+
+					if (!targets.empty())
+						if (targets.size() >= 1)
+							targets.resize(1);
+
+					for (std::list<Unit*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
+						me->CastSpell((*itr), SPELL_CRUSHING_DEPTHS);
+					events.ScheduleEvent(EVENT_CRUSHING_DEPTHS, TIMER_CRUSHING_DEPTHS);
+					break;
+				}
+				case EVENT_MASSIVE_DELUGE:
+					me->CastSpell(me->GetVictim(), SPELL_MASSIVE_DELUGE);
+					events.ScheduleEvent(EVENT_MASSIVE_DELUGE, TIMER_MASSIVE_DELUGE);
+					break;
+				case EVENT_MYSTIC_TORNADO:
+				{
+					std::list<Unit*> targets;
+					SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, 500.0f, true);
+					targets.remove_if(checkSpec()); //no tanks
+
+					if (!targets.empty())
+						if (targets.size() >= 1)
+							targets.resize(1);
+
+					for (std::list<Unit*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
+						me->CastSpell((*itr), SPELL_MYSTIC_TORNADO_SUMMON, true);
+					events.ScheduleEvent(EVENT_MYSTIC_TORNADO, wrath ? TIMER_MYSTIC_TORNADO_WRATH : TIMER_MYSTIC_TORNADO);
+					break;
+				}
+				case EVENT_TIDAL_WAVE:
+					me->CastSpell(me, SPELL_TIDAL_WAVE_VISUAL, true);
+					events.ScheduleEvent(EVENT_TIDAL_WAVE, wrath ? TIMER_TIDAL_WAVE_WRATH : TIMER_TIDAL_WAVE);
+					break;
+				}	
+			}
+
+			DoMeleeAttackIfReady();
+		}
+	};
+
+	CreatureAI* GetAI(Creature* creature) const override
+	{
+		return new bfa_boss_wrath_of_azshara_AI(creature);
+	}
 };
 
-// 192705
-class spell_wrath_of_azshara_arcane_bomb_target : public SpellScript
+class bfa_npc_mystic_tornado : public CreatureScript
 {
-    PrepareSpellScript(spell_wrath_of_azshara_arcane_bomb_target);
+public:
+	bfa_npc_mystic_tornado() : CreatureScript("bfa_npc_mystic_tornado")
+	{}
 
-    void HandleDummy(SpellEffIndex /*effIndex*/)
-    {
-        Unit* caster = GetCaster();
-        Unit* target = GetHitUnit();
+	struct bfa_npc_mystic_tornado_AI : public ScriptedAI
+	{
+		bfa_npc_mystic_tornado_AI(Creature* creature) : ScriptedAI(creature)
+		{
+		}
 
-        if (caster && target)
-        {
-            caster->ToCreature()->AI()->Talk(3, target);
-            caster->CastSpell(target, SPELL_ARCANE_BOMB_VEHICLE, true);
-            Position pos = target->GetPosition();
-            if (Creature* bomb = caster->SummonCreature(NPC_ARCANE_BOMB, pos))
-            {
-                bomb->EnterVehicle(target);
-                bomb->CastSpell(target, SPELL_ARCANE_BOMB_FOLLOW, true);
-                bomb->GetScheduler().Schedule(1s, [](TaskContext context)
-                {
-                    GetContextUnit()->CastSpell(GetContextUnit(), SPELL_ARCANE_BOMB_DAMAGE, false);
-                });
-            }
-        }
-    }
+		EventMap events;
 
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_wrath_of_azshara_arcane_bomb_target::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-    }
+		void Reset() override
+		{
+			me->SetSpeed(MOVE_RUN, 1.2f);
+
+			events.Reset();
+
+			me->setActive(true);
+
+			events.ScheduleEvent(EVENT_BORN, 2 * IN_MILLISECONDS);
+		}
+
+		void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+		{
+			if (!target)
+				return;
+
+			if(target->GetMap()->IsHeroic() || target->GetMap()->IsMythic())
+				if (spell->Id == SPELL_MYSTIC_TORNADO_DMG)
+					me->CastSpell(target, SPELL_MAGIC_RESONANCE, true);
+		}
+
+		void CheckDist()
+		{
+			Map::PlayerList const & players = me->GetMap()->GetPlayers();
+
+			if (!players.isEmpty())
+			{
+				for (auto & it : players)
+				{
+					if (Player* player = it.GetSource())
+					{
+						if (me->GetDistance2d(player) <= 3.0f)
+							me->CastSpell(player, SPELL_MYSTIC_TORNADO_DMG, true);
+					}
+				}
+			}
+		}
+
+		void UpdateAI(uint32 diff) override
+		{
+			events.Update(diff);
+
+			while (uint32 eventId = events.ExecuteEvent())
+			{
+				switch (eventId)
+				{
+				case EVENT_CHECK_DISTANCE:
+					CheckDist();
+					events.ScheduleEvent(EVENT_CHECK_DISTANCE, 500);
+					break;
+				case EVENT_BORN:
+					me->CastSpell(me, SPELL_MYSTIC_TORNADO_VISUAL, true);
+					me->GetMotionMaster()->MoveRandom(25.0f);
+					events.ScheduleEvent(EVENT_CHECK_DISTANCE, 500);
+					break;
+				}
+			}
+		}
+	};
+
+	CreatureAI* GetAI(Creature* creature) const override
+	{
+		return new bfa_npc_mystic_tornado_AI(creature);
+	}
 };
 
-// 98173, 100248, 100249, 100250
-struct npc_wrath_of_azshara_naga : public ScriptedAI
+class bfa_npc_arcane_bomb : public CreatureScript
 {
-    npc_wrath_of_azshara_naga(Creature* creature) : ScriptedAI(creature) { }
+public:
+	bfa_npc_arcane_bomb() : CreatureScript("bfa_npc_arcane_bomb")
+	{}
 
-    void Reset() override
-    {
-        DoCastSelf(SPELL_STORM_CONDUIT);
-    }
+	struct bfa_npc_arcane_bomb_AI : public ScriptedAI
+	{
+		bfa_npc_arcane_bomb_AI(Creature* creature) : ScriptedAI(creature)
+		{}
 
-    void JustDied(Unit* killer) override
-    {
-        ScriptedAI::JustDied(killer);
+		void Reset() override
+		{
+			_timerCast = 0;
+			_casted = false;
+		}
 
-        me->GetInstanceScript()->SetData(DATA_NAGA_DIED, 0);
-    }
+		void IsSummonedBy(Unit* summoner) override
+		{
+			if (!summoner)
+				return;
 
-    void EnterCombat(Unit* /*who*/) override
-    {
-        Talk(0);
-        me->GetScheduler().Schedule(Seconds(5), Seconds(8), [this](TaskContext context)
-        {
-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM))
-                GetContextUnit()->CastSpell(target, SPELL_LIGHTNING_BLAST, false);
-            context.Repeat();
-        });
+			_summoner = summoner;
 
-        me->GetScheduler().Schedule(Seconds(20), Seconds(35), [](TaskContext context)
-        {
-            GetContextUnit()->CastSpell(GetContextUnit(), SPELL_ARCANE_BOMB, true);
-            context.Repeat();
-        });
+			for (auto & it : me->GetMap()->GetPlayers())
+			{
+				if (Player* player = it.GetSource())
+				{
+					if (player->HasAura(SPELL_ARCANE_BOMB))
+					{
+						me->NearTeleportTo(player->GetPosition());
+						DoCast(player, SPELL_RIDE_VEHICLE, true);
+						DoCast(player, SPELL_ARCANE_BOMB_VISUAL, true);
+						_events.ScheduleEvent(EVENT_ARCANE_BOMB, 100);
+						break;
+					}
+				}
+			}
+		}
 
-        switch (me->GetEntry())
-        {
-            case NPC_RITUALIST_LESHA:
-                me->GetScheduler().Schedule(Seconds(5), Seconds(12), [](TaskContext context)
-                {
-                    GetContextUnit()->CastSpell(GetContextUnit(), SPELL_AQUA_SPOUT, false);
-                    context.Repeat();
-                });
-                break;
-            case NPC_CHANNELER_VARISZ:
-                me->GetScheduler().Schedule(Seconds(4), Seconds(12), [this](TaskContext context)
-                {
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1))
-                        GetContextUnit()->CastSpell(target, SPELL_POLYMORPH_FISH, false);
-                    context.Repeat();
-                });
-                break;
-            case NPC_BINDER_ASHIOI:
-                me->GetScheduler().Schedule(Seconds(15), Seconds(20), [](TaskContext context)
-                {
-                    GetContextUnit()->CastSpell(GetContextUnit(), SPELL_MAGIC_BINDING, false);
-                    context.Repeat();
-                });
-                break;
-            case NPC_MYSTIC_SSAVEH:
-                me->GetScheduler().Schedule(Seconds(15), Seconds(20), [](TaskContext context)
-                {
-                    GetContextUnit()->CastSpell(GetContextUnit(), SPELL_STORM, false);
-                    context.Repeat();
-                });
-                break;
-        }
-    }
+		void UpdateAI(uint32 diff) override
+		{
+			_events.Update(diff);
+
+			while (uint32 eventId = _events.ExecuteEvent())
+			{
+				if (eventId == EVENT_ARCANE_BOMB)
+				{
+					DoCast(me, SPELL_ARCANE_BOMB_DMG, false);
+				}
+			}
+		}
+
+	private:
+		EventMap _events;
+		Unit* _summoner;
+		bool _casted;
+		uint32 _timerCast;
+
+
+	};
+
+	CreatureAI* GetAI(Creature* creature) const override
+	{
+		return new bfa_npc_arcane_bomb_AI(creature);
+	}
+};
+
+class bfa_spell_arcane_bomb : public SpellScriptLoader
+{
+public:
+	bfa_spell_arcane_bomb() : SpellScriptLoader("bfa_spell_arcane_bomb")
+	{}
+
+	class bfa_spell_arcane_bomb_SpellScript : public SpellScript
+	{
+	public:
+		PrepareSpellScript(bfa_spell_arcane_bomb_SpellScript);
+
+		void HandleSummon()
+		{
+			if (!GetCaster() || !GetHitUnit())
+				return;
+
+			Position summon_pos = GetHitUnit()->GetPosition();
+
+			GetCaster()->SummonCreature(NPC_ARCANE_BOMB, summon_pos, TEMPSUMMON_TIMED_DESPAWN, 20 * IN_MILLISECONDS);
+		}
+
+		void Register()
+		{
+			AfterHit += SpellHitFn(bfa_spell_arcane_bomb_SpellScript::HandleSummon);
+		}
+	};
+
+	class bfa_spell_arcane_bomb_AuraScript : public AuraScript
+	{
+	public:
+		PrepareAuraScript(bfa_spell_arcane_bomb_AuraScript);
+
+		void HandleDispel(DispelInfo* dispelInfo)
+		{
+			if (!GetCaster() || !GetUnitOwner())
+				return;
+
+			Unit* owner = GetUnitOwner();
+
+			owner->RemoveAurasDueToSpell(SPELL_RIDE_VEHICLE);
+
+			if (Vehicle* vehicle = owner->GetVehicle())
+				vehicle->RemoveAllPassengers();
+
+			if (Creature* bomb = owner->FindNearestCreature(NPC_ARCANE_BOMB, 50.0f, true))
+				bomb->AddUnitState(UNIT_STATE_ROOT);
+		}
+
+		void Register()
+		{
+			OnDispel += AuraDispelFn(bfa_spell_arcane_bomb_AuraScript::HandleDispel);
+		}
+	};
+
+	AuraScript* GetAuraScript() const
+	{
+		return new bfa_spell_arcane_bomb_AuraScript();
+	}
+
+	SpellScript* GetSpellScript() const
+	{
+		return new bfa_spell_arcane_bomb_SpellScript();
+	}
+};
+
+
+class bfa_spell_crushing_depths : public SpellScriptLoader
+{
+public:
+	bfa_spell_crushing_depths() : SpellScriptLoader("bfa_spell_crushing_depths")
+	{}
+
+	class bfa_spell_crushing_depths_SpellScript : public SpellScript
+	{
+	public:
+		PrepareSpellScript(bfa_spell_crushing_depths_SpellScript);
+
+		bool Load() override
+		{
+			_targetsSize = 1;
+			return true;
+		}
+
+		void FilterTargets(std::list<WorldObject*> & targets)
+		{
+			if (targets.empty())
+				return;
+			if (!targets.empty())
+				_targetsSize = targets.size();
+		}
+
+		void HandleDamage(SpellEffIndex)
+		{
+			if (!GetCaster())
+				return;
+
+			SetHitDamage(GetHitDamage() / _targetsSize);
+		}
+
+		void Register()
+		{
+			OnEffectLaunchTarget += SpellEffectFn(bfa_spell_crushing_depths_SpellScript::HandleDamage, EFFECT_0, SPELL_EFFECT_DAMAGE_FROM_MAX_HEALTH_PCT);
+			OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(bfa_spell_crushing_depths_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+		}
+
+	private:
+		uint32 _targetsSize;
+	};
+
+	SpellScript* GetSpellScript() const
+	{
+		return new bfa_spell_crushing_depths_SpellScript();
+	}
+};
+
+
+class bfa_spell_cry_of_wrath : public SpellScriptLoader
+{
+public:
+	bfa_spell_cry_of_wrath() : SpellScriptLoader("bfa_spell_cry_of_wrath")
+	{}
+
+	class bfa_spell_cry_of_wrath_SpellScript : public SpellScript
+	{
+	public:
+		PrepareSpellScript(bfa_spell_cry_of_wrath_SpellScript);
+
+		void HandleDummy(SpellEffIndex)
+		{
+			if (!GetCaster())
+				return;
+
+			GetCaster()->CastSpell(GetCaster(), SPELL_TIDAL_WAVE_AURA_CRY, true);
+			GetCaster()->CastSpell(GetCaster(), SPELL_LIGHTING_STRIKES_AURA_CRY, true);
+			GetCaster()->CastSpell(GetCaster(), SPELL_VIOLET_WINDS_AURA_CRY, true);
+		}
+
+		void Register()
+		{
+			OnEffectHitTarget += SpellEffectFn(bfa_spell_cry_of_wrath_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+		}
+	};
+
+	SpellScript* GetSpellScript() const
+	{
+		return new bfa_spell_cry_of_wrath_SpellScript();
+	}
+};
+
+// 4950
+class bfa_at_tidal_wave : public AreaTriggerEntityScript
+{
+public:
+	bfa_at_tidal_wave() : AreaTriggerEntityScript("bfa_at_tidal_wave")
+	{}
+
+	struct bfa_at_tidal_wave_AI : public AreaTriggerAI
+	{
+		bfa_at_tidal_wave_AI(AreaTrigger* at) : AreaTriggerAI(at)
+		{}
+
+		void FillCirclePath(Position const& center, float radius, float z, Movement::PointsArray& path, bool clockwise)
+		{
+			float step = clockwise ? -M_PI / 8.0f : M_PI / 8.0f;
+			float angle = center.GetAngle(at->GetPositionX(), at->GetPositionY());
+
+			for (uint8 iter = 0; iter < 16; angle += step, ++iter)
+			{
+				G3D::Vector3 point;
+				point.x = center.GetPositionX() + radius * cosf(angle);
+				point.y = center.GetPositionY() + radius * sinf(angle);
+				point.z = z;
+				path.push_back(point);
+			}
+		}
+
+		void OnInitialize() override
+		{
+			Position center = at->GetPosition();
+
+			std::vector<G3D::Vector3> points;
+			FillCirclePath(center, urand(30,50), at->GetPositionZ(), points, false);
+			at->InitSplines(points, 60000);
+		}
+
+		void OnUnitEnter(Unit* target) override
+		{
+			if (target->ToPlayer())
+			{
+				at->GetCaster()->CastSpell(target, SPELL_TIDAL_WAVE_DMG, true);
+				if (target->GetMap()->IsHeroic() || target->GetMap()->IsMythic())
+					target->CastSpell(target, SPELL_FROST_RESONANCE, true);
+			}
+		} 
+
+	};
+
+	AreaTriggerAI* GetAI(AreaTrigger* at) const override
+	{
+		return new bfa_at_tidal_wave_AI(at);
+	}
 };
 
 void AddSC_boss_wrath_of_azshara()
 {
-    RegisterCreatureAI(boss_wrath_of_azshara);
-    RegisterCreatureAI(npc_wrath_of_azshara_naga);
+	new bfa_boss_wrath_of_azshara();
 
-    RegisterAreaTriggerAI(at_wrath_of_azshara_surging_waters);
-    RegisterAreaTriggerAI(at_wrath_of_azshara_mystic_tornado);
-    RegisterAreaTriggerAI(at_wrath_of_azshara_tidal_wave);
+	new bfa_npc_mystic_tornado();
+	new bfa_npc_arcane_bomb();
 
-    RegisterSpellScript(spell_wrath_of_azshara_mystic_tornado);
-    RegisterSpellScript(spell_wrath_of_azshara_arcane_bomb_target);
+	new bfa_spell_crushing_depths();
+	new bfa_spell_arcane_bomb();
+	new bfa_spell_cry_of_wrath();
+
+	new bfa_at_tidal_wave();
 }

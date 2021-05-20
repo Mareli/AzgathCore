@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,17 +22,6 @@
 #include "SpellAuraEffects.h"
 #include "ScriptMgr.h"
 #include "eye_of_azshara.h"
-
-// 97171
-struct npc_hatecoil_arcanist : public ScriptedAI
-{
-    npc_hatecoil_arcanist(Creature* creature) : ScriptedAI(creature) { }
-
-    void JustDied(Unit* /*killer*/) override
-    {
-        me->GetInstanceScript()->SetData(DATA_ARCANIST_DIED, 0);
-    }
-};
 
 // 196027
 class spell_hatecoil_arcanist_aqua_spout : public SpellScript
@@ -90,7 +79,7 @@ class spell_animated_storm_water_spout : public SpellScript
             target->GetNearPoint(target, x, y, z, 1, 3.0f, frand(0.f, 2.f * float(M_PI)));
             if (Creature* waterSpout = caster->SummonCreature(NPC_WATER_SPOUT, x, y, z, 1.0f, TEMPSUMMON_MANUAL_DESPAWN))
             {
-                waterSpout->setFaction(caster->getFaction());
+                waterSpout->SetFaction(caster->GetFaction());
                 waterSpout->CastSpell(waterSpout, SPELL_WATER_SPOUT_AT, false);
                 waterSpout->GetMotionMaster()->MoveRandom(25.0f);
             }
@@ -277,8 +266,7 @@ class spell_eoa_lightning_strikes_damage : public SpellScript
 
 void AddSC_eye_of_azshara()
 {
-    RegisterCreatureAI(npc_hatecoil_arcanist);
-
+    
     RegisterSpellScript(spell_hatecoil_arcanist_aqua_spout);
     RegisterSpellScript(spell_animated_storm_water_spout);
     RegisterSpellScript(spell_skrog_tidestomper_massive_quake);

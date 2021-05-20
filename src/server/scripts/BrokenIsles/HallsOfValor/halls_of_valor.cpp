@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,14 +47,16 @@ struct boss_king_ranulf : public BossAI
 
     ObjectGuid targetGuid;
 
-    void sGossipHello(Player* /*player*/) override
+    bool GossipHello(Player* /*player*/) override
     {
-        me->setFaction(14);
+        me->SetFaction(14);
         me->SetReactState(REACT_DEFENSIVE);
         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
         if (InstanceScript* instance = me->GetInstanceScript())
-            instance->SetBossState(DATA_GODKING_SKOVALD, NOT_STARTED);
+            instance->SetBossState(DATA_SKOVALD, NOT_STARTED);
+
+        return true;
     }
 
     void EnterCombat(Unit* /*who*/) override
@@ -106,14 +108,16 @@ struct boss_king_haldor : public BossAI
 
     ObjectGuid targetGuid;
 
-    void sGossipHello(Player* /*player*/) override
+    bool GossipHello(Player* /*player*/) override
     {
-        me->setFaction(14);
+        me->SetFaction(14);
         me->SetReactState(REACT_DEFENSIVE);
         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
         if (InstanceScript* instance = me->GetInstanceScript())
             instance->SetBossState(DATA_KING_HALDOR, NOT_STARTED);
+
+        return true;
     }
 
     void EnterCombat(Unit* /*who*/) override
@@ -169,14 +173,16 @@ struct boss_king_bjorn : public BossAI
 
     ObjectGuid targetGuid;
 
-    void sGossipHello(Player* /*player*/) override
+    bool GossipHello(Player* /*player*/) override
     {
-        me->setFaction(14);
+        me->SetFaction(14);
         me->SetReactState(REACT_DEFENSIVE);
         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
         if (InstanceScript* instance = me->GetInstanceScript())
             instance->SetBossState(DATA_KING_BJORN, NOT_STARTED);
+
+        return true;
     }
 
     void EnterCombat(Unit* /*who*/) override
@@ -227,14 +233,16 @@ struct boss_king_tor : public BossAI
 {
     boss_king_tor(Creature* creature) : BossAI(creature, DATA_KING_TOR) { }
 
-    void sGossipHello(Player* /*player*/) override
+    bool GossipHello(Player* /*player*/) override
     {
-        me->setFaction(14);
+        me->SetFaction(14);
         me->SetReactState(REACT_DEFENSIVE);
         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
         if (InstanceScript* instance = me->GetInstanceScript())
             instance->SetBossState(DATA_KING_TOR, NOT_STARTED);
+
+        return true;
     }
 
     ObjectGuid targetGuid;
@@ -284,8 +292,7 @@ struct boss_king_tor : public BossAI
 
                     if (Creature* creature = me->FindNearestCreature(101326, 50.0f))
                     {
-                        creature->SetLevel(110);
-                        creature->setFaction(14);
+                        creature->SetFaction(14);
                         creature->GetMotionMaster()->MovePoint(0, me->GetPosition(), true);
                     }
                     events.ScheduleEvent(EVENT_CALL_ANCESTOR, 16000);
