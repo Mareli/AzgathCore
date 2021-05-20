@@ -122,6 +122,6 @@ public:
     }
 };
 
-void AddSC_arwent_legit_quest_bypass() {
+void AddSC_azgath_legit_quest_bypass() {
     new azgath_legit_quest_bypass();
 }
