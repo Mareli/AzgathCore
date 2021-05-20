@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,15 +30,16 @@ class instance_ragefire_chasm : public InstanceMapScript
 public:
     instance_ragefire_chasm() : InstanceMapScript("instance_ragefire_chasm", 389) { }
 
-    InstanceScript* GetInstanceScript(InstanceMap* map) const override
-    {
-        return new instance_ragefire_chasm_InstanceMapScript(map);
-    }
-
     struct instance_ragefire_chasm_InstanceMapScript : public InstanceScript
     {
         instance_ragefire_chasm_InstanceMapScript(InstanceMap* map) : InstanceScript(map) { }
     };
+ 
+    InstanceScript* GetInstanceScript(InstanceMap* map) const override
+    {
+        return new instance_ragefire_chasm_InstanceMapScript(map);
+    }
+   
 };
 
 void AddSC_instance_ragefire_chasm()

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -98,12 +97,12 @@ public:
 
             creature->AI()->Talk(SAY_MAKE_PREPARATIONS);
 
-            creature->setFaction(250);
+            creature->SetFaction(250);
             creature->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
 
-            ENSURE_AI(npc_escortAI, (creature->AI()))->Start(false, false, player->GetGUID());
-            ENSURE_AI(npc_escortAI, (creature->AI()))->SetDespawnAtFar(false);
-            ENSURE_AI(npc_escortAI, (creature->AI()))->SetDespawnAtEnd(false);
+            ENSURE_AI(EscortAI, (creature->AI()))->Start(false, false, player->GetGUID());
+            ENSURE_AI(EscortAI, (creature->AI()))->SetDespawnAtFar(false);
+            ENSURE_AI(EscortAI, (creature->AI()))->SetDespawnAtEnd(false);
         }
         return true;
     }
@@ -135,9 +134,9 @@ public:
         return true;
     }
 
-    struct npc_disciple_of_naralexAI : public npc_escortAI
+    struct npc_disciple_of_naralexAI : public EscortAI
     {
-        npc_disciple_of_naralexAI(Creature* creature) : npc_escortAI(creature)
+        npc_disciple_of_naralexAI(Creature* creature) : EscortAI(creature)
         {
             instance = creature->GetInstanceScript();
             eventTimer = 0;
@@ -207,7 +206,7 @@ public:
         void UpdateAI(uint32 diff) override
         {
             if (currentEvent != TYPE_NARALEX_PART3)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
 
             if (eventTimer <= diff)
             {
@@ -231,7 +230,7 @@ public:
                                 ++eventProgress;
                                 Talk(SAY_BANISH_THE_SPIRITS);
                                 DoCast(me, SPELL_SERPENTINE_CLEANSING);
-                                //CAST_AI(npc_escort::npc_escortAI, me->AI())->SetCanDefend(false);
+                                //CAST_AI(npc_escort::EscortAI, me->AI())->SetCanDefend(false);
                                 eventTimer = 30000;
                                 me->SummonCreature(NPC_DEVIATE_VIPER, -61.5261f, 273.676f, -92.8442f, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
                                 me->SummonCreature(NPC_DEVIATE_VIPER, -58.4658f, 280.799f, -92.8393f, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
@@ -240,7 +239,7 @@ public:
                             else
                             if (eventProgress == 2)
                             {
-                                //CAST_AI(npc_escort::npc_escortAI, me->AI())->SetCanDefend(true);
+                                //CAST_AI(npc_escort::EscortAI, me->AI())->SetCanDefend(true);
                                 Talk(SAY_CAVERNS_PURIFIED);
                                 instance->SetData(TYPE_NARALEX_PART2, DONE);
                                 if (me->HasAura(SPELL_SERPENTINE_CLEANSING))
@@ -260,7 +259,7 @@ public:
                             {
                                 ++eventProgress;
                                 eventTimer = 15000;
-                                //CAST_AI(npc_escort::npc_escortAI, me->AI())->SetCanDefend(false);
+                                //CAST_AI(npc_escort::EscortAI, me->AI())->SetCanDefend(false);
                                 if (Creature* naralex = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_NARALEX)))
                                     DoCast(naralex, SPELL_NARALEXS_AWAKENING, true);
                                 Talk(EMOTE_AWAKENING_RITUAL);

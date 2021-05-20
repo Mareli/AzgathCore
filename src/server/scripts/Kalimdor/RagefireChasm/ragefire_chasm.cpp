@@ -14,21 +14,16 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+ 
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "PassiveAI.h"
+#include "ragefire_chasm.h"
 
-#ifndef DEF_RAZORFEN_KRAUL_H
-#define DEF_RAZORFEN_KRAUL_H
 
-#include "CreatureAIImpl.h"
 
-#define RFKScriptName "instance_razorfen_kraul"
-#define DataHeader "RFK"
-
-#define EVENT_WARD_KEEPER 1
-
-template<typename AI>
-inline AI* GetRazorfenKraulAI(Creature* creature)
+void AddSC_ragefire_chasm()
 {
-    return GetInstanceAI<AI>(creature, RFKScriptName);
+  
 }
 
-#endif

@@ -1,10 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2010 - 2012 ProjectSkyfire <http://www.projectskyfire.org/>
- *
- * Copyright (C) 2011 - 2012 ArkCORE <http://www.arkania.net/>
- * Copyright (C) 2008 - 2012 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -581,96 +576,6 @@ public:
     }
 };
 
-class spell_asaad_supremacy_entry : public SpellScriptLoader
-{
-public :
-    spell_asaad_supremacy_entry() : SpellScriptLoader("spell_asaad_supremacy_entry") {}
-
-    class spell_asaad_supremacy_entry_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_asaad_supremacy_entry_SpellScript);
-
-        Position position[3];
-
-        bool Load() override
-        {
-            return true;
-        }
-
-        void FilterTargets(std::list<WorldObject*>& unitList)
-        {
-            Creature* const trigger = GetCaster()->FindNearestCreature(NPC_UNSTABLE_GROUNDING_FIELD, 100.0f, true);
-            position[0] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[0];
-            position[1] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[1];
-            position[2] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[2];
-
-            for (std::list<WorldObject*>::iterator itr = unitList.begin(); itr != unitList.end();)
-            {
-                TriangleCheck const* const triangle = new TriangleCheck(*itr, position[0], position[1], position[2]);
-                if (triangle->Check())
-                    unitList.remove(*itr++);
-                else
-                    ++itr;
-            }
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_asaad_supremacy_entry_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_asaad_supremacy_entry_SpellScript();
-    }
-};
-
-class spell_asaad_supremacy_dummy : public SpellScriptLoader
-{
-public :
-    spell_asaad_supremacy_dummy() : SpellScriptLoader("spell_asaad_supremacy_dummy") {}
-
-    class spell_asaad_supremacy_dummy_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_asaad_supremacy_dummy_SpellScript);
-
-        Position position[3];
-
-        bool Load() override
-        {
-            return true;
-        }
-
-        void FilterTargets(std::list<WorldObject*>& unitList)
-        {
-            Creature* const trigger = GetCaster()->FindNearestCreature(NPC_UNSTABLE_GROUNDING_FIELD, 100.0f, true);
-            position[0] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[0];
-            position[1] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[1];
-            position[2] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[2];
-
-            for (std::list<WorldObject*>::iterator itr = unitList.begin(); itr != unitList.end();)
-            {
-                TriangleCheck const* const triangle = new TriangleCheck(*itr, position[0], position[1], position[2]);
-                if (triangle->Check())
-                    unitList.remove(*itr++);
-                else
-                    ++itr;
-            }
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_asaad_supremacy_dummy_SpellScript::FilterTargets, EFFECT_0,  TARGET_UNIT_SRC_AREA_ENEMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_asaad_supremacy_dummy_SpellScript();
-    }
-};
-
 void AddSC_boss_asaad()
 {
     new boss_asaad();
@@ -678,6 +583,4 @@ void AddSC_boss_asaad()
     new npc_skyfall_star();
     new achievement_not_static_at_all();
     new spell_asaad_static_cling();
-    new spell_asaad_supremacy_entry();
-    new spell_asaad_supremacy_dummy();
 }

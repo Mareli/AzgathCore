@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,9 +47,6 @@ enum Spells
 
     // Rohash
     SPELL_SLICING_GALE              = 86182,
-
-    SPELL_WIND_BLAST                = 86193,
-    SPELL_WIND_BLAST_EFFECT         = 85483,
 
     SPELL_HURRICANE_ULTIMATE        = 84643,
 
@@ -977,7 +974,7 @@ public:
                 Trigger->AddUnitFlag(UNIT_FLAG_STUNNED);
                 Trigger->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
                 Trigger->SetReactState(REACT_AGGRESSIVE);
-                Trigger->setFaction(18);
+                Trigger->SetFaction(18);
                 Trigger->Attack(me, true);
                 me->AddThreat(Trigger, 200000.0f);
                 me->_addAttacker(Trigger);
@@ -1107,7 +1104,6 @@ public:
                     case EVENT_WIND_BLAST:
                         me->SetReactState(REACT_PASSIVE);
                         UpdateOrientation();
-                        DoCast(SPELL_WIND_BLAST);
                         IsCastingWindBlast = true;
                         uiTurnTimer = 2000;
                         uiCheckAgroo = 15000;
@@ -1165,11 +1161,6 @@ public:
     {
         PrepareAuraScript(spell_nurture_aura_AuraScript);
 
-        void HandleEffectCalcPeriodic(AuraEffect const* /*aurEff*/, bool& isPeriodic, int32& /*amplitude*/)
-        {
-            isPeriodic = true;
-        }
-
         void HandlePeriodic(AuraEffect const* /*aurEff*/)
         {
             if (Unit* caster = GetCaster())
@@ -1178,8 +1169,7 @@ public:
 
         void Register() override
         {
-            DoEffectCalcPeriodic += AuraEffectCalcPeriodicFn(spell_nurture_aura_AuraScript::HandleEffectCalcPeriodic, EFFECT_0, SPELL_AURA_DUMMY);
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_nurture_aura_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_DUMMY);
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_nurture_aura_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
         }
     };
 
@@ -1240,36 +1230,6 @@ class PlayerInRangeCheck
         Unit* caster;
 };
 
-class spell_wind_blast : public SpellScriptLoader
-{
-    public:
-        spell_wind_blast() : SpellScriptLoader("spell_wind_blast") { }
-
-        class spell_wind_blast_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_wind_blast_SpellScript);
-
-            void FilterTargets(std::list<WorldObject*>& unitList)
-            {
-                unitList.remove_if(PlayerInRangeCheck(GetCaster()));
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_wind_blast_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_CONE_ENEMY_104);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_wind_blast_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_CONE_ENTRY_110);
-            }
-
-        protected:
-            uint32 targetCount;
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_wind_blast_SpellScript();
-        }
-};
-
 void AddSC_boss_conclave_of_wind()
 {
     new boss_anshal();
@@ -1282,5 +1242,4 @@ void AddSC_boss_conclave_of_wind()
     new spell_nurture_aura();
     new npc_tornado_rohash();
     new spell_nezir_sleet_storm();
-    new spell_wind_blast();
 }
