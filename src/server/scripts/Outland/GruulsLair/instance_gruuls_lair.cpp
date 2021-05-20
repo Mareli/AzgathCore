@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,7 +59,7 @@ class instance_gruuls_lair : public InstanceMapScript
                 {
                     case NPC_MAULGAR:
                         MaulgarGUID = creature->GetGUID();
-                        /* fallthrough */
+                        // no break;
                     case NPC_KROSH_FIREHAND:
                     case NPC_OLM_THE_SUMMONER:
                     case NPC_KIGGLER_THE_CRAZED:

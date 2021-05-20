@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -613,7 +612,7 @@ public:
         {
             Timer[EVENT_TALK_SEQUENCE] = Conversation[count].timer;
 
-            Creature* creature = NULL;
+            Creature* creature = nullptr;
             if (Conversation[count].creature == ILLIDAN_STORMRAGE)
                 creature = me;
             else if (Conversation[count].creature == AKAMA)
@@ -765,7 +764,7 @@ public:
                 {
                     if (Creature* flame = me->SummonCreature(FLAME_OF_AZZINOTH, GlaivePosition[i+2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000))
                     {
-                        flame->setFaction(me->getFaction()); // Just in case the database has it as a different faction
+                        flame->SetFaction(me->GetFaction()); // Just in case the database has it as a different faction
                         flame->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
                         FlameGUID[i] = flame->GetGUID(); // Record GUID in order to check if they're dead later on to move to the next phase
                         ENSURE_AI(npc_flame_of_azzinoth::flame_of_azzinothAI, flame->AI())->SetGlaiveGUID(GlaiveGUID[i]);
@@ -812,7 +811,7 @@ public:
                             GlaiveGUID[i] = Glaive->GetGUID();
                             Glaive->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                             Glaive->SetDisplayId(MODEL_INVISIBLE);
-                            Glaive->setFaction(me->getFaction());
+                            Glaive->SetFaction(me->GetFaction());
                             DoCast(Glaive, SPELL_THROW_GLAIVE2);
                         }
                     }
@@ -828,7 +827,7 @@ public:
                             GlaiveGUID[i] = Glaive->GetGUID();
                             Glaive->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                             Glaive->SetDisplayId(MODEL_INVISIBLE);
-                            Glaive->setFaction(me->getFaction());
+                            Glaive->SetFaction(me->GetFaction());
                             DoCast(Glaive, SPELL_THROW_GLAIVE, true);
                         }
                     }
@@ -1603,8 +1602,8 @@ public:
 
         void HandleChannelSequence()
         {
-            Unit* Channel = NULL;
-            Unit* Spirit[2] = { NULL, NULL };
+            Unit* Channel = nullptr;
+            Unit* Spirit[2] = { nullptr, nullptr };
             if (ChannelCount <= 5)
             {
                 Channel = ObjectAccessor::GetUnit(*me, ChannelGUID);
@@ -1764,10 +1763,12 @@ public:
             DoMeleeAttackIfReady();
         }
 
-        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             CloseGossipMenuFor(player);
             EnterPhase(PHASE_CHANNEL);
+
+            return true;
         }
 
     private:
@@ -1936,7 +1937,7 @@ void boss_illidan_stormrage::boss_illidan_stormrageAI::HandleTalkSequence()
         }
         break;
     case 21: // Kill ourself.
-        me->DealDamage(me, me->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+        me->DealDamage(me, me->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
         break;
     default:
         break;
@@ -2007,7 +2008,7 @@ public:
             if (DespawnTimer)
             {
                 if (DespawnTimer <= diff)
-                    me->DealDamage(me, me->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    me->DealDamage(me, me->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
                 else DespawnTimer -= diff;
             }
 
@@ -2049,14 +2050,14 @@ public:
     }
 };
 
-class npc_shadow_demon : public CreatureScript
+class npc_shadow_demon_illidan : public CreatureScript
 {
 public:
-    npc_shadow_demon() : CreatureScript("npc_shadow_demon") { }
+    npc_shadow_demon_illidan() : CreatureScript("npc_shadow_demon_illidan") { }
 
-    struct shadow_demonAI : public ScriptedAI
+    struct npc_shadow_demon_illidanAI : public ScriptedAI
     {
-        shadow_demonAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_shadow_demon_illidanAI(Creature* creature) : ScriptedAI(creature) { }
 
         void EnterCombat(Unit* /*who*/) override
         {
@@ -2101,7 +2102,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetBlackTempleAI<shadow_demonAI>(creature);
+        return GetBlackTempleAI<npc_shadow_demon_illidanAI>(creature);
     }
 };
 
@@ -2226,6 +2227,6 @@ void AddSC_boss_illidan()
     new npc_blade_of_azzinoth();
     new gameobject_cage_trap();
     new npc_cage_trap_trigger();
-    new npc_shadow_demon();
+    new npc_shadow_demon_illidan();
     new npc_parasitic_shadowfiend();
 }

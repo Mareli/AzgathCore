@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,6 +21,8 @@ to give credit after the boss defined in lastEncounterDungeon is killed.
 Without it, the party doing random dungeon won't get satchel of spoils and
 gets instead the deserter debuff.
 */
+
+//Missing Scripts and Bosses
 
 #include "ScriptMgr.h"
 #include "InstanceScript.h"

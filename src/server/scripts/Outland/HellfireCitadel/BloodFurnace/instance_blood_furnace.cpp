@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -86,7 +86,7 @@ class instance_blood_furnace : public InstanceMapScript
                 {
                     case GO_PRISON_DOOR_04:
                         PrisonDoor4GUID = go->GetGUID();
-                        /* fallthrough */
+                        // no break
                     case GO_PRISON_DOOR_01:
                     case GO_PRISON_DOOR_02:
                     case GO_PRISON_DOOR_03:
