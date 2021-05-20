@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 WoWLegacy <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,381 +14,445 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
 #include "PlayerAI.h"
 #include "ScriptMgr.h"
-#include "shrine_of_the_storm.h"
 #include "SpellAuraEffects.h"
+#include "shrine_of_the_storm.h"
 
 enum Stormsong
 {
-    SPELL_VOID_BOLT                 = 268347,
-    SPELL_MIND_REND                 = 268896,
-    SPELL_ANCIENT_MINDBENDER        = 269131,
-    SPELL_SURRENDER_TO_THE_VOID     = 269242,
+    SPELL_VOID_BOLT = 268347,
+    SPELL_MIND_REND = 268896,
 
-    SPELL_WAKEN_THE_VOID            = 269097,
-    SPELL_WAKEN_THE_VOID_MISSILE    = 269021,
-    SPELL_WAKEN_THE_VOID_AURA       = 269094,
-    SPELL_FIXATE                    = 269103,
-    SPELL_EXPLOSIVE_VOID            = 269104,
-    SPELL_DISCIPLE_OF_THE_VOLZITH   = 269289,
+    SPELL_WAKEN_THE_VOID = 269097,
+    SPELL_WAKEN_THE_VOID_MISSILE = 269021,
+    SPELL_WAKEN_THE_VOID_AURA = 269094,
+    SPELL_FIXATE = 269103,
+    SPELL_EXPLOSIVE_VOID = 269104,
 
-    EVENT_REGEN_MANA                = 1,
+    //mind control stuff
+    SPELL_ANCIENT_MINDBENDER = 269131,
+    SPELL_SURRENDER_TO_THE_VOID = 269242,
+    SPELL_DISCIPLE_OF_THE_VOLZITH = 269289, // visual id
+
+    SPELL_VOID_BOLT_VOLLEY = 269282,
 };
 
-class StormsongCharmedPlayerAI : public SimpleCharmedPlayerAI
+enum Creatures
+{
+    BOSS_LORD_STORMSONG = 134060,
+};
+
+enum Events
+{
+    EVENT_VOID_BOLT = 1,
+    EVENT_WAKEN_THE_VOID,
+    EVENT_FIXATE,
+    EVENT_ANCIENT_MINDBENDER,
+    EVENT_MIND_REND,
+};
+
+enum Timers
+{
+    TIMER_FIXATE_PLAYER = 1500,
+    TIMER_VOID_BOLT = 5 * IN_MILLISECONDS,
+    TIMER_WAKEN_THE_VOID = 30 * IN_MILLISECONDS,
+    TIMER_MIND_REND = 22 * IN_MILLISECONDS,
+    TIMER_ANCIENT_MINDBENDER = 40 * IN_MILLISECONDS,
+};
+
+const Position cheatersCheck = { 3560.75f, -1484.49f, 153.31f };
+
+#define AGGRO_TEXT "Intruders?! I shall cast your bodies to the blackened depths, to be crushed for eternity!"
+
+class bfa_boss_lord_stormsong : public CreatureScript
 {
 public:
-    StormsongCharmedPlayerAI(Player* player) : SimpleCharmedPlayerAI(player) { }
+    bfa_boss_lord_stormsong() : CreatureScript("bfa_boss_lord_stormsong")
+    {}
 
-    struct CharmedPlayerTargetSelectPred
+    struct bfa_boss_lord_stormsong_AI : public BossAI
     {
-        bool operator()(Unit const* target) const
+        bfa_boss_lord_stormsong_AI(Creature* creature) : BossAI(creature, DATA_LORD_STORMSONG), summons(me)
         {
-            Player const* pTarget = target->ToPlayer();
-            if (!pTarget)
-                return false;
-            if (pTarget->HasBreakableByDamageCrowdControlAura())
-                return false;
-            // We _really_ dislike healers. So we hit them in the face. Repeatedly. Exclusively.
-            return PlayerAI::IsPlayerHealer(pTarget);
+            instance = me->GetInstanceScript();
+        }
+
+        EventMap events;
+        InstanceScript* instance;
+        SummonList summons;
+
+        void SelectSoundAndText(Creature* me, uint32  selectedTextSound = 0)
+        {
+            if (!me)
+                return;
+
+            if (me)
+            {
+                switch (selectedTextSound)
+                {
+                case 1:
+                    me->Yell(AGGRO_TEXT, LANG_UNIVERSAL, NULL);
+                    break;
+                }
+            }
+        }
+
+        void JustSummoned(Creature* summon) override
+        {
+            summons.Summon(summon);
+
+            switch (summon->GetEntry())
+            {
+            case NPC_AWOKEN_VOID:
+                summon->SetInCombatWithZone();
+                break;
+            }
+        }
+
+        void EnterEvadeMode(EvadeReason why) override
+        {
+            summons.DespawnAll();
+            _DespawnAtEvade(15);
+        }
+        void Reset() override
+        {
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+            events.Reset();
+            summons.DespawnAll();
+        }
+
+        void JustDied(Unit*)
+        {
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+            summons.DespawnAll();
+            RemoveAdditionalAura(SPELL_DISCIPLE_OF_THE_VOLZITH);
+            RemoveAdditionalAura(SPELL_ANCIENT_MINDBENDER);
+        }
+
+        void EnterCombat(Unit*) override
+        {
+            SelectSoundAndText(me, 1);
+
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+
+            if (me->GetMap()->IsHeroic() || me->GetMap()->IsHeroic())
+                events.ScheduleEvent(EVENT_MIND_REND, TIMER_MIND_REND);
+
+            events.ScheduleEvent(EVENT_WAKEN_THE_VOID, TIMER_WAKEN_THE_VOID);
+            events.ScheduleEvent(EVENT_ANCIENT_MINDBENDER, TIMER_ANCIENT_MINDBENDER);
+            events.ScheduleEvent(EVENT_VOID_BOLT, TIMER_VOID_BOLT);
+        }
+
+        void RemoveAdditionalAura(uint32 spellId)
+        {
+            Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+            for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                if (Player* player = i->GetSource())
+                {
+                    player->RemoveAura(spellId);
+                }
+        }
+
+        void HandleBender()
+        {
+            std::list<Unit*> targets;
+            SelectTargetList(targets, 1, SELECT_TARGET_RANDOM, 500.0f, true);
+
+            if (!targets.empty())
+                if (targets.size() >= 1)
+                    targets.resize(1);
+
+            for (auto target : targets)
+            {
+                std::ostringstream str;
+                str << "An |cFFF00000|h[Ancient Mindbender]|h|r attaches to " << target->GetName();
+                me->TextEmote(str.str().c_str(), 0, true);
+                me->CastSpell(target, SPELL_ANCIENT_MINDBENDER, true);
+            }
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            if (!UpdateVictim())
+                return;
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            while (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_VOID_BOLT:
+                    me->CastSpell(me->GetVictim(), SPELL_VOID_BOLT);
+                    events.ScheduleEvent(EVENT_VOID_BOLT, TIMER_VOID_BOLT);
+                    break;
+                case EVENT_WAKEN_THE_VOID:
+                    me->CastSpell(me, SPELL_WAKEN_THE_VOID);
+                    events.ScheduleEvent(EVENT_WAKEN_THE_VOID, TIMER_WAKEN_THE_VOID);
+                    break;
+                case EVENT_ANCIENT_MINDBENDER:
+                    HandleBender();
+                    events.ScheduleEvent(EVENT_ANCIENT_MINDBENDER, TIMER_ANCIENT_MINDBENDER);
+                    break;
+                case EVENT_MIND_REND:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f))
+                        me->CastSpell(target, SPELL_MIND_REND);
+                    events.ScheduleEvent(EVENT_MIND_REND, TIMER_MIND_REND);
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
         }
     };
 
-    Unit* SelectAttackTarget() const override
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        if (Creature* charmer = GetCharmer())
-        {
-            if (Unit* target = charmer->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0, CharmedPlayerTargetSelectPred()))
-                return target;
-        }
-        return SimpleCharmedPlayerAI::SelectAttackTarget();
+        return new bfa_boss_lord_stormsong_AI(creature);
     }
+};
 
-    void OnCharmed(bool apply) override
+class bfa_spell_ancient_mindbender : public SpellScriptLoader
+{
+public:
+    bfa_spell_ancient_mindbender() : SpellScriptLoader("bfa_spell_ancient_mindbender") { }
+
+    class bfa_spell_ancient_mindbender_AuraScript : public AuraScript
     {
-        SimpleCharmedPlayerAI::OnCharmed(apply);
-        if (apply)
+        PrepareAuraScript(bfa_spell_ancient_mindbender_AuraScript);
+
+        void CalculateAmount(AuraEffect const* auraEffect, int32& amount, bool& /*canBeRecalculated*/)
         {
-            me->RemoveUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
+            amount = -1;
         }
-        else
+
+        void OnAbsorb(AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
         {
-            me->AddUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
+            absorbAmount = 0;
         }
-    }
 
-    void UpdateAI(const uint32 diff) override
-    {
-        Creature* charmer = GetCharmer();
-        if (!charmer)
-            return;
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
-
-        if (charmer->IsInCombat())
+        void HandleOnApply(AuraEffect const* aurEff, AuraEffectHandleModes mode)
         {
-            Unit* target = me->GetVictim();
-            if (!target || !charmer->IsValidAttackTarget(target) || target->HasBreakableByDamageCrowdControlAura())
+            if (Player* plr = GetTarget()->ToPlayer())
             {
-                target = SelectAttackTarget();
-                if (!target)
-                    return;
+                plr->AddAura(SPELL_DISCIPLE_OF_THE_VOLZITH, plr);
+                plr->CastSpell(plr, SPELL_SURRENDER_TO_THE_VOID);
+            }
+        }
 
-                AttackStart(target);
+        void HandleOnRemove(AuraEffect const* aurEff, AuraEffectHandleModes mode)
+        {
+            if (!GetTarget())
+                return;
+            GetTarget()->ToPlayer()->RemoveAura(SPELL_DISCIPLE_OF_THE_VOLZITH);
+        }
+
+        void Register()
+        {
+            DoEffectCalcAmount += AuraEffectCalcAmountFn(bfa_spell_ancient_mindbender_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+            OnEffectAbsorb += AuraEffectAbsorbFn(bfa_spell_ancient_mindbender_AuraScript::OnAbsorb, EFFECT_0);
+            OnEffectApply += AuraEffectApplyFn(bfa_spell_ancient_mindbender_AuraScript::HandleOnApply, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+            OnEffectRemove += AuraEffectRemoveFn(bfa_spell_ancient_mindbender_AuraScript::HandleOnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new bfa_spell_ancient_mindbender_AuraScript();
+    }
+};
+
+class bfa_spell_discipline_of_the_volzih : public SpellScriptLoader
+{
+public:
+    bfa_spell_discipline_of_the_volzih() : SpellScriptLoader("bfa_spell_discipline_of_the_volzih") { }
+
+    class bfa_spell_discipline_of_the_volzih_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(bfa_spell_discipline_of_the_volzih_AuraScript);
+
+        void OnPeriodic(AuraEffect const* aurEff)
+        {
+            Unit* caster = GetCaster();
+
+            if (!caster)
+                return;
+
+            caster->CastSpell(caster, SPELL_VOID_BOLT_VOLLEY);
+            if (caster->GetHealthPct() <= 50)
+            {
+                caster->RemoveAura(SPELL_ANCIENT_MINDBENDER);
+                caster->CastStop();
             }
 
-            DoAutoAttackIfReady();
         }
-    }
-};
 
-// 134063
-struct boss_lord_stormsong : public BossAI
-{
-    boss_lord_stormsong(Creature* creature) : BossAI(creature, DATA_LORD_STORMSONG) { }
-
-    void ScheduleTasks() override
-    {
-        events.ScheduleEvent(EVENT_REGEN_MANA, 1s);
-        events.ScheduleEvent(SPELL_VOID_BOLT, 7s);
-        events.ScheduleEvent(SPELL_WAKEN_THE_VOID, 13s);
-        if (IsHeroic() || IsMythic())
-            events.ScheduleEvent(SPELL_MIND_REND, 16s);
-    }
-
-    void EnterEvadeMode(EvadeReason why) override
-    {
-        std::list<Creature*> cList = me->FindNearestCreatures(NPC_AWOKEN_VOID, 100.0f);
-        for (Creature* orb : cList)
-            orb->DespawnOrUnsummon();
-        _DespawnAtEvade(30);
-        BossAI::EnterEvadeMode(why);
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        BossAI::JustDied(killer);
-        std::list<Creature*> cList = me->FindNearestCreatures(NPC_AWOKEN_VOID, 100.0f);
-        for (Creature* orb : cList)
-            orb->DespawnOrUnsummon();
-    }
-
-    void Reset() override
-    {
-        BossAI::Reset();
-        me->SetPower(POWER_MANA, 55000);
-        me->AddUnitState(UNIT_STATE_IGNORE_PATHFINDING); // map is bugged, has los and movement issues
-    }
-
-    void OnPowerChanged(Powers power, int32 /*oldValue*/, int32& newValue) override
-    {
-        if (power != POWER_MANA || newValue < me->GetMaxPower(POWER_MANA) || !me->IsInCombat())
-            return;
-        events.ScheduleEvent(SPELL_ANCIENT_MINDBENDER, 0s);
-    }
-
-    void EnterCombat(Unit* unit) override
-    {
-        BossAI::EnterCombat(unit);
-        me->SetPower(POWER_MANA, 55000);
-    }
-
-    void ExecuteEvent(uint32 eventId) override
-    {
-        switch (eventId)
+        void Register()
         {
-        case SPELL_ANCIENT_MINDBENDER:
-            DoCastSelf(SPELL_ANCIENT_MINDBENDER);
-            break;
-        case EVENT_REGEN_MANA:
-            me->ModifyPower(POWER_MANA, me->GetMaxPower(POWER_MANA) * 0.025f);
-            events.Repeat(1s);
-            break;
-        case SPELL_VOID_BOLT:
-            DoCastVictim(SPELL_VOID_BOLT);
-            events.Repeat(7s);
-            break;
-        case SPELL_WAKEN_THE_VOID:
-            DoCastSelf(SPELL_WAKEN_THE_VOID);
-            events.Repeat(27s);
-            break;
-        case SPELL_MIND_REND:
-            DoCastSelf(SPELL_MIND_REND);
-            events.Repeat(11s);
-            break;
+            OnEffectPeriodic += AuraEffectPeriodicFn(bfa_spell_discipline_of_the_volzih_AuraScript::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
         }
-    }
+    };
 
-    PlayerAI* GetAIForCharmedPlayer(Player* player) override
+    AuraScript* GetAuraScript() const
     {
-        return new StormsongCharmedPlayerAI(player);
-    }
-};
-
-// 278010 - Dark Water
-class spell_dark_water : public AuraScript
-{
-    PrepareAuraScript(spell_dark_water);
-
-    void HandlePeriodicTick(AuraEffect const* aurEff)
-    {
-        GetCaster()->CastSpell(GetCaster(), aurEff->GetAmount(), true);
-    }
-
-    void Register() override
-    {
-        OnEffectPeriodic += AuraEffectPeriodicFn(spell_dark_water::HandlePeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        return new bfa_spell_discipline_of_the_volzih_AuraScript();
     }
 };
 
-// 137036
-struct npc_awoken_void : public ScriptedAI
+class bfa_spell_surrender_to_the_void : public SpellScriptLoader
 {
-    npc_awoken_void(Creature* creature) : ScriptedAI(creature) {}
+public:
+    bfa_spell_surrender_to_the_void() : SpellScriptLoader("bfa_spell_surrender_to_the_void") { }
 
-    void Reset() override
+    class bfa_spell_surrender_to_the_void_SpellScript : public SpellScript
     {
-        me->AddUnitState(UNIT_STATE_IGNORE_PATHFINDING); // map is bugged, has los and movement issues
-        me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NOT_ATTACKABLE_1));
-        me->SetReactState(REACT_PASSIVE);
-        me->SetWalk(true);
-        me->GetScheduler().Schedule(1ms, [this](TaskContext context) // visual does not display if sent immediately after spawn, wait one tick
-        {
-            GetContextCreature()->CastSpell(GetContextCreature(), SPELL_WAKEN_THE_VOID_MISSILE, true);
-        });
-    }
+        PrepareSpellScript(bfa_spell_surrender_to_the_void_SpellScript);
 
-    void UpdateAI(uint32 diff) override
-    {
-        if (me->isMoving() || !me->HasAura(SPELL_WAKEN_THE_VOID_AURA))
-            return;
-
-        if (Player* target = me->SelectNearestPlayer(100.0f))
+        void HandleAfterCast()
         {
-            me->GetMotionMaster()->MoveFollow(target, 0.0f, 0.0f);
+            if (Unit* caster = GetCaster())
+            {
+                caster->Kill(caster);
+            }
         }
-    }
-};
 
-// 269021 - Waken the Void
-class spell_waken_the_void : public SpellScript
-{
-    PrepareSpellScript(spell_waken_the_void);
-
-    void HandleHit(SpellEffIndex /*effIndex*/)
-    {
-        if (Creature* caster = GetCaster()->ToCreature())
+        void Register()
         {
-            caster->CastSpell(caster, SPELL_WAKEN_THE_VOID_AURA, true);
-            caster->ToCreature()->SetReactState(REACT_AGGRESSIVE);
+            AfterCast += SpellCastFn(bfa_spell_surrender_to_the_void_SpellScript::HandleAfterCast);
         }
-    }
+    };
 
-    void Register() override
+    SpellScript* GetSpellScript() const
     {
-        OnEffectHitTarget += SpellEffectFn(spell_waken_the_void::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
+        return new bfa_spell_surrender_to_the_void_SpellScript();
     }
 };
 
-// Spell 269094 Waken the Void
-// AT 17892
-struct at_waken_the_void : AreaTriggerAI
-{
-    at_waken_the_void(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
 
-    void OnUnitEnter(Unit* unit) override
+enum VoidEvents
+{
+    EVENT_CHECK_DIST_PLAYER = 1,
+    EVENT_FIXATE_FOLLOW,
+};
+
+class bfa_npc_awoken_void : public CreatureScript
+{
+public:
+    bfa_npc_awoken_void() : CreatureScript("bfa_npc_awoken_void")
+    {}
+
+    struct bfa_npc_awoken_void_AI : public ScriptedAI
     {
-        if (Unit* caster = at->GetCaster())
-            if (Creature* orb = caster->ToCreature())
-                if (orb->IsValidAttackTarget(unit) || unit->HasAura(SPELL_ANCIENT_MINDBENDER))
+        bfa_npc_awoken_void_AI(Creature* creature) : ScriptedAI(creature)
+        {
+            me->SetSpeed(MOVE_WALK, 0.8f);
+            me->SetSpeed(MOVE_FLIGHT, 0.8f);
+            me->SetSpeed(MOVE_RUN, 0.8f);
+            me->SetUnitFlags(UNIT_FLAG_NOT_SELECTABLE);
+            me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+            me->SetWalk(true);
+        }
+
+        EventMap events;
+
+        void Reset() override
+        {
+            me->GetScheduler().Schedule(500ms, [this](TaskContext context)
                 {
-                    orb->CastSpell(unit, SPELL_EXPLOSIVE_VOID, true);
-                    orb->DespawnOrUnsummon(1); // 1 tick for animation
-                }
-    }
-};
+                    me->CastSpell(me, SPELL_WAKEN_THE_VOID_MISSILE, true);
+                });
 
-// 269131 Ancient Mindbender
-class spell_ancient_mindbender : public SpellScript
-{
-    PrepareSpellScript(spell_ancient_mindbender);
-
-    bool targetsAlreadySelected;
-
-    bool Load() override
-    {
-        targetsAlreadySelected = false;
-        return true;
-    }
-
-    void HandleScript(SpellEffIndex effIndex)
-    {
-        if (Unit* target = GetHitUnit())
-        {
-            if (Creature* mind = GetCaster()->SummonCreature(NPC_ANCIENT_MINDBENDER, target->GetPosition()))
-                mind->EnterVehicle(target);
-            target->CastSpell(target, SPELL_SURRENDER_TO_THE_VOID, false);
+            events.Reset();
         }
-    }
 
-    void CorrectTargets(std::list<WorldObject*>& targets)
-    {
-        if (targets.size() == 1)
+        void EnterCombat(Unit*) override
         {
-            targets.clear(); // for solo play
-            return;
+            me->CastSpell(me, SPELL_WAKEN_THE_VOID_AURA, true);
+            me->SetReactState(REACT_AGGRESSIVE);
+
+            events.ScheduleEvent(EVENT_FIXATE, TIMER_FIXATE_PLAYER);
+            events.ScheduleEvent(EVENT_CHECK_DIST_PLAYER, 3000);
         }
-        if (Unit* unit = GetCaster())
-            if (Creature* caster = unit->ToCreature())
-                if (Unit* target = caster->AI()->SelectTarget(SELECT_TARGET_TOPAGGRO, 1))
+
+        void CheckNearbyPlayers()
+        {
+            Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+            for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                if (Player* player = i->GetSource())
                 {
-                    targets.remove_if([target](WorldObject* obj) -> bool
+                    if (!player->IsGameMaster()) //gm check
                     {
-                        if (obj != target)
-                            return true;
-                        return false;
-                    });
+                        if (me->GetDistance(player) <= 3.0f)
+                        {
+                            me->CastSpell(player, SPELL_EXPLOSIVE_VOID, true);
+                            me->DespawnOrUnsummon();
+                        }
+                    }
                 }
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_ancient_mindbender::HandleScript, EFFECT_11, SPELL_EFFECT_SCRIPT_EFFECT);
-        for (uint32 i = 0; i <= 12; ++i)
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ancient_mindbender::CorrectTargets, EFFECT_0 + i, TARGET_UNIT_SRC_AREA_ENEMY);
-    }
-};
-
-// 269131 Ancient Mindbender
-class spell_ancient_mindbender_aura : public AuraScript
-{
-    PrepareAuraScript(spell_ancient_mindbender_aura);
-
-    void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
-    {
-        if (Creature* mind = GetTarget()->FindNearestCreature(137051, 5.0f))
-            mind->DespawnOrUnsummon();
-    }
-
-    void OnRemoveAll(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
-    {
-        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
-        {
-            // aura expired after 20secs, charm the player
-            GetCaster()->CastSpell(GetTarget(), SPELL_DISCIPLE_OF_THE_VOLZITH, true);
         }
-    }
 
-    void OnAbsorb(AuraEffect * /*aurEff*/, DamageInfo& dmgInfo, uint32& absorbAmount)
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            while (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_FIXATE:
+                {
+                    std::list<Unit*> targets;
+                    SelectTargetList(targets, 1, SELECT_TARGET_RANDOM, 500.0f, true);
+
+                    if (!targets.empty())
+                        if (targets.size() >= 1)
+                            targets.resize(1);
+
+                    for (auto target : targets)
+                    {
+                        me->AddThreat(target, 9999999999.9f);
+                        me->CastSpell(target, SPELL_FIXATE, true);
+                        me->AI()->AttackStart(target);
+                    }
+                    events.ScheduleEvent(EVENT_FIXATE_FOLLOW, 2000);
+                    break;
+                }
+                case EVENT_FIXATE_FOLLOW:
+                    if (Unit* victim = me->GetVictim())
+                    {
+                        me->GetMotionMaster()->MoveFollow(victim, 0.0f, 0.0f);
+
+                    }
+                    events.ScheduleEvent(EVENT_FIXATE_FOLLOW, 1000);
+                    break;
+                case EVENT_CHECK_DIST_PLAYER:
+                {
+                    CheckNearbyPlayers();
+                    events.ScheduleEvent(EVENT_CHECK_DIST_PLAYER, 2000);
+                    break;
+                }
+                }
+            }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        absorbAmount = 0; // do not absorb, only use this to calculate aura remove
-        if (Player* plr = GetTarget()->ToPlayer())
-            if (plr->HealthBelowPctDamaged(50, dmgInfo.GetDamage()))
-                Remove();
-    }
-
-    void CalculateAmount(AuraEffect const* /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
-    {
-        amount = -1;
-    }
-
-    void Register() override
-    {
-        AfterEffectRemove += AuraEffectRemoveFn(spell_ancient_mindbender_aura::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
-        OnEffectAbsorb += AuraEffectAbsorbFn(spell_ancient_mindbender_aura::OnAbsorb, EFFECT_0);
-        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_ancient_mindbender_aura::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-        AfterEffectRemove += AuraEffectRemoveFn(spell_ancient_mindbender_aura::OnRemoveAll, EFFECT_12, SPELL_AURA_MECHANIC_IMMUNITY, AURA_EFFECT_HANDLE_REAL);
-    }
-};
-
-// 269289 Disciple of the Vol'zith
-class spell_disciple_of_the_volzith : public AuraScript
-{
-    PrepareAuraScript(spell_disciple_of_the_volzith);
-
-    void HandleDummyTick(AuraEffect const* aurEff)
-    {
-        GetTarget()->CastSpell(GetTarget(), aurEff->GetAmount(), false);
-    }
-
-    void Register() override
-    {
-        OnEffectPeriodic += AuraEffectPeriodicFn(spell_disciple_of_the_volzith::HandleDummyTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        return new bfa_npc_awoken_void_AI(creature);
     }
 };
 
 void AddSC_boss_lord_stormsong()
 {
-    RegisterCreatureAI(boss_lord_stormsong);
-    RegisterAuraScript(spell_dark_water);
-    RegisterCreatureAI(npc_awoken_void);
-    RegisterSpellScript(spell_waken_the_void);
-    RegisterAreaTriggerAI(at_waken_the_void);
-    RegisterSpellAndAuraScriptPair(spell_ancient_mindbender, spell_ancient_mindbender_aura);
-    RegisterAuraScript(spell_disciple_of_the_volzith);
+    new bfa_boss_lord_stormsong();
+    new bfa_npc_awoken_void();
+
+    new bfa_spell_ancient_mindbender();
+    new bfa_spell_surrender_to_the_void();
+    new bfa_spell_discipline_of_the_volzih();
 }

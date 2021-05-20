@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 WoWLegacy <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -157,6 +157,7 @@ class spell_upheaval_target_selector : public SpellScript
             return;
 
         caster->CastSpell(target, SPELL_UPHEAVAL_JUMP_TO_TARGET);
+        caster->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
     }
 
     void Register() override

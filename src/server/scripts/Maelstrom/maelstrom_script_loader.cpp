@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,7 +27,7 @@ void AddSC_boss_ozruk();
 void AddSC_boss_high_priestess_azil();
 
 // Zones
-void AddSC_deepholm();
+void AddSC_zone_deepholm();
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
@@ -44,5 +44,5 @@ void AddMaelstromScripts()
     AddSC_boss_high_priestess_azil();
 
     // Zones
-    AddSC_deepholm();
+    AddSC_zone_deepholm();
 }

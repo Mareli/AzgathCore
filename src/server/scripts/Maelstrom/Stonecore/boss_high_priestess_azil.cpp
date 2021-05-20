@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -266,6 +266,8 @@ class boss_high_priestess_azil : public CreatureScript
                                 DoCast(target, SPELL_SEISMIC_SHARD_TARGETING);
                                 DoCast(me, SPELL_SEISMIC_SHARD_LAUNCH);
                                 countSeismicShard -= 1;
+                                if (Creature* trigger = me->SummonCreature(49657, target->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN)) // seismic shard trigger
+                                    trigger->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
                             }
                             events.ScheduleEvent(countSeismicShard > 0 ? EVENT_EARTH_FURY_PREPARE_SHARD : EVENT_EARTH_FURY_FLY_DOWN, 4800);
                             break;
@@ -697,8 +699,16 @@ public:
                 return;
 
             target->ExitVehicle();
-            DynamicObject* dynamicObject = GetCaster()->GetDynObject(SPELL_SEISMIC_SHARD_TARGETING);
-            target->CastSpell(dynamicObject->GetPositionX(), dynamicObject->GetPositionY(), dynamicObject->GetPositionZ(), SPELL_SEISMIC_SHARD_MISSLE, true);
+            std::list<Creature*> triggers;
+            GetCaster()->GetCreatureListWithEntryInGrid(triggers, 49657, 100.0f);
+            if (!triggers.empty())
+            {
+                for (auto trigger : triggers)
+                {
+                    target->CastSpell(trigger->GetPosition(), SPELL_SEISMIC_SHARD_MISSLE, true);
+                    trigger->DespawnOrUnsummon(5 * IN_MILLISECONDS);
+                }
+            }
         }
 
         void Register() override

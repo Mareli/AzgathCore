@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 WoWLegacy <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,376 +14,516 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
-#include "shrine_of_the_storm.h"
+#include "SpellAuraEffects.h"
 #include "Spell.h"
 #include "ObjectMgr.h"
 #include "Log.h"
+#include "shrine_of_the_storm.h"
 
-enum Aquasirr
+enum Spells
 {
-    SPELL_SEA_BLAST                     = 265001,
-    SPELL_CHOKING_BRINE                 = 264560,
-    SPELL_CHOKING_BRINE_MISSILE_SINGLE  = 264714,
-    SPELL_CHOKING_BRINE_MISSILE_MULTI   = 264703,
-    SPELL_SURGING_RUSH                  = 264101,
-    SPELL_UNDERTOW                      = 264144,
-    SPELL_GRASP_FROM_THE_DEPTHS         = 264477,
-    SPELL_GRASP_FROM_THE_DEPTHS_SUMMON  = 264522,
-    SPELL_GRASP_FROM_THE_DEPTHS_ROOT    = 264526,
+    SPELL_SEA_BLAST = 265001,
+    SPELL_CHOKING_BRINE = 264560,
+    SPELL_CHOKING_BRINE_MISSILE_SINGLE = 264714,
+    SPELL_CHOKING_BRINE_MISSILE_MULTI = 264703,
+    SPELL_SURGING_RUSH = 264101,
+    SPELL_UNDERTOW = 264144,
+    SPELL_GRASP_FROM_THE_DEPTHS = 264477,
+    SPELL_GRASP_FROM_THE_DEPTHS_SUMMON = 264522,
+    SPELL_GRASP_FROM_THE_DEPTHS_ROOT = 264526,
 
-    SPELL_ERUPTING_WATER                = 264903,
-    SPELL_DIMINISH                      = 264899,
+    SPELL_ERUPTING_WATER = 264903,
+    SPELL_DIMINISH = 264899,
 
-    SPELL_EMERGE_VISUAL                 = 274948,
-
-    NPC_AQUALING                        = 134828,
-
-    PHASE_NORMAL                        = 1,
-    PHASE_AQUALINGS                     = 2,
+    SPELL_EMERGE_VISUAL = 274948,
 };
 
-// from sniffs and videos
-static Position const platformPoints[8] =
+enum Creatures
 {
-    { 3954.12f, -1250.46f, 127.809f },
-    { 3949.95f, -1228.69f, 127.901f },
-    { 3920.58f, -1258.02f, 128.144f },
-    { 3915.61f, -1235.96f, 128.120f },
-    { 3940.30f, -1260.54f, 128.129f },
-    { 3954.01f, -1239.36f, 127.751f },
-    { 3939.58f, -1221.45f, 128.424f },
-    { 3925.66f, -1225.16f, 128.356f }
+    BOSS_AQUSIRR = 134056,
+
+    NPC_AQUALING = 134828,
+    NPC_GRASPING_TENTACLES = 134612,
 };
 
-class AquasirrBase : public BossAI
+enum Events
+{
+    EVENT_SEA_BLAST_CHECK = 1,
+    EVENT_SURGING_RUSH,
+    EVENT_UNDERTOW,
+    EVENT_CHOKING_BRINE,
+
+    EVENT_GRASPING_TENTACLES,
+
+    EVENT_SEA_BLAST_CAST,
+};
+enum Timers
+{
+    TIMER_SEA_BLAST_CHECK = 2 * IN_MILLISECONDS,
+    TIMER_CHOKING_BRINE = 11 * IN_MILLISECONDS,
+    TIMER_UNDERTOW = 30 * IN_MILLISECONDS,
+    TIMER_SURGING_RUSH = 17 * IN_MILLISECONDS,
+
+    TIMER_GRASPING_TENTACLES = 15 * IN_MILLISECONDS,
+
+    TIMER_SEA_BLAST_CAST = 2 * IN_MILLISECONDS, //adds
+};
+
+#define ROOT me->AddUnitState(UNIT_STATE_ROOT)
+#define REMOVE_ROOT me->ClearUnitState(UNIT_STATE_ROOT)
+
+const Position centerPlatform = { 3931.72f, -1244.48f, 128.45f }; //also cheaters check 30y
+
+// movement force
+class bfa_boss_aqusirr : public CreatureScript
 {
 public:
-    AquasirrBase(Creature* creature, uint32 bossId) : BossAI(creature, bossId)
+    bfa_boss_aqusirr() : CreatureScript("bfa_boss_aqusirr")
     {
-        lastPlatformPoint = 0;
     }
 
-    uint32 lastPlatformPoint;
-
-    void ScheduleTasks() override
+    struct bfa_boss_aqusirr_AI : public BossAI
     {
-        damageEvents.ScheduleEventBelowHealthPct(SPELL_ERUPTING_WATER, 50);
-        if (IsHeroic() || IsMythic())
-            events.ScheduleEvent(SPELL_GRASP_FROM_THE_DEPTHS, 15s, PHASE_NORMAL);
-        ScheduleCombatSpells();
-    }
-
-    void ScheduleCombatSpells()
-    {
-        events.ScheduleEvent(SPELL_CHOKING_BRINE, 11s, PHASE_NORMAL);
-        events.ScheduleEvent(SPELL_SURGING_RUSH, 17s, PHASE_NORMAL);
-        events.ScheduleEvent(SPELL_UNDERTOW, 30s, PHASE_NORMAL);
-        events.ScheduleEvent(SPELL_SEA_BLAST, 2s, PHASE_NORMAL);
-    }
-
-    void GenerateRandomPlatformPointId()
-    {
-        std::list<uint32> points;
-        for (uint32 i = 0; i < 8; ++i)
+        bfa_boss_aqusirr_AI(Creature* creature) : BossAI(creature, DATA_AQUSIRR), summons(me)
         {
-            if (i == lastPlatformPoint)
-                continue;
-            if (me->GetDistance(platformPoints[i]) > 5.0f) // skip nearest side points
-                points.emplace_back(i);
+            instance = me->GetInstanceScript();
+            ROOT;
         }
 
-        lastPlatformPoint = Trinity::Containers::SelectRandomContainerElement(points);
-    }
+        InstanceScript* instance;
+        EventMap events;
+        SummonList summons;
+        bool splitPhase2;
+        uint8 addsDead;
+        bool cannotAttack;
 
-    uint32 GetData(uint32 type) const override
-    {
-        return lastPlatformPoint;
-    }
-
-    void Reset() override
-    {
-        BossAI::Reset();
-        SetCombatMovement(false);
-    }
-
-    void MovementInform(uint32 type, uint32 id) override
-    {
-        if (type == POINT_MOTION_TYPE)
-            if (id == EVENT_CHARGE)
-            {
-                events.DelayEvents(2000, PHASE_NORMAL);
-                me->GetScheduler().Schedule(1s, [this](TaskContext context)
-                {
-                    me->RemoveAurasDueToSpell(SPELL_SURGING_RUSH);
-                    DoCastSelf(SPELL_EMERGE_VISUAL);
-                });
-            }
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (!UpdateVictim())
-            return;
-
-        events.Update(diff);
-
-        if (me->HasUnitState(UNIT_STATE_CASTING) || me->HasAura(SPELL_SURGING_RUSH))
-            return;
-
-        while (uint32 eventId = events.ExecuteEvent())
+        void Reset() override
         {
-            ExecuteEvent(eventId);
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+            summons.DespawnAll();
+            events.Reset();
+            REMOVE_ROOT;
+            splitPhase2 = false;
+            cannotAttack = false;
+            me->NearTeleportTo(me->GetHomePosition());
+            addsDead = 0;
+        }
+
+        void EnterEvadeMode(EvadeReason why) override
+        {
+            _DespawnAtEvade(15);
+            Reset();
+        }
+
+        void SummonedCreatureDies(Creature* summon, Unit* killer)
+        {
+            switch (summon->GetEntry())
+            {
+            case NPC_AQUALING:
+            {
+                ++addsDead;
+                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, summon);
+
+                if (addsDead >= 3)
+                    ReturnCombat();
+                break;
+            }
+            }
+        }
+
+        void ReturnCombat()
+        {
+            me->RemoveAura(SPELL_ERUPTING_WATER);
+            me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+            HandleNormalEvents();
+            me->SetHealth(me->CountPctFromMaxHealth(15));
+        }
+
+        void JustDied(Unit*) override
+        {
+            summons.DespawnAll();
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+        }
+        
+        void JustSummoned(Creature* summon) override
+        {
+            summons.Summon(summon);
+
+            switch (summon->GetEntry())
+            {
+            case NPC_AQUALING:
+                summon->SetInCombatWithZone();
+                instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, summon);
+                break;
+            }
+        }
+
+        void DamageTaken(Unit* attacker, uint32& damage) override
+        {
+            if (me->HealthBelowPct(50) && !splitPhase2)
+            {
+                splitPhase2 = true;
+                cannotAttack = true;
+                me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+                me->SummonCreature(NPC_AQUALING, 3939.58f, -1221.45f, 128.424f, TEMPSUMMON_CORPSE_DESPAWN);
+                me->SummonCreature(NPC_AQUALING, 3954.12f, -1250.46f, 127.809f, TEMPSUMMON_CORPSE_DESPAWN);
+                me->SummonCreature(NPC_AQUALING, 3920.58f, -1258.02f, 128.144f, TEMPSUMMON_CORPSE_DESPAWN);
+                events.Reset();
+            }
+        }
+
+        void EnterCombat(Unit*) override
+        {
+            ROOT;
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+            HandleNormalEvents();
+        }
+
+        void HandleNormalEvents()
+        {
+            cannotAttack = false;
+            events.ScheduleEvent(EVENT_SEA_BLAST_CHECK, TIMER_SEA_BLAST_CHECK);
+            events.ScheduleEvent(EVENT_UNDERTOW, TIMER_UNDERTOW);
+            events.ScheduleEvent(EVENT_CHOKING_BRINE, TIMER_CHOKING_BRINE);
+            events.ScheduleEvent(EVENT_SURGING_RUSH, TIMER_SURGING_RUSH);
+
+            if (me->GetMap()->IsHeroic() && me->GetMap()->IsMythic())
+                events.ScheduleEvent(EVENT_GRASPING_TENTACLES, TIMER_GRASPING_TENTACLES);
+        }
+
+        void OnSpellFinished(SpellInfo const* spellInfo) override
+        {
+            switch (spellInfo->Id)
+            {
+            case SPELL_SURGING_RUSH:
+            {
+                me->GetScheduler().Schedule(1s, [this](TaskContext /*context*/)
+                    {
+                        me->RestoreDisplayId();
+                    });
+                break;
+            }
+            }
+        }
+
+        void SelectRushPoint()
+        {
+            events.DelayEvents(5 * IN_MILLISECONDS);
+
+            me->CastSpell(me, SPELL_SURGING_RUSH);
+
+            me->GetScheduler().Schedule(4s, [this](TaskContext /*context*/)
+                {
+                    float x;
+                    float y;
+                    float z = me->GetPositionZ();
+
+                    switch (rand() % 5)
+                    {
+                    case 0:
+                        x = 3929.14f;
+                        y = -1262.38f;
+                        break;
+                    case 1:
+                        x = 3931.14f;
+                        y = -1224.62f;
+                        break;
+                    case 2:
+                        x = 3953.22f;
+                        y = -1239.37f;
+                        break;
+                    case 3:
+                        x = 3939.73f;
+                        y = -1261.44f;
+                        break;
+                    case 4:
+                        x = 3915.98f;
+                        y = -1236.37f;
+                        break;
+                    }
+
+
+                    me->GetMotionMaster()->MoveCharge(x, y, me->GetPositionZ());
+                    //me->CastSpell(me, SPELL_EMERGE_VISUAL, true);
+                    ROOT;
+                });
+
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            if (!UpdateVictim())
+                return;
+
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
-        }
 
-        DoMeleeAttackIfReady();
-    }
-
-    void EnterEvadeMode(EvadeReason why) override
-    {
-        _DespawnAtEvade(30);
-        BossAI::EnterEvadeMode(why);
-    }
-
-    void ExecuteEvent(uint32 eventId) override
-    {
-        switch (eventId)
-        {
-        case SPELL_CHOKING_BRINE:
-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0f, true, -SPELL_CHOKING_BRINE))
-                DoCast(target, SPELL_CHOKING_BRINE);
-            events.Repeat(10s);
-            break;
-        case SPELL_SURGING_RUSH:
-            GenerateRandomPlatformPointId();
-            if (Unit* victim = me->GetVictim())
-                me->CastSpellWithOrientation(victim, SPELL_SURGING_RUSH, false, me->GetAngle(platformPoints[lastPlatformPoint]));
-            events.Repeat(17s);
-            break;
-        case SPELL_UNDERTOW:
-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0f, true, -SPELL_UNDERTOW))
-                DoCast(target, SPELL_UNDERTOW);
-            events.Repeat(13s);
-            break;
-        case SPELL_ERUPTING_WATER:
-            me->CastStop();
-            events.CancelEventGroup(PHASE_NORMAL);
-            DoCastSelf(SPELL_ERUPTING_WATER);
-            break;
-        case SPELL_SEA_BLAST:
-            for (auto threat : me->getThreatManager().getThreatList())
+            while (uint32 eventId = events.ExecuteEvent())
             {
-                if (me->IsWithinMeleeRange(threat->getTarget()))
+                switch (eventId)
                 {
-                    events.Repeat(2s);
-                    return;
+                case EVENT_SEA_BLAST_CHECK:
+                    if (!me->IsWithinMeleeRange(me->GetVictim()))
+                        me->CastSpell(me->GetVictim(), SPELL_SEA_BLAST);
+
+                    events.ScheduleEvent(EVENT_SEA_BLAST_CHECK, TIMER_SEA_BLAST_CHECK);
+                    break;
+                case EVENT_SURGING_RUSH:
+                    SelectRushPoint();
+                    REMOVE_ROOT;
+                    events.ScheduleEvent(EVENT_SURGING_RUSH, TIMER_SURGING_RUSH);
+                    break;
+                case EVENT_UNDERTOW:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f))
+                        me->CastSpell(target, SPELL_UNDERTOW);
+                    events.ScheduleEvent(EVENT_UNDERTOW, TIMER_UNDERTOW);
+                    break;
+                case EVENT_CHOKING_BRINE:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f))
+                        me->CastSpell(target, SPELL_CHOKING_BRINE);
+                    break;
+                case EVENT_GRASPING_TENTACLES:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50.0f))
+                    {
+                        me->CastSpell(target, SPELL_GRASP_FROM_THE_DEPTHS);
+                        me->AddAura(SPELL_GRASP_FROM_THE_DEPTHS_ROOT, target);
+                    }
+                    break;
                 }
             }
-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM))
-                DoCast(target, SPELL_SEA_BLAST);
-
-            events.Repeat(2s);
-            break;
-        case SPELL_GRASP_FROM_THE_DEPTHS:
-            DoCastSelf(SPELL_GRASP_FROM_THE_DEPTHS);
-            events.Repeat(15s);
-            break;
+            if (!cannotAttack)
+                DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new bfa_boss_aqusirr_AI(creature);
     }
 };
 
-// 134056
-struct boss_aquasirr : public AquasirrBase
+
+class bfa_npc_aqualing : public CreatureScript
 {
-    boss_aquasirr(Creature* creature) : AquasirrBase(creature, DATA_AQUSIRR)
+public:
+    bfa_npc_aqualing() : CreatureScript("bfa_npc_aqualing")
     {
-        me->SetReactState(REACT_PASSIVE);
-        me->SetVisible(false);
-        aqualingKillCount = 0;
     }
 
-    uint32 aqualingKillCount;
-
-    void SetData(uint32 type, uint32 data) override
+    struct bfa_npc_aqualing_AI : public ScriptedAI
     {
-        ++aqualingKillCount;
-        if (aqualingKillCount >= 3)
+        bfa_npc_aqualing_AI(Creature* creature) : ScriptedAI(creature)
         {
-            me->RemoveAurasDueToSpell(SPELL_ERUPTING_WATER);
-            me->SetHealth(me->CountPctFromMaxHealth(15));
-            ScheduleCombatSpells();
-            if (IsHeroic() || IsMythic())
-                events.ScheduleEvent(SPELL_GRASP_FROM_THE_DEPTHS, 15s, PHASE_NORMAL);
+            ROOT;
+            me->AddAura(SPELL_DIMINISH);
         }
-    }
 
-    void Reset() override
-    {
-        aqualingKillCount = 0;
-        AquasirrBase::Reset();
-    }
-};
+        EventMap events;
 
-// 134828
-struct npc_aqualing : public AquasirrBase
-{
-    npc_aqualing(Creature* creature) : AquasirrBase(creature, DATA_AQUALING) { }
-
-    void Reset() override
-    {
-        AquasirrBase::Reset();
-        me->SetBoundingRadius(3.84367f); // sniffed, using same model as boss, with smaller bounding
-        me->SetCombatReach(7.5f); // sniffed, using same model as boss, with smaller combatreach
-        DoCastSelf(SPELL_DIMINISH);
-    }
-
-    void ScheduleTasks() override
-    {
-        ScheduleCombatSpells();
-    }
-
-    void JustDied(Unit* killer) override
-    {
-        //AquasirrBase::JustDied(killer);
-        if (Creature* boss = instance->GetCreature(NPC_AQUSIRR))
-            boss->AI()->SetData(0, 0);
-    }
-};
-
-// Spell 264144
-// AT 17427
-struct at_aquasirr_undertow : AreaTriggerAI
-{
-    at_aquasirr_undertow(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
-
-    void OnUnitEnter(Unit* unit) override
-    {
-        if (unit->HasAura(SPELL_UNDERTOW, at->GetCasterGuid()))
-            unit->ApplyMovementForce(at->GetGUID(), *at->GetCaster(), -5.f, 0);
-    }
-
-    void OnUnitExit(Unit* unit) override
-    {
-        unit->RemoveMovementForce(at->GetGUID());
-    }
-};
-
-// 264101 - Surging Rush
-class spell_surging_rush : public AuraScript
-{
-    PrepareAuraScript(spell_surging_rush);
-
-    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        if (Creature* target = GetTarget()->ToCreature())
+        void Reset() override
         {
-            // charge movement must happen after aura apply (sniffed)
-            target->GetScheduler().Schedule(1ms, [this](TaskContext context)
+            events.Reset();
+        }
+
+        void EnterCombat(Unit*) override
+        {
+            events.ScheduleEvent(EVENT_SEA_BLAST_CAST, TIMER_SEA_BLAST_CAST);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            if (!UpdateVictim())
+                return;
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            while (uint32 eventId = events.ExecuteEvent())
             {
-                Position pos = platformPoints[GetContextCreature()->AI()->GetData(0)];
-                GetContextCreature()->GetMotionMaster()->MoveCharge(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ());
-            });
-            
+                switch (eventId)
+                {
+                case EVENT_SEA_BLAST_CAST:
+                    if (!me->IsWithinMeleeRange(me->GetVictim()))
+                        me->CastSpell(me->GetVictim(), SPELL_SEA_BLAST);
+                    events.ScheduleEvent(EVENT_SEA_BLAST_CAST, TIMER_SEA_BLAST_CAST);
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new bfa_npc_aqualing_AI(creature);
     }
 
-    void Register() override
-    {
-        AfterEffectApply += AuraEffectApplyFn(spell_surging_rush::OnApply, EFFECT_2, SPELL_AURA_TRANSFORM, AURA_EFFECT_HANDLE_REAL);
-    }
 };
 
-// 264560 Choking Brine
-class spell_choking_brine : public AuraScript
+class bfa_npc_grasping_tentacle : public CreatureScript
 {
-    PrepareAuraScript(spell_choking_brine);
-
-    void HandleDispel(DispelInfo* dispelInfo)
+public:
+    bfa_npc_grasping_tentacle() : CreatureScript("bfa_npc_grasping_tentacle")
     {
-        if (Unit* owner = GetUnitOwner())
+    }
+
+    struct bfa_npc_grasping_tentacle_AI : public ScriptedAI
+    {
+        bfa_npc_grasping_tentacle_AI(Creature* creature) : ScriptedAI(creature)
         {
-            // from sniffs, 5+1 casts
-            for (uint32 i = 0; i < 5; ++i)
-                owner->CastSpell(owner, SPELL_CHOKING_BRINE_MISSILE_MULTI, true);
-            owner->CastSpell(owner, SPELL_CHOKING_BRINE_MISSILE_SINGLE, true);
+            ROOT;
         }
-    }
 
-    void Register() override
+        void JustDied(Unit*) override
+        {
+            Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+            for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
+                if (Player* player = i->GetSource())
+                {
+                    if (!player->IsGameMaster()) //gm check
+                    {
+                        if (player->HasAura(SPELL_GRASP_FROM_THE_DEPTHS_ROOT))
+                            player->RemoveAura(SPELL_GRASP_FROM_THE_DEPTHS_ROOT);
+                    }
+                }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        AfterDispel += AuraDispelFn(spell_choking_brine::HandleDispel);
-    }
-};
-
-// 264903 - Erupting Waters
-class spell_erupting_water : public AuraScript
-{
-    PrepareAuraScript(spell_erupting_water);
-
-    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        GetTarget()->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
-    }
-
-    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        GetTarget()->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
-    }
-
-    void Register() override
-    {
-        AfterEffectApply += AuraEffectApplyFn(spell_erupting_water::OnApply, EFFECT_0, SPELL_AURA_MOD_STUN, AURA_EFFECT_HANDLE_REAL);
-        AfterEffectRemove += AuraEffectRemoveFn(spell_erupting_water::OnRemove, EFFECT_0, SPELL_AURA_MOD_STUN, AURA_EFFECT_HANDLE_REAL);
+        return new bfa_npc_grasping_tentacle_AI(creature);
     }
 };
 
-
-
-// 264477 - Grasp from the Depths
-
-class spell_grasp_from_the_depths : public SpellScript
+// 264560 
+class bfa_spell_choking_brine : public SpellScriptLoader
 {
-    PrepareSpellScript(spell_grasp_from_the_depths);
+public:
+    bfa_spell_choking_brine() : SpellScriptLoader("bfa_spell_choking_brine")
+    {}
 
-    void HandleOnHitTarget(SpellEffIndex /* effIndex */)
+    class bfa_spell_choking_brine_AuraScript : public AuraScript
     {
-        if (Unit* target = GetHitUnit())
-            target->CastSpell(target, SPELL_GRASP_FROM_THE_DEPTHS_SUMMON, true);
-    }
+    public:
+        PrepareAuraScript(bfa_spell_choking_brine_AuraScript);
 
-    void Register() override
+        void HandleEffectRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (!GetUnitOwner())
+                return;
+
+            Unit* owner = GetUnitOwner();
+            AuraRemoveMode removeMode = GetTargetApplication()->GetRemoveMode();
+
+            if (removeMode == AURA_REMOVE_BY_ENEMY_SPELL)
+            {
+                for (uint8 i = 0; i < 5; ++i)
+                    owner->CastSpell(owner, SPELL_CHOKING_BRINE_MISSILE_MULTI, true);
+            }
+        }
+        void Register()
+        {
+            AfterEffectRemove += AuraEffectRemoveFn(bfa_spell_choking_brine_AuraScript::HandleEffectRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
     {
-        OnEffectHitTarget += SpellEffectFn(spell_grasp_from_the_depths::HandleOnHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
+        return new bfa_spell_choking_brine_AuraScript();
     }
 };
 
-// 134612
-struct npc_grasp_of_depths : public ScriptedAI
+// 264144
+class bfa_spell_undertow : public SpellScriptLoader
 {
-    npc_grasp_of_depths(Creature* creature) : ScriptedAI(creature) {}
+public:
+    bfa_spell_undertow() : SpellScriptLoader("bfa_spell_undertow") { }
 
-    void Reset() override
+    class bfa_spell_undertow_AuraScript : public AuraScript
     {
-        me->SetReactState(REACT_PASSIVE);
-        DoCastSelf(SPELL_GRASP_FROM_THE_DEPTHS_ROOT); // targets the summoner player
+        PrepareAuraScript(bfa_spell_undertow_AuraScript);
+
+        void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            Unit* caster = GetCaster();
+            Unit* target = GetTarget();
+
+            if (!caster || !target)
+                return;
+
+            target->ApplyMovementForce(caster->GetGUID(), caster->GetPosition(), -5.0f, 0);
+        }
+
+        void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            Unit* caster = GetCaster();
+            Unit* target = GetTarget();
+
+            if (!caster || !target)
+                return;
+
+            target->RemoveMovementForce(caster->GetGUID());
+        }
+
+        void Register()
+        {
+            OnEffectApply += AuraEffectApplyFn(bfa_spell_undertow_AuraScript::OnApply, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+            OnEffectRemove += AuraEffectRemoveFn(bfa_spell_undertow_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new bfa_spell_undertow_AuraScript();
+    }
+};
+
+//264477
+class bfa_spell_grasp_from_the_depths : public SpellScriptLoader
+{
+public:
+    bfa_spell_grasp_from_the_depths() : SpellScriptLoader("bfa_spell_grasp_from_the_depths")
+    {}
+
+    class bfa_spell_grasp_from_the_depths_SpellScript : public SpellScript
+    {
+    public:
+        PrepareSpellScript(bfa_spell_grasp_from_the_depths_SpellScript);
+
+        void HandleOnHitTarget(SpellEffIndex /* effIndex */)
+        {
+            if (Unit* target = GetHitUnit())
+                target->CastSpell(target, SPELL_GRASP_FROM_THE_DEPTHS_SUMMON, true);
+        }
+
+        void Register() override
+        {
+            OnEffectHitTarget += SpellEffectFn(bfa_spell_grasp_from_the_depths_SpellScript::HandleOnHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
+        }
+
+    };
+
+    SpellScript* GetSpellScript() const
+    {
+        return new bfa_spell_grasp_from_the_depths_SpellScript();
     }
 };
 
 void AddSC_boss_aqusirr()
 {
-    RegisterCreatureAI(boss_aquasirr);
-    RegisterCreatureAI(npc_aqualing);
-    RegisterCreatureAI(npc_grasp_of_depths);
+    new bfa_boss_aqusirr();
+    new bfa_npc_aqualing();
+    new bfa_npc_grasping_tentacle();
 
-    RegisterAreaTriggerAI(at_aquasirr_undertow);
-    RegisterAuraScript(spell_surging_rush);
-    RegisterAuraScript(spell_choking_brine);
-    RegisterAuraScript(spell_erupting_water);
-    RegisterSpellScript(spell_grasp_from_the_depths);
+    new bfa_spell_undertow();
+    new bfa_spell_grasp_from_the_depths();
+    new bfa_spell_choking_brine();
 }
