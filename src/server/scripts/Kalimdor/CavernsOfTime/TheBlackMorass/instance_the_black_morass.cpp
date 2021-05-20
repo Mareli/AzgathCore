@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -182,7 +181,7 @@ public:
                         {
                             if (medivh->IsAlive())
                             {
-                                medivh->DealDamage(medivh, medivh->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                                medivh->DealDamage(medivh, medivh->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
                                 m_auiEncounter[0] = FAIL;
                                 m_auiEncounter[1] = NOT_STARTED;
                             }
@@ -203,15 +202,22 @@ public:
                     {
                         //this may be completed further out in the post-event
                         TC_LOG_DEBUG("scripts", "Instance The Black Morass: Event completed.");
+                        Map::PlayerList const& players = instance->GetPlayers();
 
-                        DoOnPlayers([](Player* player)
+                        if (!players.isEmpty())
                         {
-                            if (player->GetQuestStatus(QUEST_OPENING_PORTAL) == QUEST_STATUS_INCOMPLETE)
-                                player->AreaExploredOrEventHappens(QUEST_OPENING_PORTAL);
+                            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                            {
+                                if (Player* player = itr->GetSource())
+                                {
+                                    if (player->GetQuestStatus(QUEST_OPENING_PORTAL) == QUEST_STATUS_INCOMPLETE)
+                                        player->AreaExploredOrEventHappens(QUEST_OPENING_PORTAL);
 
-                            if (player->GetQuestStatus(QUEST_MASTER_TOUCH) == QUEST_STATUS_INCOMPLETE)
-                                player->AreaExploredOrEventHappens(QUEST_MASTER_TOUCH);
-                        });
+                                    if (player->GetQuestStatus(QUEST_MASTER_TOUCH) == QUEST_STATUS_INCOMPLETE)
+                                        player->AreaExploredOrEventHappens(QUEST_MASTER_TOUCH);
+                                }
+                            }
+                        }
                     }
 
                     m_auiEncounter[0] = data;
@@ -271,7 +277,7 @@ public:
                 return summon;
 
             TC_LOG_DEBUG("scripts", "Instance The Black Morass: What just happened there? No boss, no loot, no fun...");
-            return NULL;
+            return nullptr;
         }
 
         void DoSpawnPortal()

@@ -1,6 +1,5 @@
  /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -208,12 +207,12 @@ public:
 
                 creature->AI()->Talk(SAY_TH_START_EVENT_PART1);
 
-                if (npc_escortAI* pEscortAI = CAST_AI(npc_thrall_old_hillsbrad::npc_thrall_old_hillsbradAI, creature->AI()))
+                if (EscortAI* pEscortAI = CAST_AI(npc_thrall_old_hillsbrad::npc_thrall_old_hillsbradAI, creature->AI()))
                     pEscortAI->Start(true, true, player->GetGUID());
 
-                ENSURE_AI(npc_escortAI, (creature->AI()))->SetMaxPlayerDistance(100.0f);//not really needed, because it will not despawn if player is too far
-                ENSURE_AI(npc_escortAI, (creature->AI()))->SetDespawnAtEnd(false);
-                ENSURE_AI(npc_escortAI, (creature->AI()))->SetDespawnAtFar(false);
+                ENSURE_AI(EscortAI, (creature->AI()))->SetMaxPlayerDistance(100.0f);//not really needed, because it will not despawn if player is too far
+                ENSURE_AI(EscortAI, (creature->AI()))->SetDespawnAtEnd(false);
+                ENSURE_AI(EscortAI, (creature->AI()))->SetDespawnAtFar(false);
                 break;
 
             case GOSSIP_ACTION_INFO_DEF+2:
@@ -274,9 +273,9 @@ public:
         return true;
     }
 
-    struct npc_thrall_old_hillsbradAI : public npc_escortAI
+    struct npc_thrall_old_hillsbradAI : public EscortAI
     {
-        npc_thrall_old_hillsbradAI(Creature* creature) : npc_escortAI(creature)
+        npc_thrall_old_hillsbradAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             instance = creature->GetInstanceScript();
@@ -431,7 +430,7 @@ public:
                         if (Creature* Taretha = instance->instance->GetCreature(instance->GetGuidData(DATA_TARETHA)))
                         {
                             if (Player* player = GetPlayerForEscort())
-                                ENSURE_AI(npc_escortAI, (Taretha->AI()))->Start(false, true, player->GetGUID());
+                                ENSURE_AI(EscortAI, (Taretha->AI()))->Start(false, true, player->GetGUID());
                         }
 
                         //kill credit Creature for quest
@@ -532,7 +531,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!UpdateVictim())
                 return;
@@ -607,9 +606,9 @@ public:
         return true;
     }
 
-    struct npc_tarethaAI : public npc_escortAI
+    struct npc_tarethaAI : public EscortAI
     {
-        npc_tarethaAI(Creature* creature) : npc_escortAI(creature)
+        npc_tarethaAI(Creature* creature) : EscortAI(creature)
         {
             instance = creature->GetInstanceScript();
         }
@@ -634,7 +633,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
         }
     };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -176,7 +176,7 @@ float HordeOverrunWP[21][3]=//waypoints in the horde base used in the end in the
     {5429.91f, -2718.44f, 1493.42f}//20 end 2
 };
 
-hyjal_trashAI::hyjal_trashAI(Creature* creature) : npc_escortAI(creature)
+hyjal_trashAI::hyjal_trashAI(Creature* creature) : EscortAI(creature)
 {
     instance = creature->GetInstanceScript();
     IsEvent = false;
@@ -470,7 +470,7 @@ public:
                 if (Creature* trigger = me->SummonCreature(NPC_WORLD_TRIGGER_TINY, me->GetPositionWithOffset({ 8.0f, 8.0f, frand(25.0f, 35.0f), 0.0f }), TEMPSUMMON_TIMED_DESPAWN, 1000))
                 {
                     trigger->SetVisible(false);
-                    trigger->setFaction(me->getFaction());
+                    trigger->SetFaction(me->GetFaction());
                     trigger->SetDisableGravity(true);
                     trigger->CastSpell(me, SPELL_METEOR, true);
                 }
@@ -496,7 +496,7 @@ public:
             if (!CanMove)return;
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -588,7 +588,7 @@ public:
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -687,7 +687,7 @@ public:
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -808,7 +808,7 @@ public:
             hyjal_trashAI::UpdateAI(diff);
 
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
 
             if (IsEvent)
             {
@@ -902,7 +902,7 @@ public:
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -998,7 +998,7 @@ public:
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -1084,7 +1084,7 @@ public:
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -1187,7 +1187,7 @@ public:
             if (IsEvent || IsOverrun)
             {
                 ENSURE_AI(hyjal_trashAI, me->AI())->SetCanAttack(false);
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             }
 
             if (IsEvent)
@@ -1304,7 +1304,7 @@ public:
             if (IsEvent || IsOverrun)
             {
                 ENSURE_AI(hyjal_trashAI, me->AI())->SetCanAttack(false);
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             }
 
             if (IsEvent)
@@ -1344,9 +1344,9 @@ public:
 
             if (!me->IsWithinDist(me->GetVictim(), 20) || forcemove)
             {
-                forcemove = false;
                 if (forcemove)
                 {
+                    forcemove = false;
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
                         me->Attack(target, false);
                 }
@@ -1441,7 +1441,7 @@ public:
                     return;
                 }
                 int dmg = 500 + rand32() % 700;
-                me->CastCustomSpell(me->GetVictim(), SPELL_EXPLODING_SHOT, &dmg, 0, 0, false);
+                me->CastCustomSpell(me->GetVictim(), SPELL_EXPLODING_SHOT, &dmg, nullptr, false, nullptr);
                 ExplodeTimer = 5000 + rand32() % 5000;
             } else ExplodeTimer -= diff;
             DoMeleeAttackIfReady();

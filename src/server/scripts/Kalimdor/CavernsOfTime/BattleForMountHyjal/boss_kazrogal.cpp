@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -119,8 +119,8 @@ public:
         {
             if (IsEvent)
             {
-                //Must update npc_escortAI
-                npc_escortAI::UpdateAI(diff);
+                //Must update EscortAI
+                EscortAI::UpdateAI(diff);
                 if (!go)
                 {
                     go = true;
@@ -216,7 +216,7 @@ class spell_mark_of_kazrogal : public SpellScriptLoader
 
                 if (target->GetPower(POWER_MANA) == 0)
                 {
-                    target->CastSpell(target, SPELL_MARK_DAMAGE, true, NULL, aurEff);
+                    target->CastSpell(target, SPELL_MARK_DAMAGE, true, nullptr, aurEff);
                     // Remove aura
                     SetDuration(0);
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2014-2018 RoG_WoW Source <http://wow.rog.snet>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -265,7 +265,7 @@ class boss_morchok: public CreatureScript
                     summon->SetMaxHealth(me->GetMaxHealth());
                     summon->SetHealth(me->GetHealth());
                     summon->setActive(true);
-                    summon->setFaction(14);
+                    summon->SetFaction(14);
                     summon->AI()->AttackStart(me->GetVictim());
                     DoZoneInCombat(summon);
                 }

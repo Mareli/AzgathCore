@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2014-2018 RoG_WoW Source <http://wow.rog.snet>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -770,7 +770,7 @@ class npc_warmaster_blackhorn_goriona: public CreatureScript
                             break;
                         case EVENT_TWILIGHT_FLAMES:
                         {
-                            Unit* pTarget = NULL;
+                            Unit* pTarget = nullptr;
                             pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0, TwilightFlamesSelector());
                             if (!pTarget)
                                 pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0f, true);
@@ -1045,7 +1045,7 @@ class npc_warmaster_blackhorn_twilight_elite_dreadblade_slayer: public CreatureS
                 if ((dist * dist) >= startPos.GetExactDist2dSq(endPos.GetPositionX(), endPos.GetPositionY()))
                     return false;
 
-                float size = pTarget->GetCombatReach() / 2;
+                float size = pTarget->GetObjectSize() / 2;
                 float angle = startPos.GetAngle(&endPos);
                 return (size * size) >= pTarget->GetExactDist2dSq(startPos.GetPositionX() + std::cos(angle) * dist, startPos.GetPositionY() + std::sin(angle) * dist);
             }
@@ -1204,7 +1204,7 @@ class npc_warmaster_blackhorn_skyfire_harpoon_gun: public CreatureScript
                             if (drakeAI->IsReady() && (*itr)->IsAlive())
                                 return (*itr);
 
-                return NULL;
+                return nullptr;
             }
 
             void ReleaseAssaultDrake(uint32 entry)
@@ -1734,7 +1734,7 @@ class npc_dragon_soul_sky_captain_swayze : public CreatureScript
 
             bool CheckPlayers()
             {
-                Player* player = NULL;
+                Player* player = nullptr;
                 AnyLivePlayerNoGmCheck check(me, 200.0f);
                 Trinity::PlayerSearcher<AnyLivePlayerNoGmCheck> searcher(me, player, check);
                 Cell::VisitWorldObjects(me, searcher, 200.0f);
@@ -1787,9 +1787,9 @@ class spell_warmaster_blackhorn_twilight_barrage_dmg : public SpellScriptLoader
 
                     if (Creature* pShip = GetCaster()->FindNearestCreature(NPC_SKYFIRE, 300.0f))
                     {
-                        int32 bp0 = GetSpellInfo()->GetEffect(EFFECT_0)->BasePoints;
+                        float bp0 = GetSpellInfo()->GetEffect(EFFECT_0)->BasePoints;
                         bp0 *= 1.5f;
-                        GetCaster()->CastCustomSpell(pShip, SPELL_TWILIGHT_BARRAGE_DMG_2, &bp0, NULL, NULL, true);
+                        GetCaster()->CastCustomSpell(pShip, SPELL_TWILIGHT_BARRAGE_DMG_2, &bp0, NULL, nullptr, true);
                     }
                 }
             }
@@ -1822,9 +1822,9 @@ class spell_warmaster_blackhorn_twilight_onslaught_dmg : public SpellScriptLoade
 
                 if (Creature* pShip = GetCaster()->FindNearestCreature(NPC_SKYFIRE, 300.0f))
                 {
-                    int32 bp0 = GetSpellInfo()->GetEffect(EFFECT_0)->BasePoints;
-                    bp0 /= targets.size() + 1;
-                    GetCaster()->CastCustomSpell(pShip, SPELL_TWILIGHT_ONSLAUGHT_DMG_2, &bp0, NULL, NULL, true);
+                    float bp0 = GetSpellInfo()->GetEffect(EFFECT_0)->BasePoints;
+                    bp0 /= targets.size() + 1.f;
+                    GetCaster()->CastCustomSpell(pShip, SPELL_TWILIGHT_ONSLAUGHT_DMG_2, &bp0, nullptr, nullptr, true);
                 }
             }
 
@@ -1937,8 +1937,8 @@ class spell_warmaster_blackhorn_consuming_shroud : public SpellScriptLoader
                 if (removeMode == AURA_REMOVE_BY_DEATH)
                     if (GetTarget())
                     {
-                        int32 bp0 = aurEff->GetAmount();
-                        GetTarget()->CastCustomSpell((Unit*)NULL, SPELL_CONSUMING_SHROUD_DMG, &bp0, NULL, NULL, true);
+                        float bp0 = aurEff->GetAmount();
+                        GetTarget()->CastCustomSpell((Unit*)nullptr, SPELL_CONSUMING_SHROUD_DMG, &bp0, nullptr, nullptr, true);
                     }
             }
 
@@ -2059,7 +2059,7 @@ class spell_warmaster_blackhorn_broadside : public SpellScriptLoader
                 if (Creature* pShip = GetCaster()->FindNearestCreature(NPC_SKYFIRE, 300.0f))
                 {
                     int32 bp0 = pShip->CountPctFromCurHealth(20);
-                    GetCaster()->CastCustomSpell(pShip, SPELL_BROADSIDE_DMG, &bp0, NULL, NULL, true);
+                    GetCaster()->CastCustomSpell(pShip, SPELL_BROADSIDE_DMG, &bp0, nullptr, true);
                 }
             }
 

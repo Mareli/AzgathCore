@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -184,9 +184,9 @@ class npc_morridune : public CreatureScript
 public:
     npc_morridune() : CreatureScript("npc_morridune") { }
 
-    struct npc_morriduneAI : public npc_escortAI
+    struct npc_morriduneAI : public EscortAI
     {
-        npc_morriduneAI(Creature* creature) : npc_escortAI(creature)
+        npc_morriduneAI(Creature* creature) : EscortAI(creature)
         {
             Talk(SAY_MORRIDUNE_1);
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
@@ -206,9 +206,11 @@ public:
             }
         }
 
-        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             DoCast(player, SPELL_TELEPORT_DARNASSUS);
+
+            return true;
         }
     };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2010 - 2012 ProjectSkyfire <http://www.projectskyfire.org/>
  *
  * Copyright (C) 2011 - 2012 ArkCORE <http://www.arkania.net/>
@@ -145,9 +145,9 @@ public:
         return new npc_thrall_hotAI(creature);
     }
 
-    struct npc_thrall_hotAI : public npc_escortAI
+    struct npc_thrall_hotAI : public EscortAI
     {
-        npc_thrall_hotAI(Creature* creature) : npc_escortAI(creature), summons(me)
+        npc_thrall_hotAI(Creature* creature) : EscortAI(creature), summons(me)
         {
             instance = creature->GetInstanceScript();
         }
@@ -291,7 +291,7 @@ public:
         void UpdateAI(uint32 diff) override
 
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
@@ -578,9 +578,9 @@ public:
         return new npc_thrall_second_hotAI(creature);
     }
 
-    struct npc_thrall_second_hotAI : public npc_escortAI
+    struct npc_thrall_second_hotAI : public EscortAI
     {
-        npc_thrall_second_hotAI(Creature* creature) : npc_escortAI(creature), summons(me)
+        npc_thrall_second_hotAI(Creature* creature) : EscortAI(creature), summons(me)
         {
             instance = creature->GetInstanceScript();
         }
@@ -705,7 +705,7 @@ public:
         void UpdateAI(uint32 diff) override
 
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             /*if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;*/
@@ -1178,33 +1178,6 @@ public:
     }
 };
 
-class spell_rising_fire_totem : public SpellScriptLoader
-{
-public:
-    spell_rising_fire_totem() : SpellScriptLoader("spell_rising_fire_totem") { }
-
-    class spell_rising_fire_totem_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_rising_fire_totem_SpellScript);
-
-        void FilterTargets(std::list<WorldObject*>& targets)
-        {
-            targets.remove_if(TargetFilter());
-            Trinity::Containers::RandomResize(targets, 1);
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_rising_fire_totem_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_rising_fire_totem_SpellScript();
-    }
-};
-
 class npc_thrall_final_hot : public CreatureScript
 {
 public:
@@ -1254,9 +1227,9 @@ public:
         return new npc_thrall_final_hotAI(creature);
     }
 
-    struct npc_thrall_final_hotAI : public npc_escortAI
+    struct npc_thrall_final_hotAI : public EscortAI
     {
-        npc_thrall_final_hotAI(Creature* creature) : npc_escortAI(creature), summons(me)
+        npc_thrall_final_hotAI(Creature* creature) : EscortAI(creature), summons(me)
         {
             instance = creature->GetInstanceScript();
         }
@@ -1363,7 +1336,7 @@ public:
         void UpdateAI(uint32 diff) override
 
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             /*if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;*/
@@ -1694,7 +1667,6 @@ void AddSC_hourl_of_twilight()
     new npc_twilight_ranger();
     new npc_twilight_thug();
     new npc_twilight_shadow_walker();
-    new spell_rising_fire_totem();
     new npc_thrall_final_hot();
     new npc_faceless_brute();
     new npc_faceless_shadow_weaver();

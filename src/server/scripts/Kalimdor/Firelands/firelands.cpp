@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -2833,15 +2833,15 @@ class spell_alysrazor_turn_monstrosity : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_GENERIC_DUMMY_CAST))
+                if (!sSpellMgr->GetSpellInfo(SPELL_GENERIC_DUMMY_CAST, DIFFICULTY_NONE))
                     return false;
-                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_RIGHT))
+                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_RIGHT, DIFFICULTY_NONE))
                     return false;
-                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_LEFT))
+                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_LEFT, DIFFICULTY_NONE))
                     return false;
-                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_FORWARD))
+                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_FORWARD, DIFFICULTY_NONE))
                     return false;
-                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_BACK))
+                if (!sSpellMgr->GetSpellInfo(SPELL_KNOCKBACK_BACK, DIFFICULTY_NONE))
                     return false;
                 return true;
             }

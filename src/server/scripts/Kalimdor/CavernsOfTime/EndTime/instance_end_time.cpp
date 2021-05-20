@@ -1,8 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
- *
- * Copyright (C) 2008-2014 Forgotten Lands <http://www.forgottenlands.eu/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -209,15 +206,12 @@ class time_deliver_device : public GameObjectScript
         {
             player->PlayerTalkClass->ClearMenus();
             CloseGossipMenuFor(player);
-            SpellInfo const* spell = sSpellMgr->GetSpellInfo(action);
+            SpellInfo const* spell = sSpellMgr->GetSpellInfo(action, DIFFICULTY_NONE);
             if (!spell)
                 return false;
 
             if (player->IsInCombat())
-            {
-                //Spell::SendCastResult(player, spell, 0, SPELL_FAILED_AFFECTING_COMBAT);
                 return true;
-            }
 
             if (sender == GOSSIP_SENDER_TIME_DELIVER_DEVICE)
                 player->CastSpell(player, spell, true);

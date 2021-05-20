@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -365,7 +365,7 @@ class boss_bethtilac : public CreatureScript
                                 me->SetPower(POWER_MANA, energy - 100);
                             if ((energy - 100) == 0)
                             {
-                                uiCount++;
+                                ++uiCount;
                                 if (uiCount < 3)
                                 {
                                     events.RescheduleEvent(EVENT_FILAMENT, 23000);
@@ -574,7 +574,7 @@ class npc_bethtilac_cinderweb_spinner : public CreatureScript
                 if (bTaunted)
                     return;
 
-                if (spellInfo->HasEffect(SPELL_EFFECT_ATTACK_ME) || spellInfo->HasAura(DIFFICULTY_NONE, SPELL_AURA_MOD_TAUNT))
+                if (spellInfo->HasEffect(SPELL_EFFECT_ATTACK_ME) || spellInfo->HasAura(SPELL_AURA_MOD_TAUNT))
                 {
                     bTaunted = true;
                     me->SetReactState(REACT_AGGRESSIVE);

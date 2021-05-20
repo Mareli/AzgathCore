@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -524,51 +524,6 @@ public:
     }
 };
 
-class spell_perotharn_punishing_flames_dmg : public SpellScriptLoader
-{
-public:
-    spell_perotharn_punishing_flames_dmg() : SpellScriptLoader("spell_perotharn_punishing_flames_dmg") { }
-
-    class spell_perotharn_punishing_flames_dmg_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_perotharn_punishing_flames_dmg_SpellScript);
-
-        void FilterTargets(std::list<WorldObject*>& targets)
-        {
-            if (!GetCaster())
-                return;
-
-            if (!targets.empty())
-                targets.remove_if(DistanceCheck(GetCaster()));
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_perotharn_punishing_flames_dmg_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-        }
-
-    private:
-        class DistanceCheck
-        {
-        public:
-            DistanceCheck(Unit* searcher) : _searcher(searcher) { }
-
-            bool operator()(WorldObject* unit)
-            {
-                return (!unit->ToUnit() || _searcher->GetDistance(unit) < 80.0f);
-            }
-
-        private:
-            Unit* _searcher;
-        };
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_perotharn_punishing_flames_dmg_SpellScript();
-    }
-};
-
 typedef boss_perotharn::boss_perotharnAI PerotharnAI;
 
 class achievement_lazy_eye : public AchievementCriteriaScript
@@ -594,6 +549,5 @@ void AddSC_boss_perotharn()
     new npc_perotharn_eye_of_perotharn();
     new spell_perotharn_drain_essence();
     new spell_perotharn_drain_essence_dmg();
-    new spell_perotharn_punishing_flames_dmg();
     new achievement_lazy_eye();
 }

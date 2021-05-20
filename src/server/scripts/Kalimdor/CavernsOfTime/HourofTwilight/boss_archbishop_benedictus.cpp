@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2010 - 2012 ProjectSkyfire <http://www.projectskyfire.org/>
  *
  * Copyright (C) 2011 - 2012 ArkCORE <http://www.arkania.net/>
@@ -37,9 +37,6 @@ enum Spells
     SPELL_PURIFIED                      = 103654,
     SPELL_PURIFYING_BLAST               = 103648,
     SPELL_PURIFYING_BLAST_DAMAGE        = 103651,
-    SPELL_WAVE_OF_VIRTUE_SUMMON         = 103677,
-    SPELL_WAVE_OF_VIRTUE_WAVE           = 103678,
-    SPELL_WAVE_OF_VIRTUE_DAMAGE         = 103684,
     SPELL_TWILIGHT_BLAST                = 104504,
     SPELL_TWILIGHT_SHEAR                = 103363,
     SPELL_CORRUPTING_TWILIGHT_SUMMON1   = 103770,
@@ -56,7 +53,6 @@ enum Spells
     SPELL_TWILIGHT_EPIPHANY             = 103754,
     SPELL_TWILIGHT_EPIPHANY_SCREEN      = 103755,
     SPELL_WATER_SHELL                   = 103744,
-    SPELL_SEAPING_LIGHT                 = 104516,
     SPELL_SEAPING_TWILIGHT              = 104534
 };
 
@@ -133,7 +129,6 @@ public:
 
             if (Creature* seaping = me->FindNearestCreature(600000, 100.0f, true))
             {
-                seaping->RemoveAura(SPELL_SEAPING_LIGHT);
                 seaping->RemoveAura(SPELL_SEAPING_TWILIGHT);
             }
 
@@ -183,7 +178,6 @@ public:
 
             if (Creature* seaping = me->FindNearestCreature(600000, 100.0f, true))
             {
-                seaping->RemoveAura(SPELL_SEAPING_LIGHT);
                 seaping->RemoveAura(SPELL_SEAPING_TWILIGHT);
             }
 
@@ -235,11 +229,6 @@ public:
                     events.CancelEvent(EVENT_PURIFYING_LIGHT);
                     events.CancelEvent(EVENT_WAVE_OF_VIRTUE);
                     twilightPhase = true;
-
-                    if (Creature* seaping = me->FindNearestCreature(600000, 100.0f, true))
-                    {
-                        seaping->RemoveAura(SPELL_SEAPING_LIGHT);
-                    }
 
                     std::list<Creature*> unitList;
                     me->GetCreatureListWithEntryInGrid(unitList, 55427, 100.0f);
@@ -323,7 +312,7 @@ public:
                         break;
                     case EVENT_START_BENEDICTUS:
                         intro = false;
-                        me->setFaction(14);
+                        me->SetFaction(14);
                         break;
                     case EVENT_SMITE:
                         if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
@@ -351,10 +340,6 @@ public:
                         break;
                     case EVENT_WAVE_OF_VIRTUE:
                         me->SummonCreature(55441, 3483.79f, 229.25f, -120.10f, 0.614074f, TEMPSUMMON_TIMED_DESPAWN, 10000);
-                        if (Creature* seaping = me->FindNearestCreature(600000, 100.0f, true))
-                        {
-                            seaping->CastSpell(seaping, SPELL_SEAPING_LIGHT, false);
-                        }
 
                         if (Creature* thrall = me->FindNearestCreature(NPC_THRALL_FINAL, 200.0f, true))
                         {
@@ -541,8 +526,6 @@ public:
 
         void IsSummonedBy(Unit* /*summoner*/) override
         {
-            me->CastSpell(me, SPELL_WAVE_OF_VIRTUE_WAVE, true);
-
             me->GetMotionMaster()->MovePoint(0, 3606.74f, 301.41f, -120.10f);
             events.ScheduleEvent(EVENT_WAVE_OF_VIRTUE_DAMAGE, 1000);
         }
@@ -560,7 +543,6 @@ public:
                 switch (eventId)
                 {
                     case EVENT_WAVE_OF_VIRTUE_DAMAGE:
-                        me->CastSpell(me, SPELL_WAVE_OF_VIRTUE_DAMAGE, true);
                         me->GetMotionMaster()->MovePoint(0, 3606.74f, 301.41f, -120.10f);
                         events.ScheduleEvent(EVENT_WAVE_OF_VIRTUE_DAMAGE, 750);
                         break;
@@ -569,49 +551,6 @@ public:
         }
     };
 
-};
-
-class spell_wave_of_virtue : public SpellScriptLoader
-{
-public:
-    spell_wave_of_virtue() : SpellScriptLoader("spell_wave_of_virtue") { }
-
-private:
-    class spell_wave_of_virtue_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_wave_of_virtue_SpellScript);
-
-        void LeapBack(SpellEffIndex effIndex)
-        {
-            PreventHitDefaultEffect(effIndex);
-
-            if (Unit* target = GetHitUnit())
-            {
-                if (!target->HasAura(SPELL_WATER_SHELL))
-                {
-                    float speedxy = float(GetSpellInfo()->GetEffect(effIndex)->MiscValue) / 10;
-                    float speedz = float(GetSpellInfo()->GetEffect(effIndex)->BasePoints / 10);
-                    target->JumpTo(speedxy, speedz, false);
-                }
-            }
-        }
-
-        void FilterTargets(std::list<WorldObject*>& targets)
-        {
-            targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_WATER_SHELL));
-        }
-
-        void Register() override
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_wave_of_virtue_SpellScript::LeapBack, EFFECT_1, SPELL_EFFECT_LEAP_BACK);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_wave_of_virtue_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_wave_of_virtue_SpellScript();
-    }
 };
 
 class npc_corrupting_twilight : public CreatureScript
@@ -766,58 +705,11 @@ public:
 
 };
 
-class spell_seaping_light : public SpellScriptLoader
-{
-public:
-    spell_seaping_light() : SpellScriptLoader("spell_seaping_light") { }
-
-    class spell_seaping_light_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_seaping_light_SpellScript);
-
-        void FilterTargets(std::list<WorldObject*>& targets)
-        {
-            float inRadius = 36.0f;
-
-            targets.remove_if(DistanceCheck(GetCaster(), inRadius));
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_seaping_light_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_seaping_light_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-        }
-
-    private:
-        class DistanceCheck
-        {
-        public:
-            DistanceCheck(Unit* searcher, float distance) : _searcher(searcher), _distance(distance) { }
-
-            bool operator()(WorldObject* unit)
-            {
-                return (_searcher->GetDistance2d(unit) < _distance);
-            }
-
-        private:
-            Unit* _searcher;
-            float _distance;
-        };
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_seaping_light_SpellScript();
-    }
-};
-
 void AddSC_boss_archbishop_benedictus()
 {
     new boss_archbishop_benedictus();
     new npc_purifying_light();
     new npc_wave_of_virtue();
-    new spell_wave_of_virtue();
     new npc_corrupting_twilight();
     new npc_wave_of_twilight();
-    new spell_seaping_light();
 }

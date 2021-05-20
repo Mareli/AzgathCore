@@ -221,33 +221,6 @@ private:
     WorldObject* _caster;
 };
 
-class spell_isiset_supernova : public SpellScriptLoader
-{
-public:
-    spell_isiset_supernova() : SpellScriptLoader("spell_isiset_supernova") { }
-
-    class spell_isiset_supernova_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_isiset_supernova_SpellScript);
-
-        void FilterTargets(std::list<WorldObject*>& unitList)
-        {
-            unitList.remove_if(FacingCheck(GetCaster()));
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_isiset_supernova_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_isiset_supernova_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_isiset_supernova_SpellScript();
-    }
-};
-
 class npc_spatial_flux : public CreatureScript
 {
     struct npc_spatial_fluxAI : public ScriptedAI
@@ -299,6 +272,5 @@ public:
 void AddSC_boss_isiset()
 {
     new boss_isiset();
-    new spell_isiset_supernova();
     new npc_spatial_flux();
 }

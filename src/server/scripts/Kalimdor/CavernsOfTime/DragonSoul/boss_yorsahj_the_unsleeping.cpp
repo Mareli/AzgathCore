@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2014-2018 RoG_WoW Source <http://wow.rog.snet>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -930,10 +930,10 @@ public:
             {
                 if (Unit* target = GetHitUnit())
                 {
-                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_DIGESTIVE_ACID_DMG))
+                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_DIGESTIVE_ACID_DMG, DIFFICULTY_NONE))
                     {
                         uint32 damage = (uint32(GetEffectValue()));
-                        SpellNonMeleeDamage damageInfo(creature, target, SPELL_DIGESTIVE_ACID_DMG, spellInfo->GetSpellXSpellVisualId(), spellInfo->SchoolMask);
+                        SpellNonMeleeDamage damageInfo(creature, target, spellInfo, { spellInfo->GetSpellVisual(), 0 }, spellInfo->SchoolMask);
                         damageInfo.damage = damage;
                         creature->SendSpellNonMeleeDamageLog(&damageInfo);
                         creature->DealSpellDamage(&damageInfo, false);

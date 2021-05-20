@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -350,9 +350,9 @@ public:
         return GetCullingOfStratholmeAI<npc_arthasAI>(creature);
     }
 
-    struct npc_arthasAI : public npc_escortAI
+    struct npc_arthasAI : public EscortAI
     {
-        npc_arthasAI(Creature* creature) : npc_escortAI(creature)
+        npc_arthasAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             instance = creature->GetInstanceScript();
@@ -428,7 +428,7 @@ public:
         void AttackStart(Unit* who) override
         {
             if (who && !who->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_PC))
-                npc_escortAI::AttackStart(who);
+                EscortAI::AttackStart(who);
         }
 
         void EnterCombat(Unit* /*who*/) override
@@ -603,7 +603,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (bStepping)
             {
@@ -993,7 +993,7 @@ public:
                                 }
                             }
                             else if (instance->GetBossState(bossEvent) == FAIL)
-                                npc_escortAI::EnterEvadeMode();
+                                EscortAI::EnterEvadeMode();
                             else
                                 phaseTimer = 10000;
                             break;
@@ -1153,7 +1153,7 @@ public:
                                 JumpToNextStep(15000);
                             }
                             else if (instance->GetBossState(DATA_EPOCH) == FAIL)
-                                npc_escortAI::EnterEvadeMode();
+                                EscortAI::EnterEvadeMode();
                             else
                                 phaseTimer = 10000;
                             break;
@@ -1198,7 +1198,7 @@ public:
                                 JumpToNextStep(1000);
                             }
                             else if (instance->GetBossState(DATA_MAL_GANIS) == FAIL)
-                                npc_escortAI::EnterEvadeMode();
+                                EscortAI::EnterEvadeMode();
                             else
                                 phaseTimer = 10000;
                             break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2014-2018 RoG_WoW Source <http://wow.rog.snet>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -1179,7 +1179,7 @@ class spell_ultraxion_time_loop : public SpellScriptLoader
                 {
                     absorbAmount = dmgInfo.GetDamage();
                     int32 healAmount = int32(victim->GetMaxHealth());
-                    victim->CastCustomSpell(victim, SPELL_TIMELOOP_HEAL, &healAmount, NULL, NULL, true, NULL, aurEff);
+                    victim->CastCustomSpell(victim, SPELL_TIMELOOP_HEAL, &healAmount, nullptr, true, nullptr, aurEff);
                     aurEff->GetBase()->Remove();
                 }
                 else
@@ -1248,7 +1248,7 @@ public:
             if (!bp)
                 return;
 
-            caster->CastCustomSpell(caster, SPELL_ESSENCE_OF_DREAMS_HEAL, &bp, NULL, NULL, true);
+            caster->CastCustomSpell(caster, SPELL_ESSENCE_OF_DREAMS_HEAL, &bp, nullptr, true);
 
         }
 

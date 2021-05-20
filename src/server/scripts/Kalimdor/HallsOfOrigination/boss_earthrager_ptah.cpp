@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -130,7 +129,7 @@ public:
             for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
             if (Player* player = itr->GetSource())
             if (player->GetAreaId() == AREA_TOMB_OF_THE_EARTHRAGER)
-                player->GetSession()->SendPacket(data);
+                player->SendDirectMessage(data);
         }
 
         void Reset() override

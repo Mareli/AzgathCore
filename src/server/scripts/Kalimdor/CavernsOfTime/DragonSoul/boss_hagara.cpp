@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2014-2018 RoG_WoW Source <http://wow.rog.snet>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -2253,7 +2253,7 @@ class spell_hagara_the_stormbinder_lightning_conduit : public SpellScriptLoader
 
             void Register() override
             {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_hagara_the_stormbinder_lightning_conduit_AuraScript::HandlePeriodicTick, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
+                OnEffectPeriodic += AuraEffectPeriodicFn(spell_hagara_the_stormbinder_lightning_conduit_AuraScript::HandlePeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
             }
 
         private:
@@ -2316,7 +2316,7 @@ public:
             if (!GetHitUnit()->IsAlive() || !GetCaster())
                 return;
 
-            uint32 dmg = GetHitDamage() * 2; //This is beacuse don´t exist one spell for this, and this spell is use in other side
+            uint32 dmg = GetHitDamage() * 2; //This is beacuse dont exist one spell for this, and this spell is use in other side
             SetHitDamage(dmg);
         }
 

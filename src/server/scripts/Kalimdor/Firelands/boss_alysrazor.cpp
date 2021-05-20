@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+* Copyright 2021 AzgathCore
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -817,7 +817,7 @@ class boss_alysrazor : public CreatureScript
             }
 
         private:
-            bool _isEventRunning;//si l'event et le combat qui s'ensuit est lancé
+            bool _isEventRunning;//si l'event et le combat qui s'ensuit est lanc
             void RemoveEncounterAuras()
             {
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BLAZING_POWER_AURA);
@@ -1837,51 +1837,6 @@ class spell_alysrazor_fieroblast : public SpellScriptLoader
         }
 };
 
-class spell_alysrazor_harsh_winds : public SpellScriptLoader
-{
-    public:
-        spell_alysrazor_harsh_winds() : SpellScriptLoader("spell_alysrazor_harsh_winds") { }
-
-        class spell_alysrazor_harsh_winds_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_alysrazor_harsh_winds_SpellScript);
-
-            void FilterTargets(std::list<WorldObject*>& targets)
-            {
-                if (!GetCaster())
-                    return;
-
-                targets.remove_if(PositionCheck(GetCaster()));
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_alysrazor_harsh_winds_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-
-        private:
-            class PositionCheck
-            {
-                public:
-                    PositionCheck(Unit* caster) : _caster(caster) {}
-
-                    bool operator()(WorldObject* unit)
-                    {
-                       return (_caster->GetDistance2d(unit) <= 60.0f);
-                    }
-
-                    private:
-                        Unit* _caster;
-                };
-
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_alysrazor_harsh_winds_SpellScript();
-        }
-};
-
 class spell_alysrazor_molten_feather : public SpellScriptLoader
 {
     public:
@@ -1931,7 +1886,7 @@ class spell_alysrazor_molten_feather_script : public SpellScriptLoader
         {
             PrepareSpellScript(spell_alysrazor_molten_feather_script_SpellScript);
 
-            void HandleScript(SpellEffIndex /*effIndex*/)
+            void HandleScript()
             {
                 if (!GetCaster() || !GetHitUnit())
                     return;
@@ -1960,7 +1915,7 @@ class spell_alysrazor_molten_feather_script : public SpellScriptLoader
 
             void Register() override
             {
-                OnEffectHitTarget += SpellEffectFn(spell_alysrazor_molten_feather_script_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+                AfterCast += SpellCastFn(spell_alysrazor_molten_feather_script_SpellScript::HandleScript);
             }
         };
 
@@ -2003,62 +1958,6 @@ class spell_alysrazor_cataclysm : public SpellScriptLoader
         }
 };
 
-class spell_alysrazor_firestorm : public SpellScriptLoader
-{
-    public:
-        spell_alysrazor_firestorm() : SpellScriptLoader("spell_alysrazor_firestorm") { }
-
-        class spell_alysrazor_firestorm_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_alysrazor_firestorm_SpellScript);
-
-            void FilterTargets(std::list<WorldObject*>& targets)
-            {
-                if (!GetCaster())
-                    return;
-
-                std::list<GameObject*> blockList;
-                GetCaster()->GetGameObjectListWithEntryInGrid(blockList, GO_MOLTEN_METEOR, 100.0f);
-
-                if (blockList.empty())
-                    return;
-
-                targets.remove_if(PositionCheck(GetCaster(), blockList));
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_alysrazor_firestorm_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-
-        private:
-            class PositionCheck
-            {
-                public:
-                    PositionCheck(Unit* caster, std::list<GameObject*> blist) : _caster(caster), _blockList(blist) {}
-
-                    bool operator()(WorldObject* unit)
-                    {
-                        for (std::list<GameObject*>::const_iterator itr = _blockList.begin(); itr != _blockList.end(); ++itr)
-                            if (!(*itr)->IsInvisibleDueToDespawn())
-                                if ((*itr)->IsInBetween(_caster, unit, 12.0f))
-                                    return true;
-
-                        return false;
-                    }
-
-                    private:
-                        Unit* _caster;
-                        std::list<GameObject*> _blockList;
-            };
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_alysrazor_firestorm_SpellScript();
-        }
-};
-
 class achievement_do_a_barrel_roll : public AchievementCriteriaScript
 {
     public:
@@ -2094,10 +1993,8 @@ void AddSC_boss_alysrazor()
     new npc_alysrazor_herald_of_the_burning_end();
     new npc_alysrazor_molten_meteor();
     new spell_alysrazor_fieroblast();
-    new spell_alysrazor_harsh_winds();
     new spell_alysrazor_molten_feather();
     new spell_alysrazor_molten_feather_script();
     new spell_alysrazor_cataclysm();
-    new spell_alysrazor_firestorm();
     new achievement_do_a_barrel_roll();
 }

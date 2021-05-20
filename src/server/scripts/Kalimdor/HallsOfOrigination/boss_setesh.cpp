@@ -55,169 +55,148 @@ enum Quotes
     SAY_SLAY
 };
 
-class boss_setesh : public CreatureScript
+struct boss_setesh : public BossAI
 {
-    struct boss_seteshAI : public BossAI
+    boss_setesh(Creature* creature) : BossAI(creature, DATA_SETESH)
     {
-        boss_seteshAI(Creature* creature) : BossAI(creature, DATA_SETESH)
-        {
-            memset(&Portals, 0, sizeof(Portals));
-        }
+        memset(&Portals, 0, sizeof(Portals));
+    }
 
-        void Reset() override
-        {
-            portal = 0;
-            _Reset();
-            me->SetReactState(REACT_AGGRESSIVE);
-            events.SetPhase(PHASE_NORMAL);
-            ResetPortals();
-        }
+private:
+    ObjectGuid Portals[5];
+    //std::list<uint64> lPortals;
+    int8 portal;
 
-        void KilledUnit(Unit* victim) override
-        {
-            if(victim->GetTypeId() == TYPEID_PLAYER)
-                Talk(SAY_SLAY);
-        }
-
-        void JustDied(Unit* /*killer*/) override
-        {
-            Talk(SAY_DEATH);
-            ResetPortals();
-            _JustDied();
-        }
-
-        void ResetPortals()
-        {
-            for (int i = 0; i < 5; ++i)
-                if (Creature* c = ObjectAccessor::GetCreature(*me, Portals[i]))
-                    c->AI()->SetData(DATA_RESET_PORTAL, 1);
-        }
-
-        void FillPortals()
-        {
-            std::list<Creature*> cList;
-            me->GetCreatureListWithEntryInGrid(cList, NPC_CHAOS_PORTAL, 200.0f);
-
-            if (!cList.empty())
-            {
-                //std::random_shuffle(cList.begin(), cList.end());
-                uint8 i = 0;
-                for (std::list<Creature *>::const_iterator itr = cList.begin(); itr != cList.end(); ++itr, ++i)
-                    if (i < 5)
-                        Portals[i] = (*itr)->GetGUID();
-                    //lPortals.push_back((*itr)->GetGUID());
-            }
-        }
-
-        void SpellHitTarget(Unit* victim, const SpellInfo* spell) override
-        {
-            if (spell->Id == SPELL_CHAOS_BLAST_MISSILE)
-            {
-                victim->CastSpell(victim, SPELL_CHAOS_BLAST_DAMAGE, true);
-                victim->ToCreature()->DespawnOrUnsummon(15000);
-            }
-        }
-
-        void MovementInform(uint32 /*type*/, uint32 id) override
-        {
-            if (id == POINT_CHAOS_PORTAL)
-                events.ScheduleEvent(EVENT_CHAOS_PORTAL, 500, 0, PHASE_CHAOS_PORTAL);
-        }
-
-        void EnterCombat(Unit* who) override
-        {
-            BossAI::EnterCombat(who);
-            events.ScheduleEvent(EVENT_CHAOS_BLAST, urand(10000, 12000), 0, PHASE_NORMAL);
-            events.ScheduleEvent(EVENT_CHAOS_BOLT, 1000, 0, PHASE_NORMAL);
-            events.ScheduleEvent(EVENT_REIGN_OF_CHAOS, urand(20000, 25000), 0, PHASE_NORMAL);
-            events.ScheduleEvent(EVENT_SEED_OF_CHAOS, urand(30000, 35000), 0, PHASE_NORMAL);
-            events.ScheduleEvent(EVENT_CHAOS_PORTAL_MOVE, urand(15000, 20000), 0, PHASE_NORMAL);
-
-            me->SetReactState(REACT_PASSIVE);
-            me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MoveIdle();
-            FillPortals();
-            Talk(SAY_AGGRO);
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (!UpdateVictim())
-                return;
-
-            events.Update(diff);
-
-            if (me->HasUnitState(UNIT_STATE_CASTING))
-                return;
-
-            if (uint32 eventId = events.ExecuteEvent())
-            {
-                switch (eventId)
-                {
-                case EVENT_CHAOS_BLAST:
-                    DoCast(SPELL_CHAOS_BLAST_SUMMON);
-                    DoCast(SPELL_CHAOS_BLAST_MISSILE);
-                    events.ScheduleEvent(EVENT_CHAOS_BLAST, urand(18000, 20000), 0, PHASE_NORMAL);
-                    break;
-                case EVENT_CHAOS_BOLT:
-                    DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), SPELL_CHAOS_BOLT);
-                    events.ScheduleEvent(EVENT_CHAOS_BOLT, 2000, 0, PHASE_NORMAL);
-                    break;
-                case EVENT_REIGN_OF_CHAOS:
-                    DoCast(me, SPELL_REIGN_OF_CHAOS, false);
-                    events.ScheduleEvent(EVENT_REIGN_OF_CHAOS, urand(20000, 25000), 0, PHASE_NORMAL);
-                    break;
-                case EVENT_SEED_OF_CHAOS:
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true))
-                        if (Creature* seed = me->SummonCreature(NPC_CHAOS_SEED, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ() + 30.0f))
-                            seed->GetMotionMaster()->MovePoint(1, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
-                    events.ScheduleEvent(EVENT_SEED_OF_CHAOS, urand(30000, 35000), 0, PHASE_NORMAL);
-                    break;
-                case EVENT_CHAOS_PORTAL_MOVE:
-                    {
-                        events.SetPhase(PHASE_CHAOS_PORTAL);
-                        if (portal > 4)
-                            portal = 0;
-                        float x,y,z;
-                        if (Creature* chaosPortal = ObjectAccessor::GetCreature(*me, Portals[portal]))
-                        {
-                            chaosPortal->GetNearPoint(NULL, x, y, z, 0.0f, 15.0f, chaosPortal->GetAngle(me));
-                            me->GetMotionMaster()->MovePoint(POINT_CHAOS_PORTAL, x, y, z);
-                        }
-                    }
-                    break;
-                case EVENT_CHAOS_PORTAL:
-                    if (Creature* chaosPortal = ObjectAccessor::GetCreature(*me, Portals[portal]))
-                    {
-                        if (!chaosPortal->IsAlive())
-                            chaosPortal->Respawn();
-                        chaosPortal->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
-                        chaosPortal->AI()->SetData(DATA_CHAOS_PORTAL, 1);
-                        DoCast(chaosPortal, SPELL_CHAOS_PORTAL_CHANNEL, false);
-                    }
-                    ++portal;
-                    events.ScheduleEvent(EVENT_CHAOS_PORTAL_MOVE, urand(20000, 25000), 0, PHASE_NORMAL);
-                    events.ScheduleEvent(EVENT_CHAOS_PORTAL_RESET, 2000, 0, PHASE_CHAOS_PORTAL);
-                    break;
-                case EVENT_CHAOS_PORTAL_RESET:
-                    events.SetPhase(PHASE_NORMAL);
-                    events.RescheduleEvent(EVENT_CHAOS_BOLT, 2000, 0, PHASE_NORMAL);
-                    break;
-                }
-            }
-        }
-    private:
-        ObjectGuid Portals[5];
-        //std::list<uint64> lPortals;
-        int8 portal;
-    };
-
-public:
-    boss_setesh() : CreatureScript("boss_setesh") {}
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void Reset() override
     {
-        return new boss_seteshAI(creature);
+        portal = 0;
+        _Reset();
+        me->SetReactState(REACT_AGGRESSIVE);
+        events.SetPhase(PHASE_NORMAL);
+        ResetPortals();
+    }
+
+    void KilledUnit(Unit* victim) override
+    {
+        if(victim->IsPlayer() && roll_chance_f(15.0f))
+            Talk(SAY_SLAY);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        Talk(SAY_DEATH);
+        ResetPortals();
+        _JustDied();
+    }
+
+    void ResetPortals()
+    {
+        for (int i = 0; i < 5; ++i)
+            if (Creature* c = ObjectAccessor::GetCreature(*me, Portals[i]))
+                c->AI()->SetData(DATA_RESET_PORTAL, 1);
+    }
+
+    void FillPortals()
+    {
+        std::list<Creature*> cList;
+        me->GetCreatureListWithEntryInGrid(cList, NPC_CHAOS_PORTAL, 200.0f);
+
+        if (!cList.empty())
+        {
+            uint8 i = 0;
+            for (std::list<Creature *>::const_iterator itr = cList.begin(); itr != cList.end(); ++itr, ++i)
+                if (i < 5)
+                 Portals[i] = (*itr)->GetGUID();
+        }
+    }
+
+    void SpellHitTarget(Unit* victim, const SpellInfo* spell) override
+    {
+        if (spell->Id == SPELL_CHAOS_BLAST_MISSILE)
+            victim->CastSpell(victim, SPELL_CHAOS_BLAST_DAMAGE, true);
+    }
+
+    void MovementInform(uint32 /*type*/, uint32 id) override
+    {
+        if (id == POINT_CHAOS_PORTAL)
+            events.ScheduleEvent(EVENT_CHAOS_PORTAL, 500, 0, PHASE_CHAOS_PORTAL);
+    }
+
+    void EnterCombat(Unit* who) override
+    {
+        BossAI::EnterCombat(who);
+        events.ScheduleEvent(EVENT_CHAOS_BLAST, urand(10000, 12000), 0, PHASE_NORMAL);
+        events.ScheduleEvent(EVENT_CHAOS_BOLT, 1000, 0, PHASE_NORMAL);
+        events.ScheduleEvent(EVENT_REIGN_OF_CHAOS, urand(20000, 25000), 0, PHASE_NORMAL);
+        events.ScheduleEvent(EVENT_SEED_OF_CHAOS, urand(30000, 35000), 0, PHASE_NORMAL);
+        events.ScheduleEvent(EVENT_CHAOS_PORTAL_MOVE, urand(15000, 20000), 0, PHASE_NORMAL);
+        me->SetReactState(REACT_PASSIVE);
+        me->GetMotionMaster()->Clear();
+        me->GetMotionMaster()->MoveIdle();
+        FillPortals();
+        Talk(SAY_AGGRO);
+    }
+
+    void ExecuteEvent(uint32 eventId) override
+    {
+        switch (eventId)
+        {
+        case EVENT_CHAOS_BLAST:
+             DoCast(SPELL_CHAOS_BLAST_SUMMON);
+             DoCast(SPELL_CHAOS_BLAST_MISSILE);
+             events.ScheduleEvent(EVENT_CHAOS_BLAST, urand(18000, 20000), 0, PHASE_NORMAL);
+             break;
+
+        case EVENT_CHAOS_BOLT:
+            DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), SPELL_CHAOS_BOLT);
+            events.ScheduleEvent(EVENT_CHAOS_BOLT, 2000, 0, PHASE_NORMAL);
+            break;
+
+        case EVENT_REIGN_OF_CHAOS:
+             DoCast(me, SPELL_REIGN_OF_CHAOS, false);
+             events.ScheduleEvent(EVENT_REIGN_OF_CHAOS, urand(20000, 25000), 0, PHASE_NORMAL);
+             break;
+
+        case EVENT_SEED_OF_CHAOS:
+             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true))
+                if (Creature* seed = me->SummonCreature(NPC_CHAOS_SEED, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ() + 30.0f))
+                    seed->GetMotionMaster()->MovePoint(1, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
+             events.ScheduleEvent(EVENT_SEED_OF_CHAOS, urand(30000, 35000), 0, PHASE_NORMAL);
+             break;
+
+        case EVENT_CHAOS_PORTAL_MOVE:
+        {
+            events.SetPhase(PHASE_CHAOS_PORTAL);
+            if (portal > 4)
+                portal = 0;
+            float x, y, z;
+            if (Creature* chaosPortal = ObjectAccessor::GetCreature(*me, Portals[portal]))
+            {
+                chaosPortal->GetNearPoint(nullptr, x, y, z, 0.0f, 15.0f, chaosPortal->GetAngle(me));
+                me->GetMotionMaster()->MovePoint(POINT_CHAOS_PORTAL, x, y, z);
+            }
+        }
+        break;
+
+        case EVENT_CHAOS_PORTAL:
+             if (Creature* chaosPortal = ObjectAccessor::GetCreature(*me, Portals[portal]))
+             {
+                if (!chaosPortal->IsAlive())
+                    chaosPortal->Respawn();
+                chaosPortal->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE));
+                chaosPortal->AI()->SetData(DATA_CHAOS_PORTAL, 1);
+                DoCast(chaosPortal, SPELL_CHAOS_PORTAL_CHANNEL, false);
+             }
+             ++portal;
+             events.ScheduleEvent(EVENT_CHAOS_PORTAL_MOVE, urand(20000, 25000), 0, PHASE_NORMAL);
+             events.ScheduleEvent(EVENT_CHAOS_PORTAL_RESET, 2000, 0, PHASE_CHAOS_PORTAL);
+             break;
+
+        case EVENT_CHAOS_PORTAL_RESET:
+             events.SetPhase(PHASE_NORMAL);
+             events.RescheduleEvent(EVENT_CHAOS_BOLT, 2000, 0, PHASE_NORMAL);
+             break;
+        }
     }
 };
 
@@ -372,7 +351,7 @@ public:
 
 void AddSC_boss_setesh()
 {
-    new boss_setesh();
+    RegisterCreatureAI(boss_setesh);
     new npc_chaos_seed();
     new npc_chaos_portal();
 };

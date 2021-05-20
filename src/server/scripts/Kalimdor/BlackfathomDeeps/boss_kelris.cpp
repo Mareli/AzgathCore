@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,8 +21,9 @@
 
 enum Spells
 {
-    SPELL_MIND_BLAST    = 15587,
-    SPELL_SLEEP         = 8399,
+    SPELL_MIND_BLAST             = 15587,
+    SPELL_SLEEP                  = 8399,
+    SPELL_BLACKFATHOM_CHANNELING = 8734
 };
 
 enum Texts
@@ -47,10 +48,23 @@ public:
     {
         boss_kelrisAI(Creature* creature) : BossAI(creature, DATA_KELRIS) { }
 
+        void Reset() override
+        {
+            _Reset();
+            DoCastSelf(SPELL_BLACKFATHOM_CHANNELING);
+        }
+
+        void JustReachedHome() override
+        {
+            _JustReachedHome();
+            DoCastSelf(SPELL_BLACKFATHOM_CHANNELING);
+        }
+
         void EnterCombat(Unit* /*who*/) override
         {
             _EnterCombat();
             Talk(SAY_AGGRO);
+            me->RemoveAurasDueToSpell(SPELL_BLACKFATHOM_CHANNELING);
             events.ScheduleEvent(EVENT_MIND_BLAST, urand(2000, 5000));
             events.ScheduleEvent(EVENT_SLEEP, urand(9000, 12000));
         }

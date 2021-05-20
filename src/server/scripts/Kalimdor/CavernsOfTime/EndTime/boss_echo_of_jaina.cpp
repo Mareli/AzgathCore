@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * Copyright (C) 2008-2014 Forgotten Lands <http://www.forgottenlands.eu/>
  *
@@ -211,6 +209,7 @@ class boss_echo_of_jaina : public CreatureScript
         }
 };
 
+//101588
 class spell_flarecore : public SpellScriptLoader
 {
     public:
@@ -220,7 +219,7 @@ class spell_flarecore : public SpellScriptLoader
         {
             PrepareSpellScript(spell_flarecore_SpellScript);
 
-            void HandleOnHit(SpellEffIndex /*effIndex*/)
+            void HandleOnHit()
             {
                 if(Unit* caster = GetCaster())
                 {
@@ -236,7 +235,7 @@ class spell_flarecore : public SpellScriptLoader
 
             void Register() override
             {
-                OnEffectHitTarget += SpellEffectFn(spell_flarecore_SpellScript::HandleOnHit, EFFECT_0, SPELL_EFFECT_DUMMY);
+                OnHit += SpellHitFn(spell_flarecore_SpellScript::HandleOnHit);
             }
         };
 

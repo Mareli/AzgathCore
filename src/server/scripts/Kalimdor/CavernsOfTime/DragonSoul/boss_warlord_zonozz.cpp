@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2014-2018 RoG_WoW Source <http://wow.rog.snet>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -498,9 +498,9 @@ class npc_warlord_zonozz_void_of_the_unmaking : public CreatureScript
             return new npc_warlord_zonozz_void_of_the_unmakingAI (pCreature);
         }
 
-        struct npc_warlord_zonozz_void_of_the_unmakingAI : public Scripted_NoMovementAI
+        struct npc_warlord_zonozz_void_of_the_unmakingAI : public ScriptedAI
         {
-            npc_warlord_zonozz_void_of_the_unmakingAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+            npc_warlord_zonozz_void_of_the_unmakingAI(Creature* pCreature) : ScriptedAI(pCreature)
             {
                 me->AddUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                 me->SetReactState(REACT_PASSIVE);
@@ -790,9 +790,9 @@ class npc_warlord_zonozz_tentacle : public CreatureScript
             return new npc_warlord_zonozz_tentacleAI (pCreature);
         }
 
-        struct npc_warlord_zonozz_tentacleAI : public Scripted_NoMovementAI
+        struct npc_warlord_zonozz_tentacleAI : public ScriptedAI
         {
-            npc_warlord_zonozz_tentacleAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+            npc_warlord_zonozz_tentacleAI(Creature* pCreature) : ScriptedAI(pCreature)
             {
                 me->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, true);
                 me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_GRIP, true);
@@ -951,10 +951,10 @@ public:
             {
                 if (Unit* target = GetHitUnit())
                 {
-                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_VOID_DIFFUSION_DMG))
+                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_VOID_DIFFUSION_DMG, DIFFICULTY_NONE))
                     {
-                        uint32 damage = (uint32(GetEffectValue()/_targetCount));
-                        SpellNonMeleeDamage damageInfo(creature, target, SPELL_VOID_DIFFUSION_DMG, spellInfo->GetSpellXSpellVisualId(), spellInfo->SchoolMask);
+                        uint32 damage = (uint32(GetEffectValue() / _targetCount));
+                        SpellNonMeleeDamage damageInfo(creature, target, spellInfo, { spellInfo->GetSpellVisual(), 0 }, spellInfo->SchoolMask);
                         damageInfo.damage = damage;
                         creature->SendSpellNonMeleeDamageLog(&damageInfo);
                         creature->DealSpellDamage(&damageInfo, false);
@@ -999,10 +999,10 @@ public:
             {
                 if (Unit* target = GetHitUnit())
                 {
-                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_DISRUPTING_SHADOWS_DMG))
+                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_DISRUPTING_SHADOWS_DMG, DIFFICULTY_NONE))
                     {
                         uint32 damage = (uint32(GetEffectValue()));
-                        SpellNonMeleeDamage damageInfo(player, target, SPELL_DISRUPTING_SHADOWS_DMG, spellInfo->GetSpellXSpellVisualId(), spellInfo->SchoolMask);
+                        SpellNonMeleeDamage damageInfo(player, target, spellInfo, { spellInfo->GetSpellVisual(),0 }, spellInfo->SchoolMask);
                         damageInfo.damage = damage;
                         player->SendSpellNonMeleeDamageLog(&damageInfo);
                         player->DealSpellDamage(&damageInfo, false);
