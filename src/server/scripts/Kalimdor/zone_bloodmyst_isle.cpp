@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -264,16 +263,12 @@ public:
             _events.Reset();
             if (Creature* legoso = me->FindNearestCreature(NPC_LEGOSO, SIZE_OF_GRIDS))
             {
-                for (Group* group : me->GetLootRecipientGroups())
-                {
-                    if (killer->GetGUID() == legoso->GetGUID() ||
-                        (group && group->IsMember(killer->GetGUID())) ||
-                        killer->GetGUID() == legoso->AI()->GetGUID(DATA_EVENT_STARTER_GUID))
-                    {
-                        legoso->AI()->DoAction(ACTION_LEGOSO_SIRONAS_KILLED);
-                        break;
-                    }
-                }
+                Group* group = me->GetLootRecipientGroup();
+
+                if (killer->GetGUID() == legoso->GetGUID() ||
+                    (group && group->IsMember(killer->GetGUID())) ||
+                    killer->GetGUID() == legoso->AI()->GetGUID(DATA_EVENT_STARTER_GUID))
+                    legoso->AI()->DoAction(ACTION_LEGOSO_SIRONAS_KILLED);
             }
         }
 
@@ -355,9 +350,9 @@ class npc_demolitionist_legoso : public CreatureScript
 public:
     npc_demolitionist_legoso() : CreatureScript("npc_demolitionist_legoso") { }
 
-    struct npc_demolitionist_legosoAI : public npc_escortAI
+    struct npc_demolitionist_legosoAI : public EscortAI
     {
-        npc_demolitionist_legosoAI(Creature* creature) : npc_escortAI(creature)
+        npc_demolitionist_legosoAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -368,7 +363,7 @@ public:
             _moveTimer = 0;
         }
 
-        void sQuestAccept(Player* player, Quest const* quest) override
+        void QuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_ENDING_THEIR_WORLD)
             {
@@ -435,7 +430,7 @@ public:
                             break;
                         case EVENT_HEALING_SURGE:
                         {
-                            Unit* target = NULL;
+                            Unit* target = nullptr;
                             if (me->GetHealthPct() < 85)
                                 target = me;
                             else if (Player* player = GetPlayerForEscort())
@@ -461,7 +456,7 @@ public:
             if (HasEscortState(STATE_ESCORT_NONE))
                 return;
 
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (_phase)
             {
@@ -745,7 +740,7 @@ public:
                     SetEscortPaused(true);
 
                     //Find Sironas and make it respawn if needed
-                    Creature* sironas = NULL;
+                    Creature* sironas = nullptr;
                     Trinity::AllCreaturesOfEntryInRange check(me, NPC_SIRONAS, SIZE_OF_GRIDS);
                     Trinity::CreatureSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(me, sironas, check);
                     Cell::VisitAllObjects(me, searcher, SIZE_OF_GRIDS);
@@ -810,9 +805,35 @@ public:
     }
 };
 
+
+//24318
+class item_sample_water_flask_24318 : public ItemScript
+{
+public:
+    item_sample_water_flask_24318() : ItemScript("item_sample_water_flask_24318") { }
+
+    enum eItem {
+        QUEST_DONT_DRINK_THE_WATER = 9748,
+        SPELL_BLOODMYST_WATER_SAMPLE = 31549,
+    };
+
+    bool OnUse(Player* plr, Item* /*item*/, SpellCastTargets const& targets, ObjectGuid /*castId*/) override
+    {
+        if (plr->GetQuestStatus(QUEST_DONT_DRINK_THE_WATER) == QUEST_STATUS_INCOMPLETE && plr->GetAreaId() == 3906)
+        {
+            plr->GetScheduler().Schedule(6s, [this, plr] (TaskContext context)
+            {
+                plr->ForceCompleteQuest(QUEST_DONT_DRINK_THE_WATER);
+            });
+        }
+        return true;
+    }
+};
+
 void AddSC_bloodmyst_isle()
 {
     new npc_webbed_creature();
     new npc_sironas();
     new npc_demolitionist_legoso();
+    new item_sample_water_flask_24318();
 }

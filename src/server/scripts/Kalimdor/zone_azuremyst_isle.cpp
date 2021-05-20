@@ -1,6 +1,5 @@
  /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -200,7 +199,7 @@ public:
         npc_engineer_spark_overgrindAI(Creature* creature) : ScriptedAI(creature)
         {
             Initialize();
-            NormFaction = creature->getFaction();
+            NormFaction = creature->GetFaction();
             NpcFlags = (uint32)creature->m_unitData->NpcFlags[0];
         }
 
@@ -219,7 +218,7 @@ public:
         {
             Initialize();
 
-            me->setFaction(NormFaction);
+            me->SetFaction(NormFaction);
             me->AddNpcFlag(NPCFlags(NpcFlags));
         }
 
@@ -228,11 +227,13 @@ public:
             Talk(ATTACK_YELL, who);
         }
 
-        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             CloseGossipMenuFor(player);
-            me->setFaction(FACTION_HOSTILE);
+            me->SetFaction(FACTION_HOSTILE);
             me->Attack(player, true);
+
+            return true;
         }
 
         void UpdateAI(uint32 diff) override
@@ -345,9 +346,9 @@ class npc_magwin : public CreatureScript
 public:
     npc_magwin() : CreatureScript("npc_magwin") { }
 
-    struct npc_magwinAI : public npc_escortAI
+    struct npc_magwinAI : public EscortAI
     {
-        npc_magwinAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_magwinAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override
         {
@@ -359,7 +360,7 @@ public:
             Talk(SAY_AGGRO, who);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest) override
+        void QuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_A_CRY_FOR_HELP)
             {
@@ -402,12 +403,12 @@ public:
                     case EVENT_ACCEPT_QUEST:
                         if (Player* player = ObjectAccessor::GetPlayer(*me, _player))
                             Talk(SAY_START, player);
-                        me->setFaction(FACTION_QUEST);
+                        me->SetFaction(FACTION_QUEST);
                         _events.ScheduleEvent(EVENT_START_ESCORT, Seconds(1));
                         break;
                     case EVENT_START_ESCORT:
                         if (Player* player = ObjectAccessor::GetPlayer(*me, _player))
-                            npc_escortAI::Start(true, false, player->GetGUID());
+                            EscortAI::Start(true, false, player->GetGUID());
                         _events.ScheduleEvent(EVENT_STAND, Seconds(2));
                         break;
                     case EVENT_STAND: // Remove kneel standstate. Using a separate delayed event because it causes unwanted delay before starting waypoint movement.
@@ -425,7 +426,7 @@ public:
                 }
             }
 
-            npc_escortAI::UpdateEscortAI(diff);
+            EscortAI::UpdateEscortAI(diff);
         }
 
     private:
