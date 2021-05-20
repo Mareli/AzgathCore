@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  * Copyright (C) 2008-2014 Forgotten Lands <http://www.forgottenlands.eu/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -696,42 +696,6 @@ class OrientationCheck : public std::unary_function<Unit*, bool>
         Unit* orb2;
 };
 
-class spell_sinestra_twilight_slicer : public SpellScriptLoader
-{
-    public:
-        spell_sinestra_twilight_slicer() :  SpellScriptLoader("spell_sinestra_twilight_slicer") { }
-
-        class spell_sinestra_twilight_slicer_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_sinestra_twilight_slicer_SpellScript);
-
-            void SelectTarget(std::list<WorldObject*>& targets)
-            {
-                // Select Other orb, and filter targets between twos
-                if (InstanceScript* instance = GetCaster()->GetInstanceScript())
-                {
-                    if (Unit* orb0 = instance->GetCreature(DATA_ORB_0))
-                    {
-                        if (Unit* orb1 = instance->GetCreature(DATA_ORB_1))
-                        {
-                            targets.remove_if(OrientationCheck(orb1, orb0));
-                        }
-                    }
-                }
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sinestra_twilight_slicer_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_sinestra_twilight_slicer_SpellScript();
-        }
-};
-
 class ExactDistanceCheck
 {
     public:
@@ -745,92 +709,6 @@ class ExactDistanceCheck
     private:
         Unit* _source;
         float _dist;
-};
-
-class spell_sinestra_twilight_essence : public SpellScriptLoader
-{
-    public:
-        spell_sinestra_twilight_essence() : SpellScriptLoader("spell_sinestra_twilight_essence") { }
-
-        class spell_sinestra_twilight_essence_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_sinestra_twilight_essence_SpellScript);
-
-            void CorrectRange1(std::list<WorldObject*>& targets)
-            {
-                targets.remove_if(ExactDistanceCheck(GetCaster(), 5.0f * GetCaster()->GetObjectScale()));
-
-                // Remove also the nearest dragon
-                if (GetCaster()->ToTempSummon() && GetCaster()->ToTempSummon()->GetSummoner())
-                    targets.remove(GetCaster()->ToTempSummon()->GetSummoner());
-            }
-
-            void CorrectRange2(std::list<WorldObject*>& targets)
-            {
-                targets.remove_if(ExactDistanceCheck(GetCaster(), 5.0f * GetCaster()->GetObjectScale()));
-            }
-
-            void Hit(SpellEffIndex /*effIndex*/)
-            {
-                if (!GetHitUnit())
-                    return;
-
-                if (!GetHitUnit()->ToCreature())
-                    return;
-
-                if (GetHitUnit()->GetEntry() == 48050)
-                {
-                    if (GetHitUnit()->IsAlive())
-                        return;
-
-                    if (InstanceScript* instance = GetHitUnit()->GetInstanceScript())
-                    {
-                        if (Creature* sinestra = instance->GetCreature(DATA_SINESTRA))
-                        {
-                            GetHitUnit()->ToCreature()->Respawn();
-                            sinestra->AI()->DoZoneInCombat(GetHitUnit()->ToCreature());
-                            GetHitUnit()->ToCreature()->AI()->DoAction(ACTION_SET_AS_RESPWANED);
-                        }
-                    }
-                    return;
-                }
-
-                if (GetHitUnit()->GetEntry() == 55636)
-                {
-                    // Remove two stack of aura
-                    if (GetCaster())
-                    {
-                        if (Aura* essence = GetCaster()->GetAura(89288, GetCaster()->GetGUID()))
-                        {
-                            uint8 stacks = essence->GetStackAmount();
-
-                            if (stacks <= 3)
-                            {
-                                GetCaster()->ToCreature()->DisappearAndDie();
-                                return;
-                            }
-
-                            essence->SetStackAmount(stacks - 3);
-                        }
-                        GetHitUnit()->AddAura(SPELL_ABSORB_ESSENCE, GetHitUnit());
-                    }
-                    return;
-                }
-
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sinestra_twilight_essence_SpellScript::CorrectRange1, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sinestra_twilight_essence_SpellScript::CorrectRange2, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnEffectHitTarget += SpellEffectFn(spell_sinestra_twilight_essence_SpellScript::Hit, EFFECT_0, SPELL_EFFECT_APPLY_AURA);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_sinestra_twilight_essence_SpellScript();
-        }
 };
 
 class spell_sinestra_phyrric_focus : public SpellScriptLoader
@@ -884,7 +762,5 @@ void AddSC_boss_sinestra()
     new npc_sinestra_add();
     new spell_sinestra_wreck();
     new spell_sinestra_wrack_jump();
-    new spell_sinestra_twilight_slicer();
-    new spell_sinestra_twilight_essence();
     new spell_sinestra_phyrric_focus();
 }

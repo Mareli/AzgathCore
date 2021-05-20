@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -902,7 +902,7 @@ public:
                 me->SetSpeed(MOVE_WALK, 0.8f);
                 me->SetSpeed(MOVE_RUN, 0.8f);
                 float x, y, z;
-                me->GetClosePoint(x, y, z, me->GetCombatReach() / 3, 50.0f);
+                me->GetClosePoint(x, y, z, me->GetObjectSize() / 3, 50.0f);
                 me->GetMotionMaster()->MovePoint(1, x, y, z);
             } else timerMove -= diff;
 
@@ -1011,7 +1011,7 @@ class spell_onyxia_lightning_discharge : public SpellScriptLoader
                 if (!GetHitUnit())
                     return;
 
-                if (GetHitUnit()->isInFront(GetCaster(), GetCaster()->GetCombatReach() / 3) || GetHitUnit()->isInBack(GetCaster(), GetCaster()->GetCombatReach() / 3))
+                if (GetHitUnit()->isInFront(GetCaster(), GetCaster()->GetObjectSize() / 3) || GetHitUnit()->isInBack(GetCaster(), GetCaster()->GetObjectSize() / 3))
                     SetHitDamage(0);
              }
 

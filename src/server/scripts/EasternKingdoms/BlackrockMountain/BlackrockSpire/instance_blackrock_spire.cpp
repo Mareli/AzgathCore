@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -418,8 +418,8 @@ public:
 
         void Dragonspireroomcheck()
         {
-            Creature* mob = NULL;
-            GameObject* rune = NULL;
+            Creature* mob = nullptr;
+            GameObject* rune = nullptr;
 
             for (uint8 i = 0; i < 7; ++i)
             {

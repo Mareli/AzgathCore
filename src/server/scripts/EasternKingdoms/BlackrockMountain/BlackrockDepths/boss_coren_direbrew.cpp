@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -125,10 +125,10 @@ public:
     {
         boss_coren_direbrewAI(Creature* creature) : BossAI(creature, DATA_COREN) { }
 
-        void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
+        bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
         {
             if (menuId != GOSSIP_ID)
-                return;
+                return true;
 
             if (gossipListId == GOSSIP_OPTION_FIGHT)
             {
@@ -137,13 +137,15 @@ public:
             }
             else if (gossipListId == GOSSIP_OPTION_APOLOGIZE)
                 CloseGossipMenuFor(player);
+
+            return true;
         }
 
         void Reset() override
         {
             _Reset();
             me->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-            me->setFaction(COREN_DIREBREW_FACTION_FRIEND);
+            me->SetFaction(COREN_DIREBREW_FACTION_FRIEND);
             events.SetPhase(PHASE_ALL);
 
             for (uint8 i = 0; i < MAX_ANTAGONISTS; ++i)
@@ -166,7 +168,7 @@ public:
             {
                 events.SetPhase(PHASE_ONE);
                 me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-                me->setFaction(COREN_DIREBREW_FACTION_HOSTILE);
+                me->SetFaction(COREN_DIREBREW_FACTION_HOSTILE);
                 me->SetInCombatWithZone();
 
                 EntryCheckPredicate pred(NPC_ANTAGONIST);
@@ -357,7 +359,7 @@ public:
 
         void Reset() override
         {
-            me->setFaction(COREN_DIREBREW_FACTION_HOSTILE);
+            me->SetFaction(COREN_DIREBREW_FACTION_HOSTILE);
             DoCastAOE(SPELL_MOLE_MACHINE_EMERGE, true);
             me->SetInCombatWithZone();
         }
@@ -399,7 +401,7 @@ public:
                     break;
                 case ACTION_ANTAGONIST_HOSTILE:
                     me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-                    me->setFaction(COREN_DIREBREW_FACTION_HOSTILE);
+                    me->SetFaction(COREN_DIREBREW_FACTION_HOSTILE);
                     me->SetInCombatWithZone();
                     break;
                 default:
@@ -672,7 +674,7 @@ class spell_barreled_control_aura : public SpellScriptLoader
 
             void Register() override
             {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_barreled_control_aura_AuraScript::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+                OnEffectPeriodic += AuraEffectPeriodicFn(spell_barreled_control_aura_AuraScript::PeriodicTick, EFFECT_0, SPELL_AURA_DUMMY);
             }
         };
 

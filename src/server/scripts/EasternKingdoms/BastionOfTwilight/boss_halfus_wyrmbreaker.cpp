@@ -1,9 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2005 - 2011 MaNGOS <http://www.getmangos.org/>
- * Copyright (C) 2008 - 2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2011 - 2012 ArkCORE <http://www.arkania.net/>
- * Copyright (C) 2008-2014 Forgotten Lands <http://www.forgottenlands.eu/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -327,7 +323,7 @@ class npc_halfus_dragon : public CreatureScript
             void Reset() override
             {
                 me->RemoveAllAuras();
-                me->setFaction(35);
+                me->SetFaction(35);
 
                 switch (me->GetEntry())
                 {
@@ -389,7 +385,7 @@ class npc_halfus_dragon : public CreatureScript
             CloseGossipMenuFor(player);
 
             creature->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            creature->setFaction(14);
+            creature->SetFaction(14);
             creature->SetReactState(REACT_AGGRESSIVE);
 
             if (InstanceScript* instance = creature->GetInstanceScript())
@@ -517,7 +513,7 @@ public:
             if (Creature* proto = instance->GetCreature(NPC_PROTO_BEHEMOTH))
                 (*itr)->AddAura(SPELL_ATROPHIC_POISON, proto);
 
-            (*itr)->setFaction(14);
+            (*itr)->SetFaction(14);
             (*itr)->SetReactState(REACT_AGGRESSIVE);
 
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -113,7 +113,33 @@ class boss_beauty : public CreatureScript
         }
 };
 
+//76717
+class spell_defiled_earth_rager_meteor : public SpellScript
+{
+    PrepareSpellScript(spell_defiled_earth_rager_meteor);
+
+    uint8 targetsCount = 0;
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        targetsCount = targets.size();
+    }
+
+    void HandleDamage(SpellEffIndex /*effectIndex*/)
+    {
+        if (targetsCount)
+            SetHitDamage(GetHitDamage() / targetsCount);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_defiled_earth_rager_meteor::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+        OnEffectHitTarget += SpellEffectFn(spell_defiled_earth_rager_meteor::HandleDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+    }
+};
+
 void AddSC_boss_beauty()
 {
     new boss_beauty();
+    RegisterSpellScript(spell_defiled_earth_rager_meteor);
 }

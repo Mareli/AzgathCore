@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -366,7 +366,7 @@ class spell_occuthar_occuthars_destruction : public SpellScriptLoader
                 if (Unit* caster = GetCaster())
                 {
                     if (IsExpired())
-                        caster->CastSpell((Unit*)NULL, SPELL_OCCUTHARS_DESTUCTION, true, NULL, aurEff);
+                        caster->CastSpell(nullptr, SPELL_OCCUTHARS_DESTUCTION, true, nullptr, aurEff);
 
                     caster->ToCreature()->DespawnOrUnsummon(500);
                 }

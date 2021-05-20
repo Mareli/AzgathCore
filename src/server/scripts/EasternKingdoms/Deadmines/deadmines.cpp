@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -373,42 +373,42 @@ public:
     };
 };
 
-class go_heavy_door : public GameObjectScript
-{
-public:
-    go_heavy_door() : GameObjectScript("go_heavy_door") { }
-
-    void MoveNearCreature(GameObject* me, uint32 entry, uint32 ragne)
-    {
-        if (!me)
-            return;
-
-        std::list<Creature*> creature_list;
-        me->GetCreatureListWithEntryInGrid(creature_list, entry, ragne);
-
-        creature_list.sort(Trinity::ObjectDistanceOrderPred(me));
-        for (std::list<Creature*>::iterator itr = creature_list.begin(); itr != creature_list.end(); ++itr)
-        {
-            if (( *itr ) && ( *itr )->IsAlive() && ( *itr )->GetTypeId() == TYPEID_UNIT && ( *itr )->HasAura(78087))
-            {
-                ( *itr )->GetMotionMaster()->MoveCharge( me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 5.0f);
-                ( *itr )->DespawnOrUnsummon(3000);
-                ( *itr )->AI()->Talk(0);
-            }
-        }
-    }
-
-    bool OnGossipHello(Player* player, GameObject* go) override
-    {
-        if (!go || !player)
-            return false;
-
-        MoveNearCreature(go, 48439, 50.0f);
-        MoveNearCreature(go, 48280, 50.0f);
-
-        return true;
-    }
-};
+//class go_heavy_door : public GameObjectScript
+//{
+//public:
+//    go_heavy_door() : GameObjectScript("go_heavy_door") { }
+//
+//    void MoveNearCreature(GameObject* me, uint32 entry, uint32 ragne)
+//    {
+//        if (!me)
+//            return;
+//
+//        std::list<Creature*> creature_list;
+//        me->GetCreatureListWithEntryInGrid(creature_list, entry, ragne);
+//
+//        creature_list.sort(Trinity::ObjectDistanceOrderPred(me));
+//        for (std::list<Creature*>::iterator itr = creature_list.begin(); itr != creature_list.end(); ++itr)
+//        {
+//            if (( *itr ) && ( *itr )->IsAlive() && ( *itr )->GetTypeId() == TYPEID_UNIT && ( *itr )->HasAura(78087))
+//            {
+//                ( *itr )->GetMotionMaster()->MoveCharge( me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 5.0f);
+//                ( *itr )->DespawnOrUnsummon(3000);
+//                ( *itr )->AI()->Talk(0);
+//            }
+//        }
+//    }
+//
+//    bool OnGossipHello(Player* player, GameObject* go) override
+//    {
+//        if (!go || !player)
+//            return false;
+//
+//        MoveNearCreature(go, 48439, 50.0f);
+//        MoveNearCreature(go, 48280, 50.0f);
+//
+//        return true;
+//    }
+//};
 
 #define GOSSIP_BOSS_1 "Press the button labeled 'Wood and Lumber.'"
 #define GOSSIP_BOSS_2 "Press the button labeled 'Metal and Scraps.'"
@@ -1131,7 +1131,7 @@ void AddSC_deadmines()
     new npc_defias_cannon();
     new go_defias_cannon();
     new npc_deadmines_bird();
-    new go_heavy_door();
+    //new go_heavy_door();
     new npc_goblin_engineer();
     new go_deadmines_tp();
     new npc_mining_powder();

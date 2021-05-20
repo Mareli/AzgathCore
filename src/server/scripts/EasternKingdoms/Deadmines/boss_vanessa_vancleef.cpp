@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -415,7 +415,7 @@ public:
                 bunny->AddUnitFlag(UNIT_FLAG_STUNNED);
                 bunny->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
                 bunny->SetReactState(REACT_AGGRESSIVE);
-                bunny->setFaction(18);
+                bunny->SetFaction(18);
                 bunny->Attack(me, true);
                 me->AddThreat(bunny, 200000.0f);
                 me->SetInCombatWith(bunny);
@@ -1549,6 +1549,8 @@ public:
             _Reset();
             FlagResetTimer = 10000;
             events.ScheduleEvent(EVENT_ICYCLE_AOE, urand(11000, 15000));
+            if (!me->GetMap()->IsHeroic() && me->FindNearestCreature(43778, 45.0f, true))
+                me->DespawnOrUnsummon();
         }
 
         void EnterCombat(Unit* /*who*/) override
@@ -1724,6 +1726,8 @@ public:
         void Reset() override
         {
             events.Reset();
+            if (!me->GetMap()->IsHeroic())
+                me->DespawnOrUnsummon();
         }
 
         void MoveInLineOfSight(Unit* who) override
@@ -1787,6 +1791,12 @@ public:
     struct npc_enraged_worgen_dmAI : public ScriptedAI
     {
         npc_enraged_worgen_dmAI(Creature* creature) : ScriptedAI(creature) { }
+
+        void Reset() override
+        {
+            if (!me->GetMap()->IsHeroic())
+                me->DespawnOrUnsummon();
+        }
 
         void EnterCombat(Unit* /*who*/) override
         {

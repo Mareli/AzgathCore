@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -118,8 +117,8 @@ public:
         void DamageTaken(Unit* /*who*/, uint32& damage) override
         {
             // @todo this is wrong - razorgore should still take damage, he should just nuke the whole room and respawn if he dies during P1
-            if (!secondPhase)
-                damage = 0;
+            //if (!secondPhase)
+                //damage = 0;
         }
 
         void UpdateAI(uint32 diff) override

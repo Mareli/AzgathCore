@@ -1,20 +1,19 @@
 /*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
-* Copyright (C) 2010-2011 Project Trinity <http://www.projecttrinity.org/>
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms of the GNU General Public License as published by the
-* Free Software Foundation; either version 2 of the License, or (at your
-* option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License along
-* with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright 2021 AzgathCore
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "ScriptMgr.h"
 #include "deadmines.h"
@@ -23,32 +22,33 @@
 
 enum eSpell
 {
-    SPELL_ENERGIZE = 89132,
-    SPELL_ENERGIZED = 91733, // -> 89200,
-    SPELL_ON_FIRE = 91737,
-    SPELL_COSMETIC_STAND = 88906,
+    SPELL_ENERGIZE                  = 89132,
+    SPELL_ENERGIZED                 = 91733, // -> 89200,
+    SPELL_ON_FIRE                   = 91737,
+    SPELL_COSMETIC_STAND            = 88906,
 
     // BOSS spells
-    SPELL_OVERDRIVE = 88481, // 88484
-    SPELL_HARVEST = 88495,
-    SPELL_HARVEST_AURA = 88497,
+    SPELL_OVERDRIVE                 = 88481, // 88484
+    SPELL_HARVEST                   = 88495,
+    SPELL_HARVEST_AURA              = 88497,
 
-    SPELL_HARVEST_SWEEP = 88521,
-    SPELL_HARVEST_SWEEP_H = 91718,
+    SPELL_HARVEST_SWEEP             = 88521,
+    SPELL_HARVEST_SWEEP_H           = 91718,
 
-    SPELL_REAPER_STRIKE = 88490,
-    SPELL_REAPER_STRIKE_H = 91717,
+    SPELL_REAPER_STRIKE             = 88490,
+    SPELL_REAPER_STRIKE_H           = 91717,
 
-    SPELL_SAFETY_REST_OFFLINE = 88522,
-    SPELL_SAFETY_REST_OFFLINE_H = 91720,
+    SPELL_SAFETY_REST_OFFLINE       = 88522,
+    SPELL_SAFETY_REST_OFFLINE_H     = 91720,
 
-    SPELL_SUMMON_MOLTEN_SLAG = 91839,
+    SPELL_SUMMON_MOLTEN_SLAG        = 91839,
+    SPELL_OFF_LINE                  = 88348,
 };
 
 enum eAchievementMisc
 {
-    ACHIEVEMENT_PROTOTYPE_PRODIGY = 5368,
-    DATA_ACHIV_PROTOTYPE_PRODIGY = 1,
+    ACHIEVEMENT_PROTOTYPE_PRODIGY   = 5368,
+    DATA_ACHIV_PROTOTYPE_PRODIGY    = 1,
 };
 
 const Position OverdrivePoint =
@@ -90,10 +90,10 @@ enum eSays
 
 Position const HarvestSpawn[] =
 {
-    {-229.72f, -590.37f, 19.38f, 0.71f},
-    {-229.67f, -565.75f, 19.38f, 5.98f},
-    {-205.53f, -552.74f, 19.38f, 4.53f},
-    {-182.74f, -565.96f, 19.38f, 3.35f},
+    {-231.730042f, -582.794128f, 19.307827f, 6.054984f},
+    {-222.526932f, -558.777100f, 19.307827f, 5.085026f},
+    {-194.235489f, -555.713989f, 19.307827f, 4.380648f},
+    {-180.167435f, -571.591492f, 19.309271f, 3.093386f},
 };
 
 Position const PrototypeSpawn = {-200.499f, -553.946f, 51.2295f, 4.32651f};
@@ -112,10 +112,15 @@ public:
 
     struct boss_foe_reaper_5000AI : public BossAI
     {
-        boss_foe_reaper_5000AI(Creature* creature) : BossAI(creature, DATA_FOEREAPER)
-        {
-            me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_STUNNED));
-        }
+        boss_foe_reaper_5000AI(Creature* creature) : BossAI(creature, DATA_FOEREAPER) { }
+
+            void InitializeAI() override
+            {
+                BossAI::InitializeAI();
+                me->RemoveAura(SPELL_OFF_LINE);
+                me->RemoveUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_STUNNED));
+            }
+
 
         uint32 eventId;
         uint32 Step;
@@ -133,7 +138,6 @@ public:
             me->SetPower(POWER_ENERGY, 100);
             me->SetMaxPower(POWER_ENERGY, 100);
             me->SetPowerType(POWER_ENERGY);
-            me->AddUnitFlag(UnitFlags(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC));
             Step = 0;
             Below = false;
 
@@ -176,7 +180,7 @@ public:
             instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
         }
 
-        void JustDied(Unit* /*killer*/) override
+        void JustDied(Unit* killer) override
         {
             if (!me)
                 return;
@@ -185,6 +189,8 @@ public:
             DespawnOldWatchers();
             Talk(SAY_JUSTDIED);
             instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+
+            killer->CombatStop();
 
             if (IsHeroic())
                 if (Creature* Reaper = ObjectAccessor::GetCreature(*me, prototypeGUID))
@@ -435,7 +441,7 @@ public:
             {
                 if (!me->HasAura(SPELL_ON_FIRE))
                     me->AddAura(SPELL_ON_FIRE, me);
-                me->setFaction(35);
+                me->SetFaction(35);
             }
         }
 
@@ -455,7 +461,7 @@ public:
             Status = true;
             me->SetHealth(15);
             me->setRegeneratingHealth(false);
-            me->setFaction(35);
+            me->SetFaction(35);
             me->AddAura(SPELL_ON_FIRE, me);
             me->CastSpell(me, SPELL_ON_FIRE);
             me->SetInCombatWithZone();
