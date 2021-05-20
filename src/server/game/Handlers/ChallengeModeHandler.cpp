@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,20 +21,116 @@
 #include "Log.h"
 #include "Player.h"
 #include "WorldSession.h"
+#include "ChallengeModeMgr.h"
 
-void WorldSession::HandleChallengeModeStart(WorldPackets::ChallengeMode::StartRequest& start)
+void WorldSession::HandleRequestLeaders(WorldPackets::ChallengeMode::RequestLeaders& packet)
 {
-    GameObject* object = _player->GetGameObjectIfCanInteractWith(start.GobGUID, GAMEOBJECT_TYPE_KEYSTONE_RECEPTACLE);
+    WorldPackets::ChallengeMode::RequestLeadersResult result;
+    result.MapID = packet.MapId;
+    result.ChallengeID = packet.ChallengeID;
+
+    result.LastGuildUpdate = time(nullptr);
+    result.LastRealmUpdate = time(nullptr);
+
+    if (auto bestGuild = sChallengeModeMgr->BestGuildChallenge(_player->GetGuildId(), packet.ChallengeID))
+    {
+        for (auto itr = bestGuild->member.begin(); itr != bestGuild->member.end(); ++itr)
+        {
+            WorldPackets::ChallengeMode::ModeAttempt guildLeaders;
+            guildLeaders.InstanceRealmAddress = GetVirtualRealmAddress();
+            guildLeaders.AttemptID = bestGuild->ID;
+            guildLeaders.CompletionTime = bestGuild->RecordTime;
+            guildLeaders.CompletionDate = bestGuild->Date;
+            guildLeaders.MedalEarned = bestGuild->ChallengeLevel;
+
+            for (auto const& v : bestGuild->member)
+            {
+                WorldPackets::ChallengeMode::ModeAttempt::Member memberData;
+                memberData.VirtualRealmAddress = GetVirtualRealmAddress();
+                memberData.NativeRealmAddress = GetVirtualRealmAddress();
+                memberData.Guid = v.guid;
+                memberData.SpecializationID = v.specId;
+                guildLeaders.Members.emplace_back(memberData);
+            }
+
+            result.GuildLeaders.emplace_back(guildLeaders);
+        }
+    }
+
+    if (ChallengeData* bestServer = sChallengeModeMgr->BestServerChallenge(packet.ChallengeID))
+    {
+        WorldPackets::ChallengeMode::ModeAttempt realmLeaders;
+        realmLeaders.InstanceRealmAddress = GetVirtualRealmAddress();
+        realmLeaders.AttemptID = bestServer->ID;
+        realmLeaders.CompletionTime = bestServer->RecordTime;
+        realmLeaders.CompletionDate = bestServer->Date;
+        realmLeaders.MedalEarned = bestServer->ChallengeLevel;
+
+        for (auto const& v : bestServer->member)
+        {
+            WorldPackets::ChallengeMode::ModeAttempt::Member memberData;
+            memberData.VirtualRealmAddress = GetVirtualRealmAddress();
+            memberData.NativeRealmAddress = GetVirtualRealmAddress();
+            memberData.Guid = v.guid;
+            memberData.SpecializationID = v.specId;
+            realmLeaders.Members.emplace_back(memberData);
+        }
+        result.RealmLeaders.push_back(realmLeaders);
+    }
+
+    SendPacket(result.Write());
+}
+
+void WorldSession::HandleGetChallengeModeRewards(WorldPackets::ChallengeMode::Misc& /*packet*/)
+{
+   // WorldPackets::ChallengeMode::Rewards rewards;
+    //SendPacket(rewards.Write());
+}
+
+void WorldSession::HandleMythicPlusRequestMapStats(WorldPackets::ChallengeMode::Misc& /*packet*/)
+{
+    WorldPackets::ChallengeMode::MythicPlusAllMapStats stats;
+    if (ChallengeByMap* last = sChallengeModeMgr->LastForMember(_player->GetGUID()))
+    {
+        for (auto const& v : *last)
+        {
+            WorldPackets::ChallengeMode::ChallengeModeMap modeMap;
+            modeMap.ChallengeID = v.second->ChallengeID;
+            modeMap.BestMedalDate = v.second->Date;
+            modeMap.MapId = v.second->MapID;
+            modeMap.CompletedChallengeLevel = v.second->ChallengeLevel;
+
+            modeMap.LastCompletionMilliseconds = v.second->RecordTime;
+            if (ChallengeData* _lastData = sChallengeModeMgr->BestForMemberMap(_player->GetGUID(), v.second->ChallengeID))
+                modeMap.BestCompletionMilliseconds = _lastData->RecordTime;
+            else
+                modeMap.BestCompletionMilliseconds = v.second->RecordTime;
+
+            modeMap.Affixes = v.second->Affixes;
+
+            for (auto const& z : v.second->member)
+                modeMap.BestSpecID.push_back(z.specId);
+
+            stats.ChallengeModeMaps.push_back(modeMap);
+        }
+    }
+
+    SendPacket(stats.Write());
+}
+
+void WorldSession::HandleChallengeModeStart(WorldPackets::ChallengeMode::StartChallengeMode& packet)
+{
+    GameObject* object = _player->GetGameObjectIfCanInteractWith(packet.GobGUID, GAMEOBJECT_TYPE_KEYSTONE_RECEPTACLE);
     if (!object)
     {
-        TC_LOG_DEBUG("network", "WORLD: HandleChallengeModeStart - %s not found or you can not interact with it.", start.GobGUID.ToString().c_str());
+        TC_LOG_DEBUG("network", "WORLD: HandleChallengeModeStart - %s not found or you can not interact with it.", packet.GobGUID.ToString().c_str());
         return;
     }
 
-    Item* key = _player->GetItemByPos(start.Bag, start.Slot);
+    Item* key = _player->GetItemByPos(packet.Bag, packet.Slot);
     if (!key)
     {
-        TC_LOG_DEBUG("network", "WORLD: HandleChallengeModeStart - item in Bag %u and Slot %u not found.", start.Bag, start.Slot);
+        TC_LOG_DEBUG("network", "WORLD: HandleChallengeModeStart - item in Bag %u and Slot %u not found.", packet.Bag, packet.Slot);
         return;
     }
 
@@ -61,5 +157,45 @@ void WorldSession::HandleChallengeModeStart(WorldPackets::ChallengeMode::StartRe
         instanceScript->StartChallengeMode(challengeModeLevel);
 
     // Blizzard do not delete the key at challenge start, will require mort research
-    _player->DestroyItem(start.Bag, start.Slot, true);
+    _player->DestroyItem(packet.Bag, packet.Slot, true);
 }
+
+void WorldSession::SendChallengeModeMapStatsUpdate(uint32 keyID)
+{
+    WorldPacket packet(6 * 4);
+
+    for (auto l_ChallengeData : _player->m_CompletedChallenges)
+    {
+        if (l_ChallengeData.first == keyID)
+        {
+            CompletedChallenge l_CompletedChallenge = l_ChallengeData.second;
+
+            packet << uint32(l_CompletedChallenge.MapID);
+            packet << uint32(l_ChallengeData.first);
+            packet << uint32(l_CompletedChallenge.BestCompletion);
+            packet << uint32(l_CompletedChallenge.LastCompletion);
+            packet << uint32(l_CompletedChallenge.BestMedal);
+            packet << uint32(l_CompletedChallenge.BestMedalDate);
+
+            uint32 l_SpecCount = 5;
+            packet << uint32(l_SpecCount);
+
+            for (uint32 I = 0; I < 3; ++I)
+                packet << uint32(0);
+
+            for (uint32 J = 0; J < l_SpecCount; ++J)
+                packet << uint16(0);    ///pecID
+        }
+    }
+
+    SendPacket(&packet);
+}
+
+
+void WorldSession::HandleResetChallengeMode(WorldPackets::ChallengeMode::ResetChallengeMode& /*packet*/)
+{
+    if (auto const& instanceScript = _player->GetInstanceScript())
+        if (instanceScript->instance->isChallenge())
+            instanceScript->ResetChallengeMode();
+}
+

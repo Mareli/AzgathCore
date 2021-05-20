@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,7 +46,7 @@ void WorldSession::HandleAutoBankItemOpcode(WorldPackets::Bank::AutoBankItem& pa
         InventoryResult msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, dest, item, false, true);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -61,7 +61,7 @@ void WorldSession::HandleAutoBankItemOpcode(WorldPackets::Bank::AutoBankItem& pa
         InventoryResult msg = _player->CanBankItem(NULL_BAG, NULL_SLOT, dest, item, false);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -96,7 +96,7 @@ void WorldSession::HandleAutoBankReagentOpcode(WorldPackets::Bank::AutoBankReage
         InventoryResult msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, dest, item, false, true);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -111,7 +111,7 @@ void WorldSession::HandleAutoBankReagentOpcode(WorldPackets::Bank::AutoBankReage
         InventoryResult msg = _player->CanBankItem(NULL_BAG, NULL_SLOT, dest, item, false, true, true);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -158,7 +158,7 @@ void WorldSession::HandleAutoStoreBankItemOpcode(WorldPackets::Bank::AutoStoreBa
         InventoryResult msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, dest, item, false);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -173,7 +173,7 @@ void WorldSession::HandleAutoStoreBankItemOpcode(WorldPackets::Bank::AutoStoreBa
         InventoryResult msg = _player->CanBankItem(NULL_BAG, NULL_SLOT, dest, item, false);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -208,7 +208,7 @@ void WorldSession::HandleAutoStoreBankReagentOpcode(WorldPackets::Bank::AutoStor
         InventoryResult msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, dest, item, false);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -223,7 +223,7 @@ void WorldSession::HandleAutoStoreBankReagentOpcode(WorldPackets::Bank::AutoStor
         InventoryResult msg = _player->CanBankItem(NULL_BAG, NULL_SLOT, dest, item, false, true, true);
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
             return;
         }
 
@@ -234,11 +234,8 @@ void WorldSession::HandleAutoStoreBankReagentOpcode(WorldPackets::Bank::AutoStor
 
 void WorldSession::HandleBuyBankSlotOpcode(WorldPackets::Bank::BuyBankSlot& packet)
 {
-    WorldPacket data(SMSG_BUY_BANK_SLOT_RESULT, 4);
     if (!CanUseBank(packet.Guid))
     {
-        data << uint32(ERR_BANKSLOT_NOTBANKER);
-        SendPacket(&data);
         TC_LOG_ERROR("network", "WORLD: HandleBuyBankSlotOpcode - %s not found or you can't interact with him.", packet.Guid.ToString().c_str());
         return;
     }
@@ -253,26 +250,15 @@ void WorldSession::HandleBuyBankSlotOpcode(WorldPackets::Bank::BuyBankSlot& pack
     BankBagSlotPricesEntry const* slotEntry = sBankBagSlotPricesStore.LookupEntry(slot);
 
     if (!slotEntry)
-    {
-        data << uint32(ERR_BANKSLOT_FAILED_TOO_MANY);
-        SendPacket(&data);
         return;
-    }
 
     uint32 price = slotEntry->Cost;
 
     if (!_player->HasEnoughMoney(uint64(price)))
-    {
-        data << uint32(ERR_BANKSLOT_INSUFFICIENT_FUNDS);
-        SendPacket(&data);
         return;
-    }
 
     _player->SetBankBagSlotCount(slot);
     _player->ModifyMoney(-int64(price));
-
-     data << uint32(ERR_BANKSLOT_OK);
-     SendPacket(&data);
 
     _player->UpdateCriteria(CRITERIA_TYPE_BUY_BANK_SLOT);
 }
@@ -339,7 +325,7 @@ void WorldSession::HandleDepositReagentBankOpcode(WorldPackets::Bank::DepositRea
                     InventoryResult msg = _player->CanBankItem(NULL_BAG, NULL_SLOT, dest, item, false, true, true);
                     if (msg != EQUIP_ERR_OK)
                     {
-                        _player->SendEquipError(msg, item, NULL);
+                        _player->SendEquipError(msg, item, nullptr);
                         return;
                     }
 
@@ -364,7 +350,7 @@ void WorldSession::HandleDepositReagentBankOpcode(WorldPackets::Bank::DepositRea
             InventoryResult msg = _player->CanBankItem(NULL_BAG, NULL_SLOT, dest, item, false, true, true);
             if (msg != EQUIP_ERR_OK)
             {
-                _player->SendEquipError(msg, item, NULL);
+                _player->SendEquipError(msg, item, nullptr);
                 return;
             }
 

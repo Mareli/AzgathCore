@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,6 +27,18 @@
 #include "Player.h"
 #include "World.h"
 #include "WorldPacket.h"
+
+inline Guild* _GetPlayerGuild(WorldSession* session, bool sendError = false)
+{
+    if (ObjectGuid::LowType guildId = session->GetPlayer()->GetGuildId())
+        if (Guild* guild = sGuildMgr->GetGuildById(guildId))
+            return guild;
+
+    if (sendError)
+        Guild::SendCommandResult(session, GUILD_COMMAND_CREATE_GUILD, ERR_GUILD_PLAYER_NOT_IN_GUILD);
+
+    return nullptr;
+}
 
 void WorldSession::HandleGuildQueryOpcode(WorldPackets::Guild::QueryGuildInfo& query)
 {
@@ -74,8 +85,38 @@ void WorldSession::HandleGuildAcceptInvite(WorldPackets::Guild::AcceptGuildInvit
 
 void WorldSession::HandleGuildDeclineInvitation(WorldPackets::Guild::GuildDeclineInvitation& /*decline*/)
 {
+    if (Player* inviter = ObjectAccessor::FindPlayer(GetPlayer()->GetGuildInviterGuid()))
+    {
+        WorldPackets::Guild::GuildInviteDeclined packet;
+        packet.Name = GetPlayer()->GetName();
+        packet.VirtualRealmAddress = GetVirtualRealmAddress();
+        inviter->SendDirectMessage(packet.Write());
+    }
+
     GetPlayer()->SetGuildIdInvited(UI64LIT(0));
     GetPlayer()->SetInGuild(UI64LIT(0));
+}
+
+void WorldSession::HandleGuildChangeNameRequest(WorldPackets::Guild::GuildChangeNameRequest& packet)
+{
+    if (Guild* guild = _GetPlayerGuild(this))
+    {
+        if (guild->GetLeaderGUID() != _player->GetGUID())
+            return;
+
+        bool success = true;
+        if (guild->GetName() == packet.NewName)
+            success = false;
+
+        WorldPackets::Guild::GuildChangeNameResult result;
+        result.Success = success;
+        SendPacket(result.Write());
+
+        if (success){
+            guild->SetName(packet.NewName);
+            guild->SetRename(false);
+        }
+    }
 }
 
 void WorldSession::HandleGuildGetRoster(WorldPackets::Guild::GuildGetRoster& /*packet*/)
@@ -140,6 +181,12 @@ void WorldSession::HandleGuildSetMemberNote(WorldPackets::Guild::GuildSetMemberN
 
     if (Guild* guild = GetPlayer()->GetGuild())
         guild->HandleSetMemberNote(this, packet.Note, packet.NoteeGUID, packet.IsPublic);
+}
+
+void WorldSession::HandleGuildShiftRank(WorldPackets::Guild::GuildShiftRank& packet)
+{
+    if (Guild* guild = _GetPlayerGuild(this, true))
+        guild->HandleShiftRank(this, packet.RankOrder, packet.ShiftUp);
 }
 
 void WorldSession::HandleGuildGetRanks(WorldPackets::Guild::GuildGetRanks& packet)
@@ -455,7 +502,7 @@ void WorldSession::HandleGuildRequestPartyState(WorldPackets::Guild::RequestGuil
 void WorldSession::HandleGuildChallengeUpdateRequest(WorldPackets::Guild::GuildChallengeUpdateRequest& /*packet*/)
 {
     if (Guild* guild = _player->GetGuild())
-        guild->HandleGuildRequestChallengeUpdate(this);
+        guild->SendGuildChallengeUpdate(this);
 }
 
 void WorldSession::HandleDeclineGuildInvites(WorldPackets::Guild::DeclineGuildInvites& packet)
@@ -473,7 +520,7 @@ void WorldSession::HandleRequestGuildRewardsList(WorldPackets::Guild::RequestGui
         std::vector<GuildReward> const& rewards = sGuildMgr->GetGuildRewards();
 
         WorldPackets::Guild::GuildRewardList rewardList;
-        rewardList.Version = uint32(time(NULL));
+        rewardList.Version = uint32(time(nullptr));
         rewardList.RewardItems.reserve(rewards.size());
 
         for (uint32 i = 0; i < rewards.size(); i++)

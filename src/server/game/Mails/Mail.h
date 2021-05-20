@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -56,7 +55,7 @@ enum MailCheckMask
     MAIL_CHECK_MASK_HAS_BODY    = 0x10                      /// This mail has body text.
 };
 
-// gathered from Stationery.dbc
+// gathered from Stationery.dbc (9.0.2)
 enum MailStationery
 {
     MAIL_STATIONERY_TEST    = 1,
@@ -65,7 +64,8 @@ enum MailStationery
     MAIL_STATIONERY_AUCTION = 62,
     MAIL_STATIONERY_VAL     = 64,                           // Valentine
     MAIL_STATIONERY_CHR     = 65,                           // Christmas
-    MAIL_STATIONERY_ORP     = 67                            // Orphan
+    MAIL_STATIONERY_ORP     = 67,                           // Orphan
+    MAIL_STATIONERY_UNK     = 77                            // Unknown
 };
 
 enum MailState
@@ -110,7 +110,7 @@ class TC_GAME_API MailSender
 class TC_GAME_API MailReceiver
 {
     public:                                                 // Constructors
-        explicit MailReceiver(ObjectGuid::LowType receiver_lowguid) : m_receiver(NULL), m_receiver_lowguid(receiver_lowguid) { }
+        explicit MailReceiver(ObjectGuid::LowType receiver_lowguid) : m_receiver(nullptr), m_receiver_lowguid(receiver_lowguid) { }
         MailReceiver(Player* receiver);
         MailReceiver(Player* receiver, ObjectGuid::LowType receiver_lowguid);
         MailReceiver(Player* receiver, ObjectGuid receiverGuid);

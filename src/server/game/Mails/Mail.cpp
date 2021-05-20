@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -195,7 +194,7 @@ void MailDraft::SendMailTo(CharacterDatabaseTransaction& trans, MailReceiver con
 
     uint32 mailId = sObjectMgr->GenerateMailID();
 
-    time_t deliver_time = time(NULL) + deliver_delay;
+    time_t deliver_time = time(nullptr) + deliver_delay;
 
     //expire time if COD 3 days, if no COD 30 days, if auction sale pending 1 hour
     uint32 expire_delay;
@@ -203,7 +202,7 @@ void MailDraft::SendMailTo(CharacterDatabaseTransaction& trans, MailReceiver con
     // auction mail without any items and money
     if (sender.GetMailMessageType() == MAIL_AUCTION && m_items.empty() && !m_money)
         expire_delay = sWorld->getIntConfig(CONFIG_MAIL_DELIVERY_DELAY);
-     // default case: expire time if COD 3 days, if no COD 30 days (or 90 days if sender is a game master)
+    // default case: expire time if COD 3 days, if no COD 30 days (or 90 days if sender is a game master)
     else
     {
         if (m_COD)
@@ -283,13 +282,13 @@ void MailDraft::SendMailTo(CharacterDatabaseTransaction& trans, MailReceiver con
         }
         else if (!m_items.empty())
         {
-            CharacterDatabaseTransaction temp = CharacterDatabaseTransaction(NULL);
+            CharacterDatabaseTransaction temp = CharacterDatabaseTransaction(nullptr);
             deleteIncludedItems(temp);
         }
     }
     else if (!m_items.empty())
     {
-        CharacterDatabaseTransaction temp = CharacterDatabaseTransaction(NULL);
+        CharacterDatabaseTransaction temp = CharacterDatabaseTransaction(nullptr);
         deleteIncludedItems(temp);
     }
 }

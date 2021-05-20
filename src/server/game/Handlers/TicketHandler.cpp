@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -45,28 +44,15 @@ void WorldSession::HandleGMTicketSystemStatusOpcode(WorldPackets::Ticket::GMTick
     SendPacket(response.Write());
 }
 
-void WorldSession::HandleSupportTicketSubmitBug(WorldPackets::Ticket::SupportTicketSubmitBug& packet)
+void WorldSession::HandleSubmitUserFeedback(WorldPackets::Ticket::SubmitUserFeedback& userFeedback)
 {
     if (!sSupportMgr->GetBugSystemStatus())
         return;
 
     BugTicket* ticket = new BugTicket(GetPlayer());
-    ticket->SetPosition(packet.Header.MapID, packet.Header.Position);
-    ticket->SetFacing(packet.Header.Facing);
-    ticket->SetNote(packet.Note);
-
-    sSupportMgr->AddTicket(ticket);
-}
-
-void WorldSession::HandleSupportTicketSubmitSuggestion(WorldPackets::Ticket::SupportTicketSubmitSuggestion& packet)
-{
-    if (!sSupportMgr->GetSuggestionSystemStatus())
-        return;
-
-    SuggestionTicket* ticket = new SuggestionTicket(GetPlayer());
-    ticket->SetPosition(packet.Header.MapID, packet.Header.Position);
-    ticket->SetFacing(packet.Header.Facing);
-    ticket->SetNote(packet.Note);
+    ticket->SetPosition(userFeedback.Header.MapID, userFeedback.Header.Position);
+    ticket->SetFacing(userFeedback.Header.Facing);
+    ticket->SetNote(userFeedback.Note);
 
     sSupportMgr->AddTicket(ticket);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -230,7 +230,7 @@ void WorldSession::HandleVoidSwapItem(WorldPackets::VoidStorage::SwapVoidItem& s
         return;
     }
 
-    bool usedDestSlot = _player->GetVoidStorageItem(swapVoidItem.DstSlot) != NULL;
+    bool usedDestSlot = _player->GetVoidStorageItem(swapVoidItem.DstSlot) != nullptr;
     ObjectGuid itemIdDest;
     if (usedDestSlot)
         itemIdDest = ObjectGuid::Create<HighGuid::Item>(_player->GetVoidStorageItem(swapVoidItem.DstSlot)->ItemId);

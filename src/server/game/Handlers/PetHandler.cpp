@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -87,7 +86,7 @@ void WorldSession::HandlePetAction(WorldPackets::Pet::PetAction& packet)
 
     if (!pet->IsAlive())
     {
-        SpellInfo const* spell = (flag == ACT_ENABLED || flag == ACT_PASSIVE) ? sSpellMgr->GetSpellInfo(spellid) : NULL;
+        SpellInfo const* spell = (flag == ACT_ENABLED || flag == ACT_PASSIVE) ? sSpellMgr->GetSpellInfo(spellid, pet->GetMap()->GetDifficultyID()) : nullptr;
         if (!spell)
             return;
         if (!spell->HasAttribute(SPELL_ATTR0_CASTABLE_WHILE_DEAD))
@@ -281,7 +280,7 @@ void WorldSession::HandlePetActionHelper(Unit* pet, ObjectGuid guid1, uint32 spe
                 case REACT_PASSIVE:                         //passive
                     pet->AttackStop();
                     pet->ClearInPetCombat();
-                    /* fallthrough */
+                    // no break;
                 case REACT_DEFENSIVE:                       //recovery
                 case REACT_AGGRESSIVE:                      //activete
                 case REACT_ASSIST:                          //
@@ -294,20 +293,20 @@ void WorldSession::HandlePetActionHelper(Unit* pet, ObjectGuid guid1, uint32 spe
         case ACT_PASSIVE:                                   // 0x01
         case ACT_ENABLED:                                   // 0xC1    spell
         {
-            Unit* unit_target = NULL;
+            Unit* unit_target = nullptr;
 
             if (!guid2.IsEmpty())
                 unit_target = ObjectAccessor::GetUnit(*_player, guid2);
 
             // do not cast unknown spells
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellid);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellid, pet->GetMap()->GetDifficultyID());
             if (!spellInfo)
             {
                 TC_LOG_ERROR("spells.pet", "WORLD: unknown PET spell id %i", spellid);
                 return;
             }
 
-            for (SpellEffectInfo const* effect: spellInfo->GetEffectsForDifficulty(DIFFICULTY_NONE))
+            for (SpellEffectInfo const* effect: spellInfo->GetEffects())
             {
                 if (effect && (effect->TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY || effect->TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY || effect->TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY))
                     return;
@@ -431,7 +430,7 @@ void WorldSession::SendQueryPetNameResponse(ObjectGuid guid)
         }
     }
 
-    _player->GetSession()->SendPacket(response.Write());
+    _player->SendDirectMessage(response.Write());
 }
 
 bool WorldSession::CheckStableMaster(ObjectGuid guid)
@@ -487,7 +486,7 @@ void WorldSession::HandlePetSetAction(WorldPackets::Pet::PetSetAction& packet)
     //if it's act for spell (en/disable/cast) and there is a spell given (0 = remove spell) which pet doesn't know, don't add
     if (!((act_state == ACT_ENABLED || act_state == ACT_DISABLED || act_state == ACT_PASSIVE) && spell_id && !pet->HasSpell(spell_id)))
     {
-        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell_id))
+        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell_id, pet->GetMap()->GetDifficultyID()))
         {
             //sign for autocast
             if (act_state == ACT_ENABLED)
@@ -533,13 +532,13 @@ void WorldSession::HandlePetRename(WorldPackets::Pet::PetRename& packet)
     PetNameInvalidReason res = ObjectMgr::CheckPetName(name);
     if (res != PET_NAME_SUCCESS)
     {
-        SendPetNameInvalid(res, name, NULL);
+        SendPetNameInvalid(res, name, nullptr);
         return;
     }
 
     if (sObjectMgr->IsReservedName(name))
     {
-        SendPetNameInvalid(PET_NAME_RESERVED, name, NULL);
+        SendPetNameInvalid(PET_NAME_RESERVED, name, nullptr);
         return;
     }
 
@@ -587,7 +586,7 @@ void WorldSession::HandlePetRename(WorldPackets::Pet::PetRename& packet)
 
     CharacterDatabase.CommitTransaction(trans);
 
-    pet->SetPetNameTimestamp(uint32(time(NULL)));
+    pet->SetPetNameTimestamp(uint32(time(nullptr)));
 }
 
 void WorldSession::HandlePetAbandon(WorldPackets::Pet::PetAbandon& packet)
@@ -619,7 +618,7 @@ void WorldSession::HandlePetSpellAutocastOpcode(WorldPackets::Pet::PetSpellAutoc
         return;
     }
 
-    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(packet.SpellID);
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(packet.SpellID, pet->GetMap()->GetDifficultyID());
     if (!spellInfo)
     {
         TC_LOG_ERROR("spells.pet", "WorldSession::HandlePetSpellAutocastOpcode: Unknown spell id %u used by %s.", packet.SpellID, packet.PetGUID.ToString().c_str());
@@ -647,18 +646,18 @@ void WorldSession::HandlePetSpellAutocastOpcode(WorldPackets::Pet::PetSpellAutoc
 
 void WorldSession::HandlePetCastSpellOpcode(WorldPackets::Spells::PetCastSpell& petCastSpell)
 {
-    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(petCastSpell.Cast.SpellID);
-    if (!spellInfo)
-    {
-        TC_LOG_ERROR("spells.pet", "WorldSession::HandlePetCastSpellOpcode: unknown spell id %i tried to cast by %s",
-            petCastSpell.Cast.SpellID, petCastSpell.PetGUID.ToString().c_str());
-        return;
-    }
-
     Unit* caster = ObjectAccessor::GetUnit(*_player, petCastSpell.PetGUID);
     if (!caster)
     {
         TC_LOG_ERROR("entities.pet", "WorldSession::HandlePetCastSpellOpcode: Caster %s not found.", petCastSpell.PetGUID.ToString().c_str());
+        return;
+    }
+
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(petCastSpell.Cast.SpellID, caster->GetMap()->GetDifficultyID());
+    if (!spellInfo)
+    {
+        TC_LOG_ERROR("spells.pet", "WorldSession::HandlePetCastSpellOpcode: unknown spell id %i tried to cast by %s",
+            petCastSpell.Cast.SpellID, petCastSpell.PetGUID.ToString().c_str());
         return;
     }
 
@@ -683,7 +682,7 @@ void WorldSession::HandlePetCastSpellOpcode(WorldPackets::Spells::PetCastSpell& 
     spell->m_misc.Raw.Data[1] = petCastSpell.Cast.Misc[1];
     spell->m_targets = targets;
 
-    SpellCastResult result = spell->CheckPetCast(NULL);
+    SpellCastResult result = spell->CheckPetCast(nullptr);
     if (result == SPELL_CAST_OK)
     {
         if (Creature* creature = caster->ToCreature())
@@ -784,7 +783,7 @@ void WorldSession::UpdatePetSlot(uint32 petNumberA, uint8 oldPetSlot, uint8 newP
     CharacterDatabase.CommitTransaction(trans);
 
     SendPetSlotUpdated(petNumberA, newPetSlot, petNumberB, oldPetSlot);
-    SendPetStableResult(STABLE_SUCCESS_STABLE);
+    SendPetStableResult(StableResult::StableSuccess);
 }
 
 void WorldSession::SendPetSlotUpdated(int32 petNumberA, int32 petSlotA, int32 petNumberB, int32 petSlotB)

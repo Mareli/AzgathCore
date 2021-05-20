@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,16 +24,16 @@ void WorldSession::HandleQueryScenarioPOI(WorldPackets::Scenario::QueryScenarioP
     WorldPackets::Scenario::ScenarioPOIs response;
 
     // Read criteria tree ids and add the in a unordered_set so we don't send POIs for the same criteria tree multiple times
-    std::unordered_set<int32> criteriaTreeIds;
+    std::unordered_set<int32> Criteriatreeids;
     for (size_t i = 0; i < queryScenarioPOI.MissingScenarioPOIs.size(); ++i)
-        criteriaTreeIds.insert(queryScenarioPOI.MissingScenarioPOIs[i]); // CriteriaTreeID
+        Criteriatreeids.insert(queryScenarioPOI.MissingScenarioPOIs[i]); // Criteriatreeid
 
-    for (int32 criteriaTreeId : criteriaTreeIds)
+    for (int32 Criteriatreeid : Criteriatreeids)
     {
-        if (ScenarioPOIVector const* poiVector = sScenarioMgr->GetScenarioPOIs(criteriaTreeId))
+        if (ScenarioPOIVector const* poiVector = sScenarioMgr->GetScenarioPOIs(Criteriatreeid))
         {
             WorldPackets::Scenario::ScenarioPOIData scenarioPOIData;
-            scenarioPOIData.CriteriaTreeID = criteriaTreeId;
+            scenarioPOIData.Criteriatreeid = Criteriatreeid;
             scenarioPOIData.ScenarioPOIs = poiVector;
             response.ScenarioPOIDataStats.push_back(scenarioPOIData);
         }

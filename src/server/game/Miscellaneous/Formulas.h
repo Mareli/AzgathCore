@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -31,20 +30,24 @@ namespace Trinity
 {
     inline uint32 GetExpansionForLevel(uint32 level)
     {
-        if (level < 60)
+        /*if (level < 30)
             return EXPANSION_CLASSIC;
-        else if (level < 70)
+        else if (level < 30)
             return EXPANSION_THE_BURNING_CRUSADE;
-        else if (level < 80)
+        else*/ if (level < 30)
             return EXPANSION_WRATH_OF_THE_LICH_KING;
-        else if (level < 85)
-            return EXPANSION_CATACLYSM;
-        else if (level < 90)
+        /*else if (level < 35)
+            return EXPANSION_CATACLYSM;*/
+        else if (level < 35)
             return EXPANSION_MISTS_OF_PANDARIA;
-        else if (level < 100)
+        else if (level < 40)
             return EXPANSION_WARLORDS_OF_DRAENOR;
-        else if (level < 110)
+        else if (level < 45)
             return EXPANSION_LEGION;
+        else if (level < 50)
+            return EXPANSION_BATTLE_FOR_AZEROTH;
+        else if (level < 60)
+            return EXPANSION_SHADOWLANDS;
         else
             return CURRENT_EXPANSION;
     }
@@ -58,23 +61,49 @@ namespace Trinity
             {
                 case EXPANSION_CLASSIC:
                 case EXPANSION_THE_BURNING_CRUSADE:
-                    return 40.f;
                 case EXPANSION_WRATH_OF_THE_LICH_KING:
-                    return 50.f;
+                    return 32.0f;
+                    break;
                 case EXPANSION_CATACLYSM:
-                    return 27.f;
                 case EXPANSION_MISTS_OF_PANDARIA:
-                    return 13.5f;
+                    return 16.0f;
+                    break;
                 case EXPANSION_WARLORDS_OF_DRAENOR:
-                    return 7.f;
+                    return 8.0f;
+                    break;
                 case EXPANSION_LEGION:
-                    return 3.5f;
+                    return 4.0f;
+                    break;
+                case EXPANSION_BATTLE_FOR_AZEROTH:
+                    return 2.0f;
+                    break;
+                case EXPANSION_SHADOWLANDS:
+                    return 1.0f;
+                    break;
                 default:
                     break;
             }
         }
 
         return 1.0f;
+    }
+
+    inline uint32 GetNumberMultipleOfFive(uint32 averageItemLevel)
+    {
+        uint8 difference = averageItemLevel % 5;
+        uint32 average_new = averageItemLevel - difference;
+        if (difference >= 3)
+        {
+            for (uint8 i = 1; i < 4; ++i)
+            {
+                if (((averageItemLevel + i) % 5) == 0)
+                {
+                    average_new = averageItemLevel + i;
+                    break;
+                }
+            }
+        }
+        return average_new;
     }
 
     namespace Honor
@@ -230,7 +259,7 @@ namespace Trinity
                 float killXpRate = player->GetPersonnalXpRate() ? player->GetPersonnalXpRate() : sWorld->getRate(RATE_XP_QUEST);
                 xpMod *= isBattleGround ? sWorld->getRate(RATE_XP_BG_KILL) : killXpRate;
                 if (creature && creature->m_PlayerDamageReq) // if players dealt less than 50% of the damage and were credited anyway (due to CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ), scale XP gained appropriately (linear scaling)
-                    xpMod *= 1.0f - 2.0f*creature->m_PlayerDamageReq / creature->GetMaxHealth();
+                    xpMod *= 1.0f - 2.0f * creature->m_PlayerDamageReq / creature->GetMaxHealth();
 
                 gain = uint32(gain * xpMod);
             }

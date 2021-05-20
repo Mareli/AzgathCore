@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +23,7 @@
 #include "MapInstanced.h"
 #include "GridStates.h"
 #include "MapUpdater.h"
+#include <boost/dynamic_bitset.hpp>
 
 class PhaseShift;
 class Transport;
@@ -117,9 +117,6 @@ class TC_GAME_API MapManager
         void RegisterInstanceId(uint32 instanceId);
         void FreeInstanceId(uint32 instanceId);
 
-        uint32 GetNextInstanceId() const { return _nextInstanceId; };
-        void SetNextInstanceId(uint32 nextInstanceId) { _nextInstanceId = nextInstanceId; };
-
         MapUpdater * GetMapUpdater() { return &m_updater; }
 
         template<typename Worker>
@@ -135,7 +132,7 @@ class TC_GAME_API MapManager
 
     private:
         typedef std::unordered_map<uint32, Map*> MapMapType;
-        typedef std::vector<bool> InstanceIds;
+        typedef boost::dynamic_bitset<size_t> InstanceIds;
 
         MapManager();
         ~MapManager();
@@ -143,7 +140,7 @@ class TC_GAME_API MapManager
         Map* FindBaseMap(uint32 mapId) const
         {
             MapMapType::const_iterator iter = i_maps.find(mapId);
-            return (iter == i_maps.end() ? NULL : iter->second);
+            return (iter == i_maps.end() ? nullptr : iter->second);
         }
 
         Map* CreateBaseMap_i(MapEntry const* mapEntry);
@@ -156,7 +153,7 @@ class TC_GAME_API MapManager
         MapMapType i_maps;
         IntervalTimer i_timer;
 
-        InstanceIds _instanceIds;
+        InstanceIds _freeInstanceIds;
         uint32 _nextInstanceId;
         MapUpdater m_updater;
 

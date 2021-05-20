@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,7 +17,6 @@
 
 #include "WorldPacket.h"
 #include "BattlePet.h"
-#include "BattlePetMgr.h"
 #include "Common.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
@@ -340,7 +338,7 @@ void WorldSession::HandleDestroyItemOpcode(WorldPackets::Item::DestroyItem& dest
 
     if (item->GetTemplate()->GetFlags() & ITEM_FLAG_NO_USER_DESTROY)
     {
-        _player->SendEquipError(EQUIP_ERR_DROP_BOUND_ITEM, NULL, NULL);
+        _player->SendEquipError(EQUIP_ERR_DROP_BOUND_ITEM, nullptr, nullptr);
         return;
     }
 
@@ -377,11 +375,11 @@ void WorldSession::HandleReadItem(WorldPackets::Item::ReadItem& readItem)
             SendPacket(packet.Write());*/
 
             TC_LOG_INFO("network", "STORAGE: Unable to read item");
-            _player->SendEquipError(msg, item, NULL);
+            _player->SendEquipError(msg, item, nullptr);
         }
     }
     else
-        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, NULL, NULL);
+        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, nullptr, nullptr);
 }
 
 void WorldSession::HandleSellItemOpcode(WorldPackets::Item::SellItem& packet)
@@ -461,6 +459,7 @@ void WorldSession::HandleSellItemOpcode(WorldPackets::Item::SellItem& packet)
                 }
 
                 _player->UpdateCriteria(CRITERIA_TYPE_MONEY_FROM_VENDORS, money);
+                _player->UpdateCriteria(CRITERIA_TYPE_SOLD_ITEM_TO_VENDOR, 1);
 
                 if (packet.Amount < pItem->GetCount())               // need split items
                 {
@@ -507,7 +506,7 @@ void WorldSession::HandleBuybackItem(WorldPackets::Item::BuyBackItem& packet)
     if (!creature)
     {
         TC_LOG_DEBUG("network", "WORLD: HandleBuybackItem - Unit (%s) not found or you can not interact with him.", packet.VendorGUID.ToString().c_str());
-        _player->SendSellError(SELL_ERR_CANT_FIND_VENDOR, NULL, ObjectGuid::Empty);
+        _player->SendSellError(SELL_ERR_CANT_FIND_VENDOR, nullptr, ObjectGuid::Empty);
         return;
     }
 
@@ -534,7 +533,7 @@ void WorldSession::HandleBuybackItem(WorldPackets::Item::BuyBackItem& packet)
             _player->MoveItemToInventory(dest, pItem, true);
         }
         else
-            _player->SendEquipError(msg, pItem, NULL);
+            _player->SendEquipError(msg, pItem, nullptr);
         return;
     }
     else
@@ -592,7 +591,7 @@ void WorldSession::SendListInventory(ObjectGuid vendorGuid)
     if (!vendor)
     {
         TC_LOG_DEBUG("network", "WORLD: SendListInventory - %s not found or you can not interact with him.", vendorGuid.ToString().c_str());
-        _player->SendSellError(SELL_ERR_CANT_FIND_VENDOR, NULL, ObjectGuid::Empty);
+        _player->SendSellError(SELL_ERR_CANT_FIND_VENDOR, nullptr, ObjectGuid::Empty);
         return;
     }
 
@@ -760,14 +759,16 @@ void WorldSession::HandleAutoStoreBagItemOpcode(WorldPackets::Item::AutoStoreBag
     _player->StoreItem(dest, item, true);
 }
 
-void WorldSession::SendEnchantmentLog(ObjectGuid target, ObjectGuid caster, uint32 itemId, uint32 enchantId)
+void WorldSession::SendEnchantmentLog(ObjectGuid owner, ObjectGuid caster, ObjectGuid itemGuid, uint32 itemId, uint32 enchantId, uint32 enchantSlot)
 {
-    WorldPacket data(SMSG_ENCHANTMENT_LOG, (8+8+4+4));
-    data << target;
-    data << caster;
-    data << uint32(itemId);
-    data << uint32(enchantId);
-    GetPlayer()->SendMessageToSet(&data, true);
+    WorldPackets::Item::EnchantmentLog enchantmentLog;
+    enchantmentLog.Owner = owner;
+    enchantmentLog.Caster = caster;
+    enchantmentLog.ItemGUID = itemGuid;
+    enchantmentLog.ItemID = itemId;
+    enchantmentLog.Enchantment = enchantId;
+    enchantmentLog.EnchantSlot = enchantSlot;
+    GetPlayer()->SendMessageToSet(enchantmentLog.Write(), true);
 }
 
 void WorldSession::SendItemEnchantTimeUpdate(ObjectGuid Playerguid, ObjectGuid Itemguid, uint32 slot, uint32 Duration)
@@ -801,63 +802,63 @@ void WorldSession::HandleWrapItem(WorldPackets::Item::WrapItem& packet)
     Item* gift = _player->GetItemByPos(giftContainerSlot, giftSlot);
     if (!gift)
     {
-        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, gift, NULL);
+        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, gift, nullptr);
         return;
     }
 
     if (!(gift->GetTemplate()->GetFlags() & ITEM_FLAG_IS_WRAPPER)) // cheating: non-wrapper wrapper
     {
-        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, gift, NULL);
+        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, gift, nullptr);
         return;
     }
 
     Item* item = _player->GetItemByPos(itemContainerSlot, itemSlot);
     if (!item)
     {
-        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, item, nullptr);
         return;
     }
 
     if (item == gift) // not possable with pacjket from real client
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_WRAPPED, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_WRAPPED, item, nullptr);
         return;
     }
 
     if (item->IsEquipped())
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_EQUIPPED, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_EQUIPPED, item, nullptr);
         return;
     }
 
     if (!item->GetGiftCreator().IsEmpty()) // HasFlag(ITEM_FIELD_FLAGS, ITEM_FLAGS_WRAPPED);
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_WRAPPED, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_WRAPPED, item, nullptr);
         return;
     }
 
     if (item->IsBag())
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_BAGS, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_BAGS, item, nullptr);
         return;
     }
 
     if (item->IsSoulBound())
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_BOUND, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_BOUND, item, nullptr);
         return;
     }
 
     if (item->GetMaxStackCount() != 1)
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_STACKABLE, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_STACKABLE, item, nullptr);
         return;
     }
 
     // maybe not correct check  (it is better than nothing)
     if (item->GetTemplate()->GetMaxCount() > 0)
     {
-        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_UNIQUE, item, NULL);
+        _player->SendEquipError(EQUIP_ERR_CANT_WRAP_UNIQUE, item, nullptr);
         return;
     }
 
@@ -1006,7 +1007,7 @@ void WorldSession::HandleSocketGems(WorldPackets::Item::SocketGems& socketGems)
                 {
                     if (iGemProto->GetId() == gems[j]->GetEntry())
                     {
-                        _player->SendEquipError(EQUIP_ERR_ITEM_UNIQUE_EQUIPPABLE_SOCKETED, itemTarget, NULL);
+                        _player->SendEquipError(EQUIP_ERR_ITEM_UNIQUE_EQUIPPABLE_SOCKETED, itemTarget, nullptr);
                         return;
                     }
                 }
@@ -1014,7 +1015,7 @@ void WorldSession::HandleSocketGems(WorldPackets::Item::SocketGems& socketGems)
                 {
                     if (int32(iGemProto->GetId()) == oldGemData[j]->ItemID)
                     {
-                        _player->SendEquipError(EQUIP_ERR_ITEM_UNIQUE_EQUIPPABLE_SOCKETED, itemTarget, NULL);
+                        _player->SendEquipError(EQUIP_ERR_ITEM_UNIQUE_EQUIPPABLE_SOCKETED, itemTarget, nullptr);
                         return;
                     }
                 }
@@ -1047,7 +1048,7 @@ void WorldSession::HandleSocketGems(WorldPackets::Item::SocketGems& socketGems)
 
                 if (limit_newcount > 0 && uint32(limit_newcount) > _player->GetItemLimitCategoryQuantity(limitEntry))
                 {
-                    _player->SendEquipError(EQUIP_ERR_ITEM_UNIQUE_EQUIPPABLE_SOCKETED, itemTarget, NULL);
+                    _player->SendEquipError(EQUIP_ERR_ITEM_UNIQUE_EQUIPPABLE_SOCKETED, itemTarget, nullptr);
                     return;
                 }
             }
@@ -1058,7 +1059,7 @@ void WorldSession::HandleSocketGems(WorldPackets::Item::SocketGems& socketGems)
         {
             if (InventoryResult res = _player->CanEquipUniqueItem(gems[i], slot, std::max(limit_newcount, 0)))
             {
-                _player->SendEquipError(res, itemTarget, NULL);
+                _player->SendEquipError(res, itemTarget, nullptr);
                 return;
             }
         }
@@ -1195,36 +1196,193 @@ void WorldSession::HandleUseCritterItem(WorldPackets::Item::UseCritterItem& useC
     if (item->GetBonus()->EffectCount < 2)
         return;
 
-    int32 spellToLearn = item->GetEffect(1)->SpellID;
-
-    if (BattlePetSpeciesEntry const* entry = sSpellMgr->GetBattlePetSpecies(uint32(spellToLearn)))
-    {
-        GetBattlePetMgr()->AddPet(entry->ID, entry->CreatureID, sBattlePetDataStore->RollPetBreed(entry->ID), sBattlePetDataStore->GetDefaultPetQuality(entry->ID));
-        _player->UpdateCriteria(CRITERIA_TYPE_OWN_BATTLE_PET_COUNT);
-    }
-
     _player->DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
 }
 
+/* "Clean up bags" function on backbag */
+/*bool StoreItemAndStack(Player* player, Item* item, uint8 bagSlot)
+{
+    ItemPosCountVec dest;
+    if (player->CanStoreItem(bagSlot, NULL_SLOT, dest, item, false) == EQUIP_ERR_OK && !(dest.size() == 1 && dest[0].pos == item->GetPos()))
+    {
+        player->RemoveItem(item->GetBagSlot(), item->GetSlot(), true);
+        player->StoreItem(dest, item, true);
+
+        return true;
+    }
+
+    return false;
+}
+
+void StoreItemInBags(Player* player, Item* item)
+{
+    if (StoreItemAndStack(player, item, INVENTORY_SLOT_BAG_0))
+        return;
+    uint8 inventoryEnd = INVENTORY_SLOT_ITEM_START + player->GetInventorySlotCount();
+    for (uint32 i = INVENTORY_SLOT_ITEM_START; i < inventoryEnd; i++)
+        if (StoreItemAndStack(player, item, i))
+            break;
+}
+
+bool BankItemAndStack(Player* player, Item* item, uint8 bagSlot)
+{
+    ItemPosCountVec dest;
+    if (player->CanBankItem(bagSlot, NULL_SLOT, dest, item, false) != EQUIP_ERR_OK)
+        return false;
+
+    player->RemoveItem(item->GetBagSlot(), item->GetSlot(), true);
+    player->BankItem(dest, item, true);
+
+    return true;
+}
+
+void StoreItemInBanks(Player* player, Item* item)
+{
+    if (BankItemAndStack(player, item, NULL_SLOT))
+        return;
+
+    for (uint32 i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; i++)
+        if (BankItemAndStack(player, item, i))
+            break;
+}
+*/
+
 void WorldSession::HandleSortBags(WorldPackets::Item::SortBags& /*sortBags*/)
 {
-    // TODO: Implement sorting
-    // Placeholder to prevent completely locking out bags clientside
-    SendPacket(WorldPackets::Item::SortBagsResult().Write());
+    SendPacket(WorldPackets::Item::BagCleanupFinished().Write());
+
+    /* "Clean up bags" function on backbag */
+/*
+    _player->ApplyOnItems(1, [](Player* player, Item* item, uint8, uint8)
+        {
+            StoreItemInBags(player, item);
+            return true;
+        });
+
+    std::unordered_map<uint32, uint32> itemsQuality;
+    std::multimap<uint32, Item*> items;
+
+    _player->ApplyOnItems(1, [&items, &itemsQuality](Player* player, Item* item, uint8, uint8)
+        {
+            if (!item)
+                return false;
+
+            if (!sObjectMgr->GetItemTemplate(item->GetEntry()))
+                return true;
+
+            items.insert(std::make_pair(item->GetEntry(), item));
+            itemsQuality[item->GetEntry()] = item->GetItemLevel(player);
+
+            return true;
+        });
+
+    std::multimap<uint32, std::pair<uint32, Item*>> resultMap;
+    for (auto const& v : items)
+        resultMap.insert(std::make_pair(itemsQuality[v.first], v));
+
+    auto itr = std::begin(resultMap);
+    _player->ApplyOnItems(1, [&resultMap, &itr](Player* player, Item*, uint8 bagSlot, uint8 itemSlot)
+        {
+            if (itr == std::end(resultMap) || !itr->second.second)
+                return false;
+
+            player->SwapItem(itr->second.second->GetPos(), (bagSlot << 8) | itemSlot);
+            ++itr;
+
+            return true;
+        });
+*/
 }
 
 void WorldSession::HandleSortBankBags(WorldPackets::Item::SortBankBags& /*sortBankBags*/)
 {
-    // TODO: Implement sorting
-    // Placeholder to prevent completely locking out bags clientside
-    SendPacket(WorldPackets::Item::SortBagsResult().Write());
+    SendPacket(WorldPackets::Item::BagCleanupFinished().Write());
+
+    /* "Clean up bags" function on backbag */
+/*
+    _player->ApplyOnItems(2, [](Player* player, Item* item, uint8, uint8)
+        {
+            StoreItemInBanks(player, item);
+            return true;
+        });
+
+    std::unordered_map<uint32, uint32> bankItemsQuality;
+    std::multimap<uint32, Item*> bankItems;
+
+    _player->ApplyOnItems(2, [&bankItems, &bankItemsQuality](Player* player, Item* item, uint8, uint8)
+        {
+            if (!item)
+                return false;
+
+            if (!sObjectMgr->GetItemTemplate(item->GetEntry()))
+                return true;
+
+            bankItems.insert(std::make_pair(item->GetEntry(), item));
+            bankItemsQuality[item->GetEntry()] = item->GetItemLevel(player);
+
+            return true;
+        });
+
+    std::multimap<uint32, std::pair<uint32, Item*>> bankResultMap;
+    for (auto const& v : bankItems)
+        bankResultMap.insert(std::make_pair(bankItemsQuality[v.first], v));
+
+    auto itr = std::begin(bankResultMap);
+    _player->ApplyOnItems(2, [&bankResultMap, &itr](Player* player, Item*, uint8 bagSlot, uint8 itemSlot)
+        {
+            if (itr == std::end(bankResultMap))
+                return false;
+
+            player->SwapItem(itr->second.second->GetPos(), (bagSlot << 8) | itemSlot);
+            ++itr;
+
+            return true;
+        });
+*/
 }
 
 void WorldSession::HandleSortReagentBankBags(WorldPackets::Item::SortReagentBankBags& /*sortReagentBankBags*/)
 {
-    // TODO: Implement sorting
-    // Placeholder to prevent completely locking out bags clientside
-    SendPacket(WorldPackets::Item::SortBagsResult().Write());
+    SendPacket(WorldPackets::Item::BagCleanupFinished().Write());
+
+    /* "Clean up bags" function on backbag */
+/*
+    _player->ApplyOnItems(3, [](Player* player, Item* item, uint8, uint8)
+        {
+            StoreItemInBanks(player, item);
+            return true;
+        });
+
+    std::unordered_map<uint32, uint32> bankItemsQuality;
+    std::multimap<uint32, Item*> bankItems;
+
+    _player->ApplyOnItems(3, [&bankItems, &bankItemsQuality](Player* player, Item* item, uint8, uint8)
+        {
+            if (!sObjectMgr->GetItemTemplate(item->GetEntry()))
+                return true;
+
+            bankItems.insert(std::make_pair(item->GetEntry(), item));
+            bankItemsQuality[item->GetEntry()] = item->GetItemLevel(player);
+
+            return true;
+        });
+
+    std::multimap<uint32, std::pair<uint32, Item*>> bankResultMap;
+    for (auto const& v : bankItems)
+        bankResultMap.insert(std::make_pair(bankItemsQuality[v.first], v));
+
+    auto itr = std::begin(bankResultMap);
+    _player->ApplyOnItems(3, [&bankResultMap, &itr](Player* player, Item*, uint8 bagSlot, uint8 itemSlot)
+        {
+            if (itr == std::end(bankResultMap))
+                return false;
+
+            player->SwapItem(itr->second.second->GetPos(), (bagSlot << 8) | itemSlot);
+            ++itr;
+
+            return true;
+        });
+*/
 }
 
 void WorldSession::HandleRemoveNewItem(WorldPackets::Item::RemoveNewItem& removeNewItem)

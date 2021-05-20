@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,6 +26,7 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "Random.h"
+#include "ChallengeModeMgr.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "World.h"
@@ -59,24 +59,24 @@ LootStore LootTemplates_Spell("spell_loot_template",                 "spell id (
 // Selects invalid loot items to be removed from group possible entries (before rolling)
 struct LootGroupInvalidSelector : public std::unary_function<LootStoreItem*, bool>
 {
-    explicit LootGroupInvalidSelector(Loot const& /*loot*/, uint16 lootMode) : /*_loot(loot), */_lootMode(lootMode) { }
+    explicit LootGroupInvalidSelector(Loot const& loot, uint16 lootMode) : _loot(loot), _lootMode(lootMode) { }
 
     bool operator()(LootStoreItem* item) const
     {
         if (!(item->lootmode & _lootMode))
             return true;
 
-        /*uint8 foundDuplicates = 0;
+        uint8 foundDuplicates = 0;
         for (std::vector<LootItem>::const_iterator itr = _loot.items.begin(); itr != _loot.items.end(); ++itr)
             if (itr->itemid == item->itemid)
                 if (++foundDuplicates == _loot.maxDuplicates)
-                    return true;*/
+                    return true;
 
         return false;
     }
 
 private:
-    /*Loot const& _loot;*/
+    Loot const& _loot;
     uint16 _lootMode;
 };
 
@@ -106,8 +106,8 @@ class LootTemplate::LootGroup                               // A set of loot def
         LootStoreItem const* Roll(Loot& loot, uint16 lootMode) const;   // Rolls an item from the group, returns NULL if all miss their chances
 
         // This class must never be copied - storing pointers
-        LootGroup(LootGroup const&);
-        LootGroup& operator=(LootGroup const&);
+        LootGroup(LootGroup const&) = delete;
+        LootGroup& operator=(LootGroup const&) = delete;
 };
 
 //Remove all data and free all memory
@@ -149,7 +149,6 @@ uint32 LootStore::LoadLootTable()
 
         uint32 entry               = fields[0].GetUInt32();
         int32  item                = fields[1].GetInt32();
-        uint8  type                = item >= 0 ? LOOT_ITEM_TYPE_ITEM : LOOT_ITEM_TYPE_CURRENCY;
         uint32 reference           = fields[2].GetUInt32();
         float  chance              = fields[3].GetFloat();
         bool   needsquest          = fields[4].GetBool();
@@ -164,7 +163,7 @@ uint32 LootStore::LoadLootTable()
             return 0;
         }
 
-        LootStoreItem* storeitem = new LootStoreItem(std::abs(item), type, reference, chance, needsquest, lootmode, groupid, mincount, maxcount);
+        LootStoreItem* storeitem = new LootStoreItem(std::abs(item), reference, chance, needsquest, lootmode, groupid, mincount, maxcount);
 
         if (!storeitem->IsValid(*this, entry))            // Validity checks
         {
@@ -232,7 +231,7 @@ LootTemplate const* LootStore::GetLootFor(uint32 loot_id) const
     LootTemplateMap::const_iterator tab = m_LootTemplates.find(loot_id);
 
     if (tab == m_LootTemplates.end())
-        return NULL;
+        return nullptr;
 
     return tab->second;
 }
@@ -242,7 +241,7 @@ LootTemplate* LootStore::GetLootForConditionFill(uint32 loot_id)
     LootTemplateMap::iterator tab = m_LootTemplates.find(loot_id);
 
     if (tab == m_LootTemplates.end())
-        return NULL;
+        return nullptr;
 
     return tab->second;
 }
@@ -312,27 +311,10 @@ bool LootStoreItem::IsValid(LootStore const& store, uint32 entry) const
 
     if (reference == 0)                                      // item (quest or non-quest) entry, maybe grouped
     {
-        if (type == LOOT_ITEM_TYPE_ITEM)
+        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemid);
+        if (!proto)
         {
-            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemid);
-            if (!proto)
-            {
-                TC_LOG_ERROR("sql.sql", "Table '%s' Entry %d Item %d: item does not exist - skipped", store.GetName(), entry, itemid);
-                return false;
-            }
-        }
-        else if (type == LOOT_ITEM_TYPE_CURRENCY)
-        {
-            CurrencyTypesEntry const* currency = sCurrencyTypesStore.LookupEntry(itemid);
-            if (!currency)
-            {
-                TC_LOG_ERROR("sql.sql", "Table '%s' entry %d: currency entry %u not exists - skipped", store.GetName(), entry, itemid);
-                return false;
-            }
-        }
-        else
-        {
-            TC_LOG_ERROR("sql.sql", "Table '%s' entry %d: has unknown item %u with type %u - skipped", store.GetName(), entry, itemid, type);
+            TC_LOG_ERROR("sql.sql", "Table '%s' Entry %d Item %d: item does not exist - skipped", store.GetName(), entry, itemid);
             return false;
         }
 
@@ -423,7 +405,7 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint16 lootMode) 
     if (!possibleLoot.empty())                              // If nothing selected yet - an item is taken from equal-chanced part
         return Trinity::Containers::SelectRandomContainerElement(possibleLoot);
 
-    return NULL;                                            // Empty drop from the group
+    return nullptr;                                            // Empty drop from the group
 }
 
 // True if group includes at least 1 quest drop entry
@@ -549,7 +531,7 @@ void LootTemplate::AddEntry(LootStoreItem* item)
     if (item->groupid > 0 && item->reference == 0)            // Group
     {
         if (item->groupid >= Groups.size())
-            Groups.resize(item->groupid, NULL);               // Adds new group the the loot template if needed
+            Groups.resize(item->groupid, nullptr);            // Adds new group the the loot template if needed
         if (!Groups[item->groupid - 1])
             Groups[item->groupid - 1] = new LootGroup();
 
@@ -619,7 +601,7 @@ void LootTemplate::Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId
                 Referenced->Process(loot, rate, lootMode, item->groupid);
         }
         else                                                    // Plain entries (not a reference, not grouped)
-            loot.AddItem(*item, player, specOnly);              // Chance is already checked, just add
+            loot.AddItem(*item);
     }
 
     // Now processing groups
@@ -1145,9 +1127,9 @@ void LoadLootTemplates_Spell()
     uint32 count = LootTemplates_Spell.LoadAndCollectLootIds(lootIdSet);
 
     // remove real entries and check existence loot
-    for (uint32 spell_id = 1; spell_id < sSpellMgr->GetSpellInfoStoreSize(); ++spell_id)
+    for (SpellNameEntry const* spellNameEntry : sSpellNameStore)
     {
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell_id);
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellNameEntry->ID, DIFFICULTY_NONE);
         if (!spellInfo)
             continue;
 
@@ -1155,15 +1137,15 @@ void LoadLootTemplates_Spell()
         if (!spellInfo->IsLootCrafting())
             continue;
 
-        if (lootIdSet.find(spell_id) == lootIdSet.end())
+        if (lootIdSet.find(spellInfo->Id) == lootIdSet.end())
         {
             // not report about not trainable spells (optionally supported by DB)
             // ignore 61756 (Northrend Inscription Research (FAST QA VERSION) for example
-            if (!spellInfo->HasAttribute(SPELL_ATTR0_NOT_SHAPESHIFT) || (spellInfo->HasAttribute(SPELL_ATTR0_TRADESPELL)))
-                LootTemplates_Spell.ReportNonExistingId(spell_id, "Spell", spellInfo->Id);
+            if (!spellInfo->HasAttribute(SPELL_ATTR0_NOT_SHAPESHIFT) || spellInfo->HasAttribute(SPELL_ATTR0_TRADESPELL))
+                LootTemplates_Spell.ReportNonExistingId(spellInfo->Id, "Spell", spellInfo->Id);
         }
         else
-            lootIdSet.erase(spell_id);
+            lootIdSet.erase(spellInfo->Id);
     }
 
     // output error for any still listed (not referenced from appropriate table) ids

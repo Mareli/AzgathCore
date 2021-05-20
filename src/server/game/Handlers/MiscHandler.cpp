@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -87,7 +86,9 @@ void WorldSession::HandleRepopRequest(WorldPackets::Misc::RepopRequest& /*packet
             {
                 Position resurectPosition;
 
-                if (WorldSafeLocsEntry const* entranceLocation = sObjectMgr->GetWorldSafeLoc(instanceScript->GetEntranceLocation()))
+                if (instanceScript->GetCheckPoint().is_initialized())
+                    resurectPosition = *instanceScript->GetCheckPoint();
+                else if (WorldSafeLocsEntry const* entranceLocation = sObjectMgr->GetWorldSafeLoc(instanceScript->GetEntranceLocation()))
                     resurectPosition.Relocate(entranceLocation->Loc);
                 else if (AreaTriggerTeleportStruct const* areaTrigger = sObjectMgr->GetMapEntranceTrigger(GetPlayer()->GetMapId()))
                     resurectPosition.Relocate(areaTrigger->target_X, areaTrigger->target_Y, areaTrigger->target_Z, areaTrigger->target_Orientation);
@@ -152,8 +153,8 @@ void WorldSession::HandleWhoOpcode(WorldPackets::Who::WhoRequestPkt& whoRequest)
     wstrToLower(wPlayerName);
     wstrToLower(wGuildName);
 
-    // client send in case not set max level value 100 but Trinity supports 255 max level,
-    // update it to show GMs with characters after 100 level
+    // client send in case not set max level value 120 but AzgathCore supports 255 max level,
+    // update it to show GMs with characters after 120 level
     if (whoRequest.Request.MaxLevel >= MAX_LEVEL)
         whoRequest.Request.MaxLevel = STRONG_MAX_LEVEL;
 
@@ -162,7 +163,7 @@ void WorldSession::HandleWhoOpcode(WorldPackets::Who::WhoRequestPkt& whoRequest)
     uint32 gmLevelInWhoList  = sWorld->getIntConfig(CONFIG_GM_LEVEL_IN_WHO_LIST);
 
     WorldPackets::Who::WhoResponsePkt response;
-	response.RequestID = whoRequest.RequestID;
+     response.RequestID = whoRequest.RequestID;
 
     WhoListInfoVector const& whoList = sWhoListStorageMgr->GetWhoList();
     for (WhoListPlayerInfo const& target : whoList)
@@ -212,7 +213,7 @@ void WorldSession::HandleWhoOpcode(WorldPackets::Who::WhoRequestPkt& whoRequest)
         {
             std::string aName;
             if (AreaTableEntry const* areaEntry = sAreaTableStore.LookupEntry(target.GetZoneId()))
-                aName = areaEntry->AreaName->Str[GetSessionDbcLocale()];
+                aName = areaEntry->AreaName[GetSessionDbcLocale()];
 
             bool show = false;
             for (size_t i = 0; i < wWords.size(); ++i)
@@ -304,7 +305,7 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPackets::Character::LogoutRequ
         GetPlayer()->AddUnitFlag(UNIT_FLAG_STUNNED);
     }
 
-    SetLogoutStartTime(time(NULL));
+    SetLogoutStartTime(time(nullptr));
 }
 
 void WorldSession::HandleLogoutCancelOpcode(WorldPackets::Character::LogoutCancel& /*logoutCancel*/)
@@ -439,7 +440,7 @@ void WorldSession::HandleReclaimCorpse(WorldPackets::Misc::ReclaimCorpse& /*pack
         return;
 
     // prevent resurrect before 30-sec delay after body release not finished
-    if (time_t(corpse->GetGhostTime() + _player->GetCorpseReclaimDelay(corpse->GetType() == CORPSE_RESURRECTABLE_PVP)) > time_t(time(NULL)))
+    if (time_t(corpse->GetGhostTime() + _player->GetCorpseReclaimDelay(corpse->GetType() == CORPSE_RESURRECTABLE_PVP)) > time_t(time(nullptr)))
         return;
 
     if (!corpse->IsWithinDistInMap(_player, CORPSE_RECLAIM_RADIUS, true))
@@ -858,7 +859,7 @@ void WorldSession::HandleSetDungeonDifficultyOpcode(WorldPackets::Misc::SetDunge
     {
         if (group->IsLeader(_player->GetGUID()))
         {
-            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
             {
                 Player* groupGuy = itr->GetSource();
                 if (!groupGuy)
@@ -937,7 +938,7 @@ void WorldSession::HandleSetRaidDifficultyOpcode(WorldPackets::Misc::SetRaidDiff
     {
         if (group->IsLeader(_player->GetGUID()))
         {
-            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
             {
                 Player* groupGuy = itr->GetSource();
                 if (!groupGuy)
@@ -987,10 +988,10 @@ void WorldSession::HandleGuildSetFocusedAchievement(WorldPackets::Achievement::G
         guild->GetAchievementMgr().SendAchievementInfo(_player, setFocusedAchievement.AchievementID);
 }
 
-void WorldSession::HandleUITimeRequest(WorldPackets::Misc::UITimeRequest& /*request*/)
+void WorldSession::HandleServerTimeOffsetRequest(WorldPackets::Misc::ServerTimeOffsetRequest& /*request*/)
 {
-    WorldPackets::Misc::UITime response;
-    response.Time = time(NULL);
+    WorldPackets::Misc::ServerTimeOffset response;
+    response.Time = time(nullptr);
     SendPacket(response.Write());
 }
 
@@ -1144,24 +1145,68 @@ void WorldSession::HandleCloseInteraction(WorldPackets::Misc::CloseInteraction& 
         _player->PlayerTalkClass->GetInteractionData().Reset();
 }
 
-void WorldSession::HandleAdventureJournalOpenQuest(WorldPackets::Misc::AdventureJournalOpenQuest& packet)
+void WorldSession::HandleAdventureJournalOpenQuest(WorldPackets::Misc::AdventureJournalOpenQuest& adventureJournalOpenQuest)
 {
-    if (AdventureJournalEntry const* entry = sAdventureJournalStore.LookupEntry(packet.AdventureJournalID))
-        if (Quest const* quest = sObjectMgr->GetQuestTemplate(entry->QuestID))
-            if (!_player->hasQuest(entry->QuestID))
-                if (_player->CanTakeQuest(quest, true))
-                    if (WorldSession* session = _player->GetSession())
-                    {
-                        PlayerMenu menu(session);
-                        menu.SendQuestGiverQuestDetails(quest, _player->GetGUID(), true, false);
-                    }
+    auto adventureJournalEntry = sAdventureJournalStore[adventureJournalOpenQuest.AdventureJournalID];
+    if (!adventureJournalEntry)
+        return;
+
+    Quest const* quest = sObjectMgr->GetQuestTemplate(adventureJournalEntry->QuestID);
+    if (!quest)
+        return;
+
+    if (_player->CanTakeQuest(quest, true))
+    {
+        PlayerMenu menu(_player->GetSession());
+        menu.SendQuestGiverQuestDetails(quest, _player->GetGUID(), true, false);
+    }
 }
 
-void WorldSession::HandleAdventureJournalStartQuest(WorldPackets::Misc::AdventureJournalStartQuest& packet)
+void WorldSession::HandleAdventureJournalStartQuest(WorldPackets::Misc::AdventureJournalStartQuest& adventureJournalStartQuest)
 {
-    if (Quest const* quest = sObjectMgr->GetQuestTemplate(packet.QuestID))
-        if (!_player->hasQuest(packet.QuestID))
-            _player->AddQuestAndCheckCompletion(quest, nullptr);
+    Quest const* quest = sObjectMgr->GetQuestTemplate(adventureJournalStartQuest.QuestID);
+    if (!quest)
+        return;
+
+    AdventureJournalEntry const* adventureJournalEntry = nullptr;
+    for (AdventureJournalEntry const* adventureJournal : sAdventureJournalStore)
+    {
+        uint32 questId = uint32(adventureJournal->QuestID);
+        if (questId == quest->GetQuestId())
+        {
+            adventureJournalEntry = adventureJournal;
+            break;
+        }
+    }
+
+    if (!adventureJournalEntry)
+        return;
+
+    if (_player->MeetPlayerCondition(adventureJournalEntry->PlayerConditionID) && _player->CanTakeQuest(quest, true))
+        _player->AddQuestAndCheckCompletion(quest, nullptr);
+}
+
+void WorldSession::HandleAdventureJournalUpdateSuggestions(WorldPackets::Misc::AdventureJournalUpdateSuggestions& adventureJournalUpdateSuggestions)
+{
+    // TODO: for some reason MeetPlayerCondition(adventureJournalEntry->PlayerConditionID)
+    // is not returning right values always. -Varjgard
+
+    WorldPackets::Misc::AdventureJournalDataResponse response;
+    WorldPackets::Misc::AdventureJournalDataResponse::AdventureJournalDataInfo dataInfo;
+    if (adventureJournalUpdateSuggestions.OnLevelUp || GetPlayer()->getLevel() >= 10)
+    {
+        response.OnLevelUp = adventureJournalUpdateSuggestions.OnLevelUp;
+
+        for (AdventureJournalEntry const* adventureJournal : sAdventureJournalStore)
+            if (_player->MeetPlayerCondition(adventureJournal->PlayerConditionID))
+            {
+                dataInfo.AdventureJournalID = int32(adventureJournal->ID); //uint32 on db2
+                dataInfo.Priority = int32(adventureJournal->PriorityMax); //uint8 on db2
+                response.AdventureJournalDatas.push_back(dataInfo);
+            }
+
+        SendPacket(response.Write());
+    }
 }
 
 void WorldSession::HandleSelectFactionOpcode(WorldPackets::Misc::FactionSelect& selectFaction)
@@ -1201,3 +1246,13 @@ void WorldSession::HandleSetWarModeOpcode(WorldPackets::Misc::SetWarMode& warMod
     else
         _player->RemoveAurasDueToSpell(warModeSpellId);
 }
+
+void WorldSession::HandleQueryCountdownTimer(WorldPackets::Misc::QueryCountdownTimer& packet)
+{
+    Player* player = GetPlayer();
+    if (Battleground* bg = player->GetBattleground())
+        bg->SendStartTimer(packet.Type);
+}
+
+void WorldSession::HandleGetRemainingGameTime(WorldPackets::ClientConfig::GetRemainingGameTime& /*packet*/)
+{ }

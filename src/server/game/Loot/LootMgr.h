@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,16 +27,32 @@
 #include <unordered_map>
 #include <vector>
 
+class ChallengeModeMgr;
 class LootStore;
 class LootTemplate;
 class Player;
 struct Loot;
 struct LootItem;
 
+//checked. 9.0.2
+enum LootItemUIType
+{
+    LOOT_ITEM_UI_NORMAL            = 0,                        // player can loot the item.
+    LOOT_ITEM_UI_ROLL              = 1,                        // roll is ongoing. player cannot loot.
+    LOOT_ITEM_UI_LOCKED            = 2,                        // item is shown in red. player cannot loot.
+    LOOT_ITEM_UI_MASTER            = 3,                        // item can only be distributed by group loot master.
+    LOOT_ITEM_UI_OWNER             = 4,                        // ignore binding confirmation and etc, for single player looting
+};
+
+enum class LootItemType : uint8
+{
+    Item        = 0,
+    Currency    = 1
+};
+
 struct TC_GAME_API LootStoreItem
 {
     uint32  itemid;                                         // id of the item
-    uint8   type;                                           // 0 = item, 1 = currency
     uint32  reference;                                      // referenced TemplateleId
     float   chance;                                         // chance to drop for both quest and non-quest items, chance to be used for refs
     uint16  lootmode;
@@ -46,11 +61,12 @@ struct TC_GAME_API LootStoreItem
     uint32  mincount;                                       // mincount for drop items
     uint32  maxcount;                                       // max drop count for the item mincount or Ref multiplicator
     ConditionContainer conditions;                               // additional loot condition
+    std::vector<int32> bonus;
 
     // Constructor
     // displayid is filled in IsValid() which must be called after
-    LootStoreItem(uint32 _itemid, uint8 _type, uint32 _reference, float _chance, bool _needs_quest, uint16 _lootmode, uint8 _groupid, uint32 _mincount, uint32 _maxcount)
-        : itemid(_itemid), type(_type), reference(_reference), chance(_chance), lootmode(_lootmode),
+    LootStoreItem(uint32 _itemid, uint32 _reference, float _chance, bool _needs_quest, uint16 _lootmode, uint8 _groupid, uint32 _mincount, uint32 _maxcount)
+        : itemid(_itemid), reference(_reference), chance(_chance), lootmode(_lootmode),
         needs_quest(_needs_quest), groupid(_groupid), mincount(_mincount), maxcount(_maxcount)
          { }
 
@@ -74,7 +90,7 @@ class TC_GAME_API LootStore
         void Verify() const;
 
         uint32 LoadAndCollectLootIds(LootIdSet& ids_set);
-        void CheckLootRefs(LootIdSet* ref_set = NULL) const; // check existence reference and remove it from ref_set
+        void CheckLootRefs(LootIdSet* ref_set = nullptr) const; // check existence reference and remove it from ref_set
         void ReportUnusedIds(LootIdSet const& ids_set) const;
         void ReportNonExistingId(uint32 lootId) const;
         void ReportNonExistingId(uint32 lootId, const char* ownerType, uint32 ownerId) const;
@@ -112,7 +128,9 @@ class TC_GAME_API LootTemplate
         // Adds an entry to the group (at loading stage)
         void AddEntry(LootStoreItem* item);
         // Rolls for every item in the template and adds the rolled items the the loot
+       // void ProcessOploteChest(Loot& loot) const;
         void Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId = 0, Player const* player = nullptr, bool specOnly = false) const;
+      //  void ProcessChallengeChest(Loot& loot, uint32 lootId, ChallengeModeMgr* _challenge) const;
         void CopyConditions(const ConditionContainer& conditions);
         void CopyConditions(LootItem* li) const;
 

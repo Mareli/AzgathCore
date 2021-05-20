@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,7 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AnticheatMgr.h"
 #include "WorldSession.h"
 #include "Battleground.h"
 #include "Common.h"
@@ -188,7 +186,7 @@ void WorldSession::HandleMoveWorldportAck()
             {
                 if (time_t timeReset = sInstanceSaveMgr->GetResetTimeFor(mEntry->ID, diff))
                 {
-                    uint32 timeleft = uint32(timeReset - time(NULL));
+                    uint32 timeleft = uint32(timeReset - time(nullptr));
                     GetPlayer()->SendInstanceResetWarning(mEntry->ID, diff, timeleft, true);
                 }
             }
@@ -207,7 +205,9 @@ void WorldSession::HandleMoveWorldportAck()
         _player->RemoveAurasByType(SPELL_AURA_MOUNTED);
 
     // update zone immediately, otherwise leave channel will cause crash in mtmap
-    GetPlayer()->UpdateArea(GetPlayer()->GetAreaIdFromPosition());
+    uint32 newzone, newarea;
+    GetPlayer()->GetZoneAndAreaId(newzone, newarea);
+    GetPlayer()->UpdateZone(newzone, newarea);
 
     // honorless target
     if (GetPlayer()->pvpInfo.IsHostile)
@@ -247,7 +247,7 @@ void WorldSession::HandleSuspendTokenResponse(WorldPackets::Movement::SuspendTok
 
     WorldPackets::Movement::NewWorld packet;
     packet.MapID = loc.GetMapId();
-    packet.Pos = loc;
+    packet.Loc.Pos = loc;
     packet.Reason = !_player->IsBeingTeleportedSeamlessly() ? NEW_WORLD_NORMAL : NEW_WORLD_SEAMLESS;
     SendPacket(packet.Write());
 
@@ -274,11 +274,14 @@ void WorldSession::HandleMoveTeleportAck(WorldPackets::Movement::MoveTeleportAck
     WorldLocation const& dest = plMover->GetTeleportDest();
 
     plMover->UpdatePosition(dest, true);
-    plMover->UpdateArea(plMover->GetAreaIdFromPosition());
     plMover->SetFallInformation(0, GetPlayer()->GetPositionZ());
+	
+    uint32 newzone, newarea;
+    plMover->GetZoneAndAreaId(newzone, newarea);
+    plMover->UpdateZone(newzone, newarea);
 
     // new zone
-    if (old_zone != plMover->GetZoneId())
+    if (old_zone != newzone)
     {
         // honorless target
         if (plMover->pvpInfo.IsHostile)
@@ -393,9 +396,6 @@ void WorldSession::HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movem
         // now client not include swimming flag in case jumping under water
         plrMover->SetInWater(!plrMover->IsInWater() || plrMover->GetMap()->IsUnderWater(plrMover->GetPhaseShift(), movementInfo.pos.GetPositionX(), movementInfo.pos.GetPositionY(), movementInfo.pos.GetPositionZ()));
     }
-
-    if (plrMover)
-        sAnticheatMgr->StartHackDetection(plrMover, movementInfo, opcode);
 
     uint32 mstime = GameTime::GetGameTimeMS();
     /*----------------------*/
@@ -697,7 +697,28 @@ void WorldSession::HandleMoveSplineDoneOpcode(WorldPackets::Movement::MoveSpline
                 TaxiPathNodeEntry const* node = flight->GetPath()[flight->GetCurrentNode()];
                 flight->SkipCurrentNode();
 
-                GetPlayer()->TeleportTo(curDestNode->ContinentID, node->Loc.X, node->Loc.Y, node->Loc.Z, GetPlayer()->GetOrientation());
+                switch (GetPlayer()->GetMapId())
+                {
+                case 1152:
+                case 1153:
+                case 1158:
+                case 1159:
+                case 1330:
+                case 1331:
+                    if (curDestNode->ContinentID == MAP_DRAENOR)
+                    {
+                        GetPlayer()->SeamlessTeleportToMap(MAP_DRAENOR);
+                        GetPlayer()->CleanupAfterTaxiFlight();
+                        GetPlayer()->SetFallInformation(0, GetPlayer()->GetPositionZ());
+                        if (GetPlayer()->pvpInfo.IsHostile)
+                            GetPlayer()->CastSpell(GetPlayer(), 2479, true);
+                    }
+                        GetPlayer()->SeamlessTeleportToMap(MAP_DRAENOR);
+                    break;
+                default:
+                    GetPlayer()->TeleportTo(curDestNode->ContinentID, node->Loc.X, node->Loc.Y, node->Loc.Z, GetPlayer()->GetOrientation());
+                    break;
+                }
             }
         }
 
@@ -712,4 +733,17 @@ void WorldSession::HandleMoveSplineDoneOpcode(WorldPackets::Movement::MoveSpline
     GetPlayer()->SetFallInformation(0, GetPlayer()->GetPositionZ());
     if (GetPlayer()->pvpInfo.IsHostile)
         GetPlayer()->CastSpell(GetPlayer(), 2479, true);
+    switch (GetPlayer()->GetMapId())
+    {
+    case 1152:
+    case 1153:
+    case 1158:
+    case 1159:
+    case 1330:
+    case 1331:
+        GetPlayer()->SeamlessTeleportToMap(MAP_DRAENOR);
+        break;
+    default:
+        break;
+    }
 }

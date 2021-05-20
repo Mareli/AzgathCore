@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,26 +25,28 @@
 #include "Player.h"
 #include "SpellPackets.h"
 #include "TalentPackets.h"
+#include "MiscPackets.h"
+#include "SpellMgr.h"
 
 void WorldSession::HandleLearnTalentsOpcode(WorldPackets::Talent::LearnTalents& packet)
 {
-    WorldPackets::Talent::LearnTalentsFailed learnTalentsFailed;
+    WorldPackets::Talent::LearnTalentFailed learnTalentFailed;
     bool anythingLearned = false;
     for (uint32 talentId : packet.Talents)
     {
-        if (TalentLearnResult result = _player->LearnTalent(talentId, &learnTalentsFailed.SpellID))
+        if (TalentLearnResult result = _player->LearnTalent(talentId, &learnTalentFailed.SpellID))
         {
-            if (!learnTalentsFailed.Reason)
-                learnTalentsFailed.Reason = result;
+            if (!learnTalentFailed.Reason)
+                learnTalentFailed.Reason = result;
 
-            learnTalentsFailed.Talents.push_back(talentId);
+            learnTalentFailed.Talents.push_back(talentId);
         }
         else
             anythingLearned = true;
     }
 
-    if (learnTalentsFailed.Reason)
-        SendPacket(learnTalentsFailed.Write());
+    if (learnTalentFailed.Reason)
+        SendPacket(learnTalentFailed.Write());
 
     if (anythingLearned)
         _player->SendTalentsInfoData();
@@ -53,23 +54,23 @@ void WorldSession::HandleLearnTalentsOpcode(WorldPackets::Talent::LearnTalents& 
 
 void WorldSession::HandleLearnPvpTalentsOpcode(WorldPackets::Talent::LearnPvpTalents& packet)
 {
-    WorldPackets::Talent::LearnPvpTalentsFailed learnPvpTalentsFailed;
+    WorldPackets::Talent::LearnPvpTalentFailed learnPvpTalentFailed;
     bool anythingLearned = false;
     for (WorldPackets::Talent::PvPTalent pvpTalent : packet.Talents)
     {
-        if (TalentLearnResult result = _player->LearnPvpTalent(pvpTalent.PvPTalentID, pvpTalent.Slot, &learnPvpTalentsFailed.SpellID))
+        if (TalentLearnResult result = _player->LearnPvpTalent(pvpTalent.PvPTalentID, pvpTalent.Slot, &learnPvpTalentFailed.SpellID))
         {
-            if (!learnPvpTalentsFailed.Reason)
-                learnPvpTalentsFailed.Reason = result;
+            if (!learnPvpTalentFailed.Reason)
+                learnPvpTalentFailed.Reason = result;
 
-            learnPvpTalentsFailed.Talents.push_back(pvpTalent);
+            learnPvpTalentFailed.Talents.push_back(pvpTalent);
         }
         else
             anythingLearned = true;
     }
 
-    if (learnPvpTalentsFailed.Reason)
-        SendPacket(learnPvpTalentsFailed.Write());
+    if (learnPvpTalentFailed.Reason)
+        SendPacket(learnPvpTalentFailed.Write());
 
     if (anythingLearned)
         _player->SendTalentsInfoData();
@@ -117,4 +118,69 @@ void WorldSession::HandleUnlearnSkillOpcode(WorldPackets::Spells::UnlearnSkill& 
         return;
 
     GetPlayer()->SetSkill(packet.SkillLine, 0, 0, 0);
+}
+
+void WorldSession::HandleUnlearnSpecialization(WorldPackets::Talent::UnlearnSpecialization& packet)
+{
+    if (GetPlayer()->GetSpecializationId() == packet.SpecializationID)
+    {
+        GetPlayer()->RemoveSpell(packet.SpecializationID);
+    }
+}
+
+void WorldSession::HandleShowTradeSkill(WorldPackets::Misc::ShowTradeSkill& packet)
+{
+    if (!sSkillLineStore.LookupEntry(packet.SkillLineID) || !sSpellMgr->GetSpellInfo(packet.SpellID, DIFFICULTY_NONE))
+        return;
+
+    Player* player = ObjectAccessor::FindPlayer(packet.PlayerGUID);
+    if (!player)
+        return;
+
+    std::set<uint32> relatedSkills;
+    relatedSkills.insert(packet.SkillLineID);
+
+    for (SkillLineEntry const* skillLine : sSkillLineStore)
+    {
+        if (skillLine->ParentSkillLineID != packet.SkillLineID)
+            continue;
+
+        if (!player->HasSkill(skillLine->ParentSkillLineID))
+            continue;
+
+        relatedSkills.insert(skillLine->ParentSkillLineID);
+    }
+
+    std::set<uint32> profSpells;
+    for (auto const& v : player->GetSpellMap())
+    {
+        if (v.second->state == PLAYERSPELL_REMOVED)
+            continue;
+
+        if (!v.second->active || v.second->disabled)
+            continue;
+
+        for (auto const& s : relatedSkills)
+            if (IsPartOfSkillLine(s, v.first))
+                profSpells.insert(v.first);
+    }
+
+    if (profSpells.empty())
+        return;
+
+    WorldPackets::Misc::ShowTradeSkillResponse response;
+    response.PlayerGUID = packet.PlayerGUID;
+    response.SpellId = packet.SpellID;
+
+    for (uint32 const& x : profSpells)
+        response.KnownAbilitySpellIDs.push_back(x);
+
+    for (uint32 const& v : relatedSkills)
+    {
+        response.SkillLineIDs.push_back(v);
+        response.SkillRanks.push_back(player->GetSkillValue(v));
+        response.SkillMaxRanks.push_back(player->GetMaxSkillValue(v));
+    }
+
+    _player->SendDirectMessage(response.Write());
 }

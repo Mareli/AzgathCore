@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,9 +26,11 @@
 #include "DatabaseEnv.h"
 #include "GameObject.h"
 #include "Group.h"
+#include "GroupMgr.h"
 #include "InstancePackets.h"
 #include "InstanceScenario.h"
 #include "LFGMgr.h"
+#include "Item.h"
 #include "Log.h"
 #include "Map.h"
 #include "MiscPackets.h"
@@ -46,6 +47,20 @@
 #include <sstream>
 #include <cstdarg>
 #include "SpellMgr.h"
+#include "ScenarioMgr.h"
+#include "ObjectGuid.h"
+
+#include "Unit.h"
+
+#include "GridNotifiers.h"
+#include "CellImpl.h"
+#include "ScriptedCreature.h"
+
+inline uint32 secsToTimeBitFields(time_t secs)
+{
+    tm* lt = localtime(&secs);
+    return uint32((lt->tm_year - 100) << 24 | lt->tm_mon << 20 | (lt->tm_mday - 1) << 14 | lt->tm_wday << 11 | lt->tm_hour << 6 | lt->tm_min);
+}
 
 BossBoundaryData::~BossBoundaryData()
 {
@@ -58,6 +73,8 @@ _entranceId(0), _temporaryEntranceId(0), _combatResurrectionTimer(0), _combatRes
 _challengeModeStarted(false), _challengeModeLevel(0), _challengeModeStartTime(0), _challengeModeDeathCount(0)
 {
     _scriptType = ZONE_SCRIPT_TYPE_INSTANCE;
+    _inCombatResCount = 0;
+    IsAllowingRelease = false;
 
 #ifdef TRINITY_API_USE_DYNAMIC_LINKING
     uint32 scriptId = sObjectMgr->GetInstanceTemplate(map->GetId())->ScriptId;
@@ -93,6 +110,14 @@ bool InstanceScript::IsEncounterInProgress() const
             return true;
 
     return false;
+}
+
+void InstanceScript::RepopPlayersAtGraveyard()
+{
+    DoOnPlayers([](Player* player)
+    {
+        player->RepopAtGraveyard();
+    });
 }
 
 void InstanceScript::OnCreatureCreate(Creature* creature)
@@ -146,6 +171,14 @@ Creature* InstanceScript::GetCreature(uint32 type)
     return instance->GetCreature(GetObjectGuid(type));
 }
 
+void InstanceScript::DoResetAchievementCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0*/, uint64 miscValue2 /*= 0*/, bool evenIfCriteriaComplete /*= false*/)
+{
+    DoOnPlayers([type, miscValue1, miscValue2, evenIfCriteriaComplete](Player* player)
+    {
+        player->GetAchievementMgr()->ResetCriteria(type, miscValue1, miscValue2, evenIfCriteriaComplete);
+    });
+}
+
 GameObject* InstanceScript::GetGameObject(uint32 type)
 {
     return instance->GetGameObject(GetObjectGuid(type));
@@ -153,6 +186,9 @@ GameObject* InstanceScript::GetGameObject(uint32 type)
 
 void InstanceScript::OnPlayerEnter(Player* player)
 {
+    if (player->IsMounted())
+        player->Dismount();
+    //exceptions here
     if (IsChallengeModeStarted())
     {
         WorldPackets::ChallengeMode::ChangePlayerDifficultyResult changePlayerDifficultyResult(11);
@@ -166,11 +202,37 @@ void InstanceScript::OnPlayerEnter(Player* player)
 
         CastChallengePlayerSpell(player);
     }
+    SpawnFontOfPower();
+    GetPlayersCount();
+}
+
+void InstanceScript::GetPlayersCount()
+{
+    uint64 playersCount = instance->GetPlayers().getSize();
+}
+
+void InstanceScript::SendChallengeModeStart(Player* player/* = nullptr*/) const
+{
+    MapChallengeModeEntry const* mapChallengeModeEntry = sChallengeModeMgr->GetMapChallengeModeEntry(instance->GetId());
+    if (!mapChallengeModeEntry)
+        return;
+
+    WorldPackets::ChallengeMode::Start start;
+    start.MapID = _mapID;
+    start.ChallengeID = mapChallengeModeEntry->ID;
+    start.StartedChallengeLevel = _challengeLevel;
+    start.Affixes = _affixes;
+
+    if (player)
+        player->SendDirectMessage(start.Write());
+    else
+        instance->SendToPlayers(start.Write());
 }
 
 void InstanceScript::OnPlayerExit(Player* player)
 {
     player->RemoveAurasDueToSpell(SPELL_CHALLENGER_BURDEN);
+    GetPlayersCount();
 }
 
 void InstanceScript::OnPlayerDeath(Player* /*player*/)
@@ -407,7 +469,6 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
                         if (player->IsAlive())
                             player->ProcSkillsAndAuras(nullptr, PROC_FLAG_ENCOUNTER_START, PROC_FLAG_NONE, PROC_SPELL_TYPE_MASK_ALL, PROC_SPELL_PHASE_NONE, PROC_HIT_NONE, nullptr, nullptr, nullptr);
                     });
-
                     break;
                 }
                 case FAIL:
@@ -437,6 +498,17 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
     }
     return false;
 }
+
+void InstanceScript::ResetChallengeMode()
+{
+   // if (_challenge)
+      //  _challenge->ResetGo();
+
+    instance->m_respawnChallenge = time(nullptr); // For respawn all mobs
+    RepopPlayersAtGraveyard();
+    instance->SetSpawnMode(DIFFICULTY_MYTHIC);
+}
+
 
 bool InstanceScript::_SkipCheckRequiredBosses(Player const* player /*= nullptr*/) const
 {
@@ -634,6 +706,16 @@ void InstanceScript::DoRespawnGameObject(ObjectGuid guid, uint32 timeToDespawn /
         TC_LOG_DEBUG("scripts", "InstanceScript: DoRespawnGameObject failed");
 }
 
+void InstanceScript::DoOnPlayers(std::function<void(Player*)>&& function)
+{
+    Map::PlayerList const& plrList = instance->GetPlayers();
+
+    if (!plrList.isEmpty())
+        for (Map::PlayerList::const_iterator i = plrList.begin(); i != plrList.end(); ++i)
+            if (Player* player = i->GetSource())
+                function(player);
+}
+
 void InstanceScript::DoUpdateWorldState(uint32 uiStateId, uint32 uiStateData)
 {
     DoOnPlayers([uiStateId, uiStateData](Player* player)
@@ -658,13 +740,65 @@ void InstanceScript::DoSendNotifyToInstance(char const* format, ...)
     });
 }
 
+// Add item on all players in instance
+void InstanceScript::DoAddItemOnPlayers(uint32 itemId, uint32 count)
+{
+    DoOnPlayers([itemId, count](Player* player)
+    {
+        player->AddItem(itemId, count);
+    });
+}
+
+// Remove item on all players in instance
+void InstanceScript::DoDestroyItemCountOnPlayers(uint32 item, uint32 count)
+{
+    DoOnPlayers([item, count](Player* player)
+    {
+        player->DestroyItemCount(item, count, true);
+    });
+}
+
+// Add item by class on all players in instance
+void InstanceScript::DoAddItemByClassOnPlayers(uint8 classId, uint32 itemId, uint32 count)
+{
+    DoOnPlayers([classId, itemId, count](Player* player)
+    {
+        if (player->getClass() == classId)
+            player->AddItem(itemId, count);
+    });
+}
+
+// Remove item by class on all players in instance
+void InstanceScript::DoDestroyItemCountByClassOnPlayers(uint8 classId, uint32 item, uint32 count)
+{
+    DoOnPlayers([classId, item, count](Player* player)
+    {
+        if (player->getClass() == classId)
+            player->DestroyItemCount(item, count, true);
+    });
+}
+
+// Resurrect all players in instance
+void InstanceScript::DoResurrectPlayers(float restore_percent)
+{
+    DoOnPlayers([restore_percent](Player* player)
+    {
+        player->ResurrectPlayer(restore_percent);
+    });
+}
+
 // Update Achievement Criteria for all players in instance
-void InstanceScript::DoUpdateCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= NULL*/)
+void InstanceScript::DoUpdateCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= nullptr*/)
 {
     DoOnPlayers([type, miscValue1, miscValue2, unit](Player* player)
     {
         player->UpdateCriteria(type, miscValue1, miscValue2, 0, unit);
     });
+}
+
+void InstanceScript::DoSendEventScenario(uint32 eventId /*= 0*/)
+{
+    DoUpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, nullptr);
 }
 
 // Start timed achievement for all players in instance
@@ -710,10 +844,10 @@ void InstanceScript::DoKillPlayersWithAura(uint32 spell)
 // Cast spell on all players in instance
 void InstanceScript::DoCastSpellOnPlayers(uint32 spell, Unit* caster /*= nullptr*/, bool triggered /*= true*/)
 {
-    DoOnPlayers([spell, caster, triggered](Player* player)
+    DoOnPlayers([spell](Player* player)
     {
-        Unit* spellCaster = caster ? caster : player;
-        spellCaster->CastSpell(player, spell, triggered);
+        if (player->HasAura(spell))
+            player->Kill(player);
     });
 }
 
@@ -725,6 +859,16 @@ void InstanceScript::DoPlayScenePackageIdOnPlayers(uint32 scenePackageId)
         player->GetSceneMgr().PlaySceneByPackageId(scenePackageId);
     });
 }
+
+// Play scene by Id on all players in instance
+void InstanceScript::DoPlaySceneOnPlayers(uint32 sceneId)
+{
+    DoOnPlayers([sceneId](Player* player)
+    {
+        player->GetSceneMgr().PlayScene(sceneId);
+    });
+}
+
 void InstanceScript::DoRemoveForcedMovementsOnPlayers(ObjectGuid forceGuid)
 {
     DoOnPlayers([forceGuid](Player* player)
@@ -786,22 +930,12 @@ void InstanceScript::DespawnCreatureGroup(uint32 creatureGroupID)
     summonBySummonGroupIDs.erase(creatureGroupID);
 }
 
-void InstanceScript::DoOnPlayers(std::function<void(Player*)>&& function)
-{
-    Map::PlayerList const& plrList = instance->GetPlayers();
-
-    if (!plrList.isEmpty())
-        for (Map::PlayerList::const_iterator i = plrList.begin(); i != plrList.end(); ++i)
-            if (Player* player = i->GetSource())
-                function(player);
-}
-
 void InstanceScript::DoSetAlternatePowerOnPlayers(int32 value)
 {
     DoOnPlayers([value](Player* player)
     {
         player->SetPower(POWER_ALTERNATE_POWER, value);
-    });
+    }); 
 }
 
 void InstanceScript::DoModifyPlayerCurrencies(uint32 id, int32 value)
@@ -809,7 +943,7 @@ void InstanceScript::DoModifyPlayerCurrencies(uint32 id, int32 value)
     DoOnPlayers([id, value](Player* player)
     {
         player->ModifyCurrency(id, value);
-    });
+    }); 
 }
 
 void InstanceScript::DoNearTeleportPlayers(const Position pos, bool casting /*=false*/)
@@ -817,7 +951,15 @@ void InstanceScript::DoNearTeleportPlayers(const Position pos, bool casting /*=f
     DoOnPlayers([pos, casting](Player* player)
     {
         player->NearTeleportTo(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation(), casting);
-    });
+    }); 
+}
+
+void InstanceScript::DoTeleportPlayers(uint32 mapId, const Position pos)
+{
+    DoOnPlayers([pos, mapId](Player* player)
+    {
+        player->TeleportTo(mapId, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation());
+    }); 
 }
 
 void InstanceScript::DoKilledMonsterCredit(uint32 questId, uint32 entry, ObjectGuid guid/* =0*/)
@@ -827,6 +969,12 @@ void InstanceScript::DoKilledMonsterCredit(uint32 questId, uint32 entry, ObjectG
         if (player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
             player->KilledMonsterCredit(entry, guid);
     });
+
+}
+
+bool InstanceScript::IsChallenge() const
+{
+    return _challenge != nullptr;
 }
 
 // Complete Achievement for all players in instance
@@ -870,13 +1018,53 @@ void InstanceScript::DoPlayConversation(uint32 conversationId)
 
 void InstanceScript::DoSendScenarioEvent(uint32 eventId)
 {
-    if (!instance->GetPlayers().isEmpty())
-        if (Player* player = instance->GetPlayers().begin()->GetSource())
-            player->GetScenario()->SendScenarioEvent(player, eventId);
+    DoOnPlayers([eventId](Player* player)
+    {
+        player->GetScenario()->SendScenarioEvent(player, eventId);
+        return;
+    });
+}
+
+void InstanceScript::SendNextData(uint32 Value)
+{
+    uint32 stepID = GetLastData();
+    if (GetData(stepID) == DONE)
+        stepID++;
+
+    SetData(stepID, Value);
+}
+
+void InstanceScript::CompleteScenario()
+{
+    if (InstanceScenario* inScenario = instance->GetInstanceScenario())
+        inScenario->CompleteScenario();
+    else
+        TC_LOG_ERROR("scripts", "InstanceScript::CompleteScenario() fail", "");
+}
+
+void InstanceScript::CompleteCurrStep()
+{
+    if (InstanceScenario* inScenario = instance->GetInstanceScenario())
+        inScenario->CompleteCurrStep();
+    else
+        TC_LOG_ERROR("scripts", "InstanceScript::CompleteCurrStep() fail", "");
+}
+
+void InstanceScript::GetScenarioByID(Player* p_Player, uint32 p_ScenarioId)
+{
+    InstanceMap* map = instance->ToInstanceMap();
+
+    if (InstanceScenario* instanceScenario = sScenarioMgr->CreateInstanceScenarioByID(map, p_ScenarioId))
+    {
+        TC_LOG_ERROR("scripts", "GetScenarioByID CreateInstanceScenario %s", "");
+        map->SetInstanceScenario(instanceScenario);
+    }
+    else
+        TC_LOG_DEBUG("scripts", "InstanceScript: GetScenarioByID failed");
 }
 
 // Update Achievement Criteria for all players in instance
-void InstanceScript::DoUpdateAchievementCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= NULL*/)
+void InstanceScript::DoUpdateAchievementCriteria(CriteriaTypes type, uint32 miscValue1 /*= 0*/, uint32 miscValue2 /*= 0*/, Unit* unit /*= nullptr*/)
 {
     DoOnPlayers([type, miscValue1, miscValue2, unit](Player* player)
     {
@@ -893,7 +1081,16 @@ void InstanceScript::DoAddAuraOnPlayers(uint32 spell)
     });
 }
 
-bool InstanceScript::CheckAchievementCriteriaMeet(uint32 criteria_id, Player const* /*source*/, Unit const* /*target*/ /*= NULL*/, uint32 /*miscvalue1*/ /*= 0*/)
+// Do combat stop on all players in instance
+void InstanceScript::DoCombatStopOnPlayers()
+{
+    DoOnPlayers([](Player* player)
+    {
+        player->CombatStop();
+    });
+}
+
+bool InstanceScript::CheckAchievementCriteriaMeet(uint32 criteria_id, Player const* /*source*/, Unit const* /*target*/ /*= nullptr*/, uint32 /*miscvalue1*/ /*= 0*/)
 {
     TC_LOG_ERROR("misc", "Achievement system call InstanceScript::CheckAchievementCriteriaMeet but instance script for map %u not have implementation for achievement criteria %u",
         instance->GetId(), criteria_id);
@@ -907,10 +1104,59 @@ void InstanceScript::SetEntranceLocation(uint32 worldSafeLocationId)
         _temporaryEntranceId = 0;
 }
 
-void InstanceScript::SendEncounterUnit(uint32 type, Unit* unit /*= NULL*/, uint8 priority)
+void InstanceScript::SendEncounterUnit(uint32 type, Unit* unit /*= nullptr*/, uint8 priority /*= 0*/, uint8 param2 /*= 0*/)
 {
+    if (!this || !instance)
+        return;
+
     switch (type)
     {
+        case ENCOUNTER_FRAME_INSTANCE_START:
+        {
+            if (!unit)
+                return;
+
+            auto encounterId = sObjectMgr->GetDungeonEncounterByCreature(unit->GetEntry());
+            if (encounterId)
+            {
+                WorldPackets::Instance::EncounterStart start;
+                start.EncounterID = encounterId;
+                start.DifficultyID = unit->GetSpawnMode();
+                start.GroupSize = instance->GetPlayersCountExceptGMs();
+                instance->SendToPlayers(start.Write());
+            }
+
+            if (instance->IsDungeon())
+            {
+                WorldPackets::Instance::InstanceEncounterStart eStart;
+                eStart.InCombatResCount = _inCombatResCount;
+                eStart.MaxInCombatResCount = _combatResurrectionCharges;
+                eStart.CombatResChargeRecovery = _combatResurrectionTimer;
+                eStart.NextCombatResChargeTime = _combatResurrectionCharges;
+                eStart.InProgress = _combatResurrectionTimerStarted;
+                instance->SendToPlayers(eStart.Write());
+            }
+            break;
+        }
+        case ENCOUNTER_FRAME_INSTANCE_END:
+        {
+            if (!unit)
+                return;
+
+            if (uint16 encounterId = sObjectMgr->GetDungeonEncounterByCreature(unit->GetEntry()))
+            {
+                WorldPackets::Instance::EncounterEnd end;
+                end.EncounterID = encounterId;
+                end.DifficultyID = unit->GetSpawnMode();
+                end.GroupSize = instance->GetPlayersCountExceptGMs();
+                end.Success = priority ? priority : !unit->IsAlive();
+                instance->SendToPlayers(end.Write());
+
+                if (param2)
+                    SendBossKillCredit(encounterId);
+            }
+            break;
+        }
         case ENCOUNTER_FRAME_ENGAGE:                    // SMSG_INSTANCE_ENCOUNTER_ENGAGE_UNIT
         {
             if (!unit)
@@ -918,8 +1164,11 @@ void InstanceScript::SendEncounterUnit(uint32 type, Unit* unit /*= NULL*/, uint8
 
             WorldPackets::Instance::InstanceEncounterEngageUnit encounterEngageMessage;
             encounterEngageMessage.Unit = unit->GetGUID();
-            encounterEngageMessage.TargetFramePriority = priority;
+            encounterEngageMessage.TargetFramePriority = !priority ? 1 : priority;
             instance->SendToPlayers(encounterEngageMessage.Write());
+            instance->m_activeEntry = unit->GetEntry();
+            if (uint16 encounterId = sObjectMgr->GetDungeonEncounterByCreature(unit->GetEntry()))
+                instance->m_activeEncounter = encounterId;
             break;
         }
         case ENCOUNTER_FRAME_DISENGAGE:                 // SMSG_INSTANCE_ENCOUNTER_DISENGAGE_UNIT
@@ -930,6 +1179,8 @@ void InstanceScript::SendEncounterUnit(uint32 type, Unit* unit /*= NULL*/, uint8
             WorldPackets::Instance::InstanceEncounterDisengageUnit encounterDisengageMessage;
             encounterDisengageMessage.Unit = unit->GetGUID();
             instance->SendToPlayers(encounterDisengageMessage.Write());
+            instance->m_activeEntry = 0;
+            instance->m_activeEncounter = 0;
             break;
         }
         case ENCOUNTER_FRAME_UPDATE_PRIORITY:           // SMSG_INSTANCE_ENCOUNTER_CHANGE_PRIORITY
@@ -941,6 +1192,28 @@ void InstanceScript::SendEncounterUnit(uint32 type, Unit* unit /*= NULL*/, uint8
             encounterChangePriorityMessage.Unit = unit->GetGUID();
             encounterChangePriorityMessage.TargetFramePriority = priority;
             instance->SendToPlayers(encounterChangePriorityMessage.Write());
+            break;
+        }
+        case ENCOUNTER_FRAME_UPDATE_ALLOWING_RELEASE:
+        {
+            if (!unit)
+                return;
+
+            IsAllowingRelease = priority;
+            WorldPackets::Instance::InstanceEncounterUpdateAllowingRelease packet;
+            packet.ReleaseAllowed = priority;
+            instance->SendToPlayers(packet.Write());
+            break;
+        }
+        case ENCOUNTER_FRAME_UPDATE_SUPPRESSING_RELEASE:
+        {
+            if (!unit)
+                return;
+
+            IsAllowingRelease = false;
+            WorldPackets::Instance::InstanceEncounterUpdateSuppressingRelease packet;
+            packet.ReleaseDisabled = IsAllowingRelease;
+            instance->SendToPlayers(packet.Write());
             break;
         }
         default:
@@ -967,7 +1240,7 @@ void InstanceScript::SendEncounterEnd()
 
 void InstanceScript::SendBossKillCredit(uint32 encounterId)
 {
-    WorldPackets::Instance::BossKillCredit bossKillCreditMessage;
+    WorldPackets::Instance::BossKill bossKillCreditMessage;
     bossKillCreditMessage.DungeonEncounterID = encounterId;
 
     instance->SendToPlayers(bossKillCreditMessage.Write());
@@ -1012,19 +1285,19 @@ void InstanceScript::UpdateEncounterState(EncounterCreditType type, uint32 credi
             if (type == ENCOUNTER_CREDIT_KILL_CREATURE)
                 SendBossKillCredit(encounter->dbcEntry->ID);
 
-            if (InstanceScenario* scenario = instance->ToInstanceMap()->GetInstanceScenario())
-            {
-                Map::PlayerList const& players = instance->GetPlayers();
-
-                if (players.begin() != players.end())
-                    scenario->UpdateCriteria(CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER, encounter->dbcEntry->ID, 0, 0, nullptr, players.begin()->GetSource());
-            }
-
+              if (InstanceScenario* scenario = instance->ToInstanceMap()->GetInstanceScenario())
+              {
+                  Map::PlayerList const& players = instance->GetPlayers();
+              
+                 if (players.begin() != players.end())
+                     scenario->UpdateCriteria(CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER, encounter->dbcEntry->ID, 0, 0, nullptr, players.begin()->GetSource());
+              }
+              
             if (encounter->lastEncounterDungeon)
             {
                 dungeonId = encounter->lastEncounterDungeon;
                 TC_LOG_DEBUG("lfg", "UpdateEncounterState: Instance %s (instanceId %u) completed encounter %s. Credit Dungeon: %u",
-                    instance->GetMapName(), instance->GetInstanceId(), encounter->dbcEntry->Name->Str[sWorld->GetDefaultDbcLocale()], dungeonId);
+                    instance->GetMapName(), instance->GetInstanceId(), encounter->dbcEntry->Name[sWorld->GetDefaultDbcLocale()], dungeonId);
                 break;
             }
         }
@@ -1141,6 +1414,29 @@ uint32 InstanceScript::GetCombatResurrectionChargeInterval() const
     return interval;
 }
 
+void InstanceScript::OnGameObjectCreateForScript(GameObject* go)
+{
+    if (_challenge)
+        _challenge->OnGameObjectCreateForScript(go);
+
+    // TC_LOG_DEBUG(LOG_FILTER_CHALLENGE, "OnGameObjectCreateForScript GetEntry %u GetGUID %s", go->GetEntry(), go->GetGUID().ToString().c_str());
+
+    if (sChallengeModeMgr->IsChest(go->GetEntry()))
+        _challengeChest = go->GetGUID();
+
+   // if (sChallengeMgr->IsDoor(go->GetEntry()))
+   //     AddChallengeModeDoor(go->GetGUID());
+
+  //  if (go->GetEntry() == ChallengeModeOrb)
+  //      AddChallengeModeOrb(go->GetGUID());
+}
+
+void InstanceScript::OnGameObjectRemoveForScript(GameObject* go)
+{
+    if (_challenge)
+        _challenge->OnGameObjectRemoveForScript(go);
+}
+
 class ChallengeModeWorker
 {
 public:
@@ -1176,7 +1472,10 @@ void InstanceScript::StartChallengeMode(uint8 level)
     if (IsChallengeModeStarted())
         return;
 
-    if (GetCompletedEncounterMask() != 0)
+    if (GetCompletedEncounterMask())
+        return;
+        
+    if (instance->GetDifficultyID() != DIFFICULTY_MYTHIC)
         return;
 
     _challengeModeStarted = true;
@@ -1193,12 +1492,16 @@ void InstanceScript::StartChallengeMode(uint8 level)
     Position entranceLocation;
     if (WorldSafeLocsEntry const* entranceSafeLocEntry = sObjectMgr->GetWorldSafeLoc(GetEntranceLocation()))
         entranceLocation.Relocate(entranceSafeLocEntry->Loc);
+
     else if (AreaTriggerTeleportStruct const* areaTrigger = sObjectMgr->GetMapEntranceTrigger(instance->GetId()))
         entranceLocation.Relocate(areaTrigger->target_X, areaTrigger->target_Y, areaTrigger->target_Z, areaTrigger->target_Orientation);
     DoNearTeleportPlayers(entranceLocation);
 
     if (_challengeModeDoorPosition.is_initialized())
         instance->SummonGameObject(GOB_CHALLENGER_DOOR, *_challengeModeDoorPosition, QuaternionData(), WEEK);
+
+    ShowChallengeDoor();
+    AfterChallengeModeStarted();
 
     WorldPackets::ChallengeMode::ChangePlayerDifficultyResult changePlayerDifficultyResult(11);
     changePlayerDifficultyResult.InstanceDifficultyID = instance->GetId();
@@ -1215,10 +1518,9 @@ void InstanceScript::StartChallengeMode(uint8 level)
 
     SendChallengeModeStart();
 
-    DoOnPlayers([this](Player* player)
-    {
-        CastChallengePlayerSpell(player);
-    });
+    Map::PlayerList const &players = instance->GetPlayers();
+    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+        CastChallengePlayerSpell(itr->GetSource());
 
     AddTimedDelayedOperation(10000, [this]()
     {
@@ -1228,62 +1530,127 @@ void InstanceScript::StartChallengeMode(uint8 level)
 
         if (GameObject* door = GetGameObject(GOB_CHALLENGER_DOOR))
             DoUseDoorOrButton(door->GetGUID(), WEEK);
+
+        HideChallengeDoor();
     });
 }
+
 
 void InstanceScript::CompleteChallengeMode()
 {
     MapChallengeModeEntry const* mapChallengeModeEntry = sChallengeModeMgr->GetMapChallengeModeEntry(instance->GetId());
     if (!mapChallengeModeEntry)
         return;
-
     uint32 totalDuration = GetChallengeModeCurrentDuration();
-
     // Todo : Send stats
-
     uint8 mythicIncrement = 0;
-
     for (uint8 i = 0; i < 3; ++i)
         if (uint32(mapChallengeModeEntry->CriteriaCount[i]) > totalDuration)
             ++mythicIncrement;
-
-    DoOnPlayers([this, mythicIncrement](Player* player)
-    {
-        player->AddChallengeKey(sChallengeModeMgr->GetRandomChallengeId(), std::max(_challengeModeLevel + mythicIncrement, 1));
-    });
-
+    Map::PlayerList const& players = instance->GetPlayers();
+    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+        itr->GetSource()->AddChallengeKey(sChallengeModeMgr->GetRandomChallengeId(), std::max(_challengeModeLevel + mythicIncrement, 1));
     WorldPackets::ChallengeMode::Complete complete;
     complete.Duration = totalDuration;
     complete.MapId = instance->GetId();
     complete.ChallengeId = mapChallengeModeEntry->ID;
     complete.ChallengeLevel = _challengeModeLevel + mythicIncrement;
     instance->SendToPlayers(complete.Write());
-
     // Achievements only if timer respected
     if (mythicIncrement)
     {
         if (_challengeModeLevel >= 2)
             DoCompleteAchievement(11183);
-
         if (_challengeModeLevel >= 5)
             DoCompleteAchievement(11184);
-
         if (_challengeModeLevel >= 10)
             DoCompleteAchievement(11185);
-
         if (_challengeModeLevel >= 15)
         {
             DoCompleteAchievement(11162);
             DoCompleteAchievement(11224);
         }
     }
-
     SpawnChallengeModeRewardChest();
 
-    DoOnPlayers([this](Player* player)
+    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+        sChallengeModeMgr->Reward(itr->GetSource(), _challengeModeLevel);
+
+    //ChallengeNewPlayerRecord
+    uint32 totalDurations = totalDuration * 1000;
+    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
     {
-        sChallengeModeMgr->Reward(player, _challengeModeLevel);
-    });
+        if (Player* player = itr->GetSource())
+        {
+            if (player->HasChallengeCompleted(mapChallengeModeEntry->ID))
+            {
+                CompletedChallenge* l_Challenge = player->GetCompletedChallenge(mapChallengeModeEntry->ID);
+                if (l_Challenge == nullptr)
+                    continue;
+                bool l_NewBestTime = totalDurations < l_Challenge->BestCompletion;
+                bool l_NewBestMedal = _challengeModeLevel > l_Challenge->BestMedal;
+
+                CharacterDatabasePreparedStatement* l_Statement = CharacterDatabase.GetPreparedStatement(CHAR_UPD_COMPLETED_CHALLENGE);
+                //UPDATE character_completed_challenges SET BestCompletion = ? , LastCompletion = ? , Medal = ? , MedalDate = ? WHERE guid = ? AND KeyId = ? ",
+                l_Statement->setUInt32(0, l_NewBestTime ? totalDurations : l_Challenge->BestCompletion);
+                l_Statement->setUInt32(1, totalDurations);
+                l_Statement->setUInt32(2, l_NewBestMedal ? _challengeModeLevel : l_Challenge->BestMedal);
+                l_Statement->setUInt32(3, l_NewBestMedal ? uint32(time(nullptr)) : l_Challenge->BestMedalDate);
+                l_Statement->setUInt32(4, player->GetGUID().GetCounter());
+                l_Statement->setUInt32(5, mapChallengeModeEntry->ID);
+                CharacterDatabase.Execute(l_Statement);
+
+                if (l_NewBestMedal)
+                {
+                    l_Challenge->BestMedal = _challengeModeLevel;
+                    l_Challenge->BestMedalDate = uint32(time(nullptr));
+                }
+
+                if (l_NewBestTime)
+                    l_Challenge->BestCompletion = totalDurations;
+
+                l_Challenge->LastCompletion = totalDurations;
+
+                /// Send new record only for new best time
+                if (!l_NewBestTime)
+                    continue;
+            }
+            else
+            {
+                CharacterDatabasePreparedStatement* l_Statement = CharacterDatabase.GetPreparedStatement(CHAR_INS_COMPLETED_CHALLENGE);
+                //"INSERT INTO character_completed_challenges (guid, KeyId, MapId, BestCompletion, LastCompletion, Medal, MedalDate) VALUE (?, ?, ?, ?, ?, ?, ?)"
+                l_Statement->setUInt32(0, player->GetGUID().GetCounter());
+                l_Statement->setUInt32(1, mapChallengeModeEntry->ID);
+                l_Statement->setUInt32(2, instance->GetId());
+                l_Statement->setUInt32(3, totalDurations);
+                l_Statement->setUInt32(4, totalDurations);
+                l_Statement->setUInt32(5, _challengeModeLevel);
+                l_Statement->setUInt32(6, uint32(time(nullptr)));
+                CharacterDatabase.Execute(l_Statement);
+
+                CompletedChallenge l_Challenge;
+                l_Challenge.MapID = instance->GetId();
+                l_Challenge.BestMedal = _challengeModeLevel;
+                l_Challenge.BestMedalDate = uint32(time(nullptr));
+                l_Challenge.BestCompletion = totalDurations;
+                l_Challenge.LastCompletion = totalDurations;
+
+               // player->AddCompletedChallenge(mapChallengeModeEntry->ID, l_Challenge);
+                player->GetSession()->SendChallengeModeMapStatsUpdate(mapChallengeModeEntry->ID);
+            }
+        }
+    }
+}
+
+void InstanceScript::SendChallengeModeNewPlayerRecord(Player* player)
+{
+  WorldPackets::ChallengeMode::NewPlayerRecord newRecord;
+  newRecord.MapID = _mapID;
+  newRecord.CompletionMilliseconds = _challengeTimer;
+  newRecord.StartedChallengeLevel = _rewardLevel;
+
+   if (player)
+       player->SendDirectMessage(newRecord.Write());
 }
 
 uint32 InstanceScript::GetChallengeModeCurrentDuration() const
@@ -1291,23 +1658,9 @@ uint32 InstanceScript::GetChallengeModeCurrentDuration() const
     return uint32(GetMSTimeDiffToNow(_challengeModeStartTime) / 1000) + (5 * _challengeModeDeathCount);
 }
 
-void InstanceScript::SendChallengeModeStart(Player* player/* = nullptr*/) const
-{
-    MapChallengeModeEntry const* mapChallengeModeEntry = sChallengeModeMgr->GetMapChallengeModeEntry(instance->GetId());
-    if (!mapChallengeModeEntry)
-        return;
 
-    WorldPackets::ChallengeMode::Start start;
-    start.MapId = instance->GetId();
-    start.ChallengeId = mapChallengeModeEntry->ID;
-    start.ChallengeLevel = _challengeModeLevel;
-    instance->SendToPlayers(start.Write());
 
-    if (player)
-        player->SendDirectMessage(start.Write());
-    else
-        instance->SendToPlayers(start.Write());
-}
+
 
 void InstanceScript::SendChallengeModeDeathCount(Player* player/* = nullptr*/) const
 {
@@ -1367,6 +1720,26 @@ void InstanceScript::CastChallengePlayerSpell(Player* player)
     player->CastCustomSpell(SPELL_CHALLENGER_BURDEN, values, player, TRIGGERED_FULL_MASK);
 }
 
+void InstanceScript::SpawnFontOfPower()
+{   
+    if (_challengeModeFontOfPowerPosition.is_initialized() && instance->IsMythic())
+        instance->SummonGameObject(GO_FONT_OF_POWER, *_challengeModeFontOfPowerPosition, QuaternionData(), WEEK);
+    if (_challengeModeFontOfPowerPosition2.is_initialized() && instance->IsMythic())
+        instance->SummonGameObject(GO_FONT_OF_POWER, *_challengeModeFontOfPowerPosition2, QuaternionData(), WEEK);
+}
+
+void InstanceScript::AfterChallengeModeStarted()
+{
+    if (_challengeModeScenario.is_initialized())
+    {
+        uint32 scenarioId = *_challengeModeScenario;
+        DoOnPlayers([this, scenarioId](Player* player)
+        {
+            GetScenarioByID(player, scenarioId);
+        });
+    }
+}
+
 bool InstanceHasScript(WorldObject const* obj, char const* scriptName)
 {
     if (InstanceMap* instance = obj->GetMap()->ToInstanceMap())
@@ -1374,3 +1747,5 @@ bool InstanceHasScript(WorldObject const* obj, char const* scriptName)
 
     return false;
 }
+
+

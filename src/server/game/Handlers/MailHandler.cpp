@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,8 +33,12 @@
 #include "ObjectMgr.h"
 #include "Opcodes.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include "GridNotifiers.h"
+#include "CellImpl.h" 
+#include "GridNotifiersImpl.h"
 
 bool WorldSession::CanOpenMailBox(ObjectGuid guid)
 {
@@ -445,7 +449,7 @@ void WorldSession::HandleMailTakeItem(WorldPackets::Mail::MailTakeItem& packet)
     }
 
     // verify that the mail has the item to avoid cheaters taking COD items without paying
-    if (std::find_if(m->items.begin(), m->items.end(), [AttachID](MailItemInfo info){ return info.item_guid == AttachID; }) == m->items.end())
+    if (std::find_if(m->items.begin(), m->items.end(), [AttachID](MailItemInfo info) { return info.item_guid == AttachID; }) == m->items.end())
     {
         player->SendMailResult(packet.MailID, MAIL_ITEM_TAKEN, MAIL_ERR_INTERNAL_ERROR);
         return;
@@ -534,7 +538,7 @@ void WorldSession::HandleMailTakeMoney(WorldPackets::Mail::MailTakeMoney& packet
     Player* player = _player;
 
     Mail* m = player->GetMail(packet.MailID);
-    if ((!m || m->state == MAIL_STATE_DELETED || m->deliver_time > time(NULL)) ||
+    if ((!m || m->state == MAIL_STATE_DELETED || m->deliver_time > time(nullptr)) ||
         (packet.Money > 0 && m->money != uint64(packet.Money)))
     {
         player->SendMailResult(packet.MailID, MAIL_MONEY_TAKEN, MAIL_ERR_INTERNAL_ERROR);
@@ -623,7 +627,7 @@ void WorldSession::HandleMailCreateTextItem(WorldPackets::Mail::MailCreateTextIt
     {
         MailTemplateEntry const* mailTemplateEntry = sMailTemplateStore.LookupEntry(m->mailTemplateId);
         ASSERT(mailTemplateEntry);
-        bodyItem->SetText(mailTemplateEntry->Body->Str[GetSessionDbcLocale()]);
+        bodyItem->SetText(mailTemplateEntry->Body[GetSessionDbcLocale()]);
     }
     else
         bodyItem->SetText(m->body);
