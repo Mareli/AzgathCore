@@ -28,7 +28,7 @@ If you wish to contribute ideas or code please visit our site linked below or
 make pull requests to our [Github repository](https://github.com/AzgathCore/AzgathCore).
 
 For further information on the AzgathCore project, please visit our project
-website at [Azgath.com](https://www.azgath.com).
+website at [Azgath.eu](https://www.azgath.eu).
 
 ## Requirements
 
@@ -40,7 +40,7 @@ website at [Azgath.com](https://www.azgath.com).
 + OpenSSL ≥ v1.1.1g
 + CMake ≥ 3.18.1 (latest stable recommended)
 + MS Visual Studio (Community) ≥ 16.4 (2019) (Desktop) (Not previews)
-* [Downloads](https://www.dl-client.fr/SoftwareServers/)
+* [Downloads](https://www.azgath.eu/SoftwareServers/)
 
 ## Install
 
@@ -52,9 +52,10 @@ https://github.com/AzgathCore/AzgathCore/releases/
 ## Copyright
 
 License: GPL 2.0
+
 Read file [COPYING](COPYING)
 
 ## Links
 
-* [Website](https://azgath.com/fr/)
-* [Discord](https://discord.com/invite/z8Qmhpw)
+* [Website](https://azgath.eu/fr/)
+* [Discord](https://discord.com/invite/U4pXKB2WNA)
