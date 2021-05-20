@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,9 +23,9 @@
 #include "QueryHolder.h"
 #include "AccountMgr.h"
 #include "AuthenticationPackets.h"
+#include "BattlePayMgr.h"
 #include "BattlePet.h"
 #include "BattlePetDataStore.h"
-#include "BattlePetMgr.h"
 #include "BattlegroundMgr.h"
 #include "BattlenetPackets.h"
 #include "CharacterPackets.h"
@@ -43,6 +42,7 @@
 #include "ObjectMgr.h"
 #include "OutdoorPvPMgr.h"
 #include "PacketUtilities.h"
+#include "PetBattle.h"
 #include "Player.h"
 #include "QueryHolder.h"
 #include "Random.h"
@@ -105,12 +105,13 @@ bool WorldSessionFilter::Process(WorldPacket* packet)
 
 /// WorldSession constructor
 WorldSession::WorldSession(uint32 id, std::string&& name, uint32 battlenetAccountId, std::shared_ptr<WorldSocket> sock, AccountTypes sec, uint8 expansion, time_t mute_time,
-    std::string os, LocaleConstant locale, uint32 recruiter, bool isARecruiter, std::string&& battlenetAccountName):
+    std::string os, LocaleConstant locale, uint32 recruiter, bool isARecruiter, AuthFlags flag, std::string&& battlenetAccountName):
+
     m_muteTime(mute_time),
     m_timeOutTime(0),
     AntiDOS(this),
     m_GUIDLow(UI64LIT(0)),
-    _player(NULL),
+    _player(nullptr),
     _security(sec),
     _accountId(id),
     _accountName(std::move(name)),
@@ -120,7 +121,7 @@ WorldSession::WorldSession(uint32 id, std::string&& name, uint32 battlenetAccoun
     m_expansion(std::min<uint8>(expansion, sWorld->getIntConfig(CONFIG_EXPANSION))),
     _os(os),
     _battlenetRequestToken(0),
-    _warden(NULL),
+    _warden(nullptr),
     _logoutTime(0),
     m_inQueue(false),
     m_playerLogout(false),
@@ -134,12 +135,12 @@ WorldSession::WorldSession(uint32 id, std::string&& name, uint32 battlenetAccoun
     _filterAddonMessages(false),
     recruiterId(recruiter),
     isRecruiter(isARecruiter),
-    _RBACData(NULL),
+    atAuthFlag(flag),
+    _RBACData(nullptr),
     expireTime(60000), // 1 min after socket loss, session is deleted
     forceExit(false),
     m_currentBankerGUID(),
-    _battlePetMgr(Trinity::make_unique<BattlePetMgr>(this)),
-    _collectionMgr(Trinity::make_unique<CollectionMgr>(this))
+    _collectionMgr(std::make_unique<CollectionMgr>(this))
 {
     memset(_tutorials, 0, sizeof(_tutorials));
 
@@ -149,6 +150,10 @@ WorldSession::WorldSession(uint32 id, std::string&& name, uint32 battlenetAccoun
         ResetTimeOutTime();
         LoginDatabase.PExecute("UPDATE account SET online = 1 WHERE id = %u;", GetAccountId());     // One-time query
     }
+
+    _battlePayMgr = std::make_shared<BattlepayManager>(this);
+
+    m_isPetBattleJournalLocked = false;
 
     m_Socket[CONNECTION_TYPE_REALM] = sock;
     _instanceConnectKey.Raw = UI64LIT(0);
@@ -175,7 +180,7 @@ WorldSession::~WorldSession()
     delete _RBACData;
 
     ///- empty incoming packet queue
-    WorldPacket* packet = NULL;
+    WorldPacket* packet = nullptr;
     while (_recvQueue.next(packet))
         delete packet;
 
@@ -190,7 +195,7 @@ bool WorldSession::PlayerDisconnected() const
 
 std::string const & WorldSession::GetPlayerName() const
 {
-    return _player != NULL ? _player->GetName() : DefaultPlayerName;
+    return _player != nullptr ? _player->GetName() : DefaultPlayerName;
 }
 
 std::string WorldSession::GetPlayerInfo() const
@@ -247,7 +252,7 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
 
     if (!m_Socket[conIdx])
     {
-        TC_LOG_ERROR("network.opcode", "Prevented sending of %s to non existent socket %u to %s", GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str(), uint32(conIdx), GetPlayerInfo().c_str());
+        TC_LOG_DEBUG("network.opcode", "Prevented sending of %s to non existent socket %u to %s", GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str(), uint32(conIdx), GetPlayerInfo().c_str());
         return;
     }
 
@@ -265,21 +270,21 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
     static uint64 sendPacketCount = 0;
     static uint64 sendPacketBytes = 0;
 
-    static time_t firstTime = time(NULL);
+    static time_t firstTime = time(nullptr);
     static time_t lastTime = firstTime;                     // next 60 secs start time
 
     static uint64 sendLastPacketCount = 0;
     static uint64 sendLastPacketBytes = 0;
 
-    time_t cur_time = time(NULL);
+    time_t cur_time = time(nullptr);
 
     if ((cur_time - lastTime) < 60)
     {
-        sendPacketCount+=1;
-        sendPacketBytes+=packet->size();
+        sendPacketCount += 1;
+        sendPacketBytes += packet->size();
 
-        sendLastPacketCount+=1;
-        sendLastPacketBytes+=packet->size();
+        sendLastPacketCount += 1;
+        sendLastPacketBytes += packet->size();
     }
     else
     {
@@ -295,8 +300,8 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
 #endif                                                      // !TRINITY_DEBUG
 
     sScriptMgr->OnPacketSend(this, *packet);
-
-    TC_LOG_TRACE("network.opcode", "S->C: %s %s", GetPlayerInfo().c_str(), GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str());
+    if(packet->GetOpcode() != SMSG_ON_MONSTER_MOVE)
+        TC_LOG_TRACE("network.opcode", "S->C: %s %s", GetPlayerInfo().c_str(), GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str());
     m_Socket[conIdx]->SendPacket(*packet);
 }
 
@@ -307,7 +312,7 @@ void WorldSession::QueuePacket(WorldPacket* new_packet)
 }
 
 /// Logging helper for unexpected opcodes
-void WorldSession::LogUnexpectedOpcode(WorldPacket* packet, const char* status, const char *reason)
+void WorldSession::LogUnexpectedOpcode(WorldPacket* packet, char const* status, const char *reason)
 {
     TC_LOG_ERROR("network.opcode", "Received unexpected opcode %s Status: %s Reason: %s from %s",
         GetOpcodeNameForLogging(static_cast<OpcodeClient>(packet->GetOpcode())).c_str(), status, reason, GetPlayerInfo().c_str());
@@ -331,18 +336,19 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     UpdateTimeOutTime(diff);
 
     ///- Before we process anything:
-    /// If necessary, kick the player from the character select screen
+    /// If necessary, kick the player because the client didn't send anything for too long
+    /// (or they've been idling in character select)
     if (IsConnectionIdle())
         m_Socket[CONNECTION_TYPE_REALM]->CloseSocket();
 
     ///- Retrieve packets from the receive queue and call the appropriate handlers
     /// not process packets if socket already closed
-    WorldPacket* packet = NULL;
+    WorldPacket* packet = nullptr;
     //! Delete packet after processing by default
     bool deletePacket = true;
     std::vector<WorldPacket*> requeuePackets;
     uint32 processedPackets = 0;
-    time_t currentTime = time(NULL);
+    time_t currentTime = time(nullptr);
 
     while (m_Socket[CONNECTION_TYPE_REALM] && _recvQueue.next(packet, updater))
     {
@@ -462,7 +468,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     //logout procedure should happen only in World::UpdateSessions() method!!!
     if (updater.ProcessUnsafe())
     {
-        time_t currTime = time(NULL);
+        time_t currTime = time(nullptr);
         ///- If necessary, log the player out
         if (ShouldLogOut(currTime) && m_playerLoading.IsEmpty())
             LogoutPlayer(true);
@@ -541,13 +547,11 @@ void WorldSession::LogoutPlayer(bool save)
         if (!_player->m_InstanceValid && !_player->IsGameMaster())
             _player->TeleportTo(_player->m_homebindMapId, _player->m_homebindX, _player->m_homebindY, _player->m_homebindZ, _player->GetOrientation());
 
-        if (Area* zone = _player->GetZone())
-            sOutdoorPvPMgr->HandlePlayerLeaveZone(_player, zone);
+        sOutdoorPvPMgr->HandlePlayerLeaveZone(_player, _player->GetZoneId());
 
         for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; ++i)
         {
-            BattlegroundQueueTypeId bgQueueTypeId = _player->GetBattlegroundQueueTypeId(i);
-            if (bgQueueTypeId != BATTLEGROUND_QUEUE_NONE)
+            if (BattlegroundQueueTypeId bgQueueTypeId = _player->GetBattlegroundQueueTypeId(i))
             {
                 _player->RemoveBattlegroundQueueId(bgQueueTypeId);
                 BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueueTypeId);
@@ -555,7 +559,7 @@ void WorldSession::LogoutPlayer(bool save)
             }
         }
 
-        // Repop at GraveYard or other player far teleport will prevent saving player because of not present map
+        // Repop at Graveyard or other player far teleport will prevent saving player because of not present map
         // Teleport player immediately for correct player save
         while (_player->IsBeingTeleportedFar())
             HandleMoveWorldportAck();
@@ -566,6 +570,9 @@ void WorldSession::LogoutPlayer(bool save)
 
         ///- Remove pet
         _player->RemovePet(nullptr, PET_SAVE_LOGOUT, true);
+
+        ///- Remove battle pet
+        _player->UnsummonCurrentBattlePetIfAny(true);
 
         ///- Clear whisper whitelist
         _player->ClearWhisperWhiteList();
@@ -623,7 +630,7 @@ void WorldSession::LogoutPlayer(bool save)
         if (Map* _map = _player->FindMap())
             _map->RemovePlayerFromMap(_player, true);
 
-        SetPlayer(NULL); //! Pointer already deleted during RemovePlayerFromMap
+        SetPlayer(nullptr); //! Pointer already deleted during RemovePlayerFromMap
 
         //! Send the 'logout complete' packet to the client
         //! Client will respond by sending 3x CMSG_CANCEL_TRADE, which we currently dont handle
@@ -704,7 +711,7 @@ char const* WorldSession::GetTrinityString(uint32 entry) const
 
 void WorldSession::ResetTimeOutTime()
 {
-    m_timeOutTime = int32(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME));
+        m_timeOutTime = int32(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME));
 }
 
 void WorldSession::Handle_NULL(WorldPackets::Null& null)
@@ -712,10 +719,10 @@ void WorldSession::Handle_NULL(WorldPackets::Null& null)
     TC_LOG_ERROR("network.opcode", "Received unhandled opcode %s from %s", GetOpcodeNameForLogging(null.GetOpcode()).c_str(), GetPlayerInfo().c_str());
 }
 
-void WorldSession::Handle_EarlyProccess(WorldPacket& recvPacket)
+void WorldSession::Handle_EarlyProccess(WorldPackets::Null& null)
 {
     TC_LOG_ERROR("network.opcode", "Received opcode %s that must be processed in WorldSocket::OnRead from %s"
-        , GetOpcodeNameForLogging(static_cast<OpcodeClient>(recvPacket.GetOpcode())).c_str(), GetPlayerInfo().c_str());
+        , GetOpcodeNameForLogging(null.GetOpcode()).c_str(), GetPlayerInfo().c_str());
 }
 
 void WorldSession::SendConnectToInstance(WorldPackets::Auth::ConnectToSerial serial)
@@ -900,6 +907,29 @@ void WorldSession::ProcessQueryCallbacks()
     //! HandlePlayerLoginOpcode
     if (_charLoginCallback.valid() && _charLoginCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
         HandlePlayerLogin(reinterpret_cast<LoginQueryHolder*>(_charLoginCallback.get()));
+
+    if (_charEnumCallback.valid() && _charEnumCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        HandleCharEnum(static_cast<CharacterDatabaseQueryHolder*>(_charEnumCallback.get()));
+}
+
+void WorldSession::RemoveAuthFlag(AuthFlags f)
+{
+    atAuthFlag = AuthFlags(atAuthFlag & ~f);
+    SaveAuthFlag();
+}
+
+void WorldSession::AddAuthFlag(AuthFlags f)
+{
+    atAuthFlag = AuthFlags(atAuthFlag | f);
+    SaveAuthFlag();
+}
+
+void WorldSession::SaveAuthFlag()
+{
+    LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_UPD_AT_AUTH_FLAG);
+    stmt->setUInt16(0, atAuthFlag);
+    stmt->setUInt32(1, GetAccountId());
+    LoginDatabase.Execute(stmt);
 }
 
 TransactionCallback& WorldSession::AddTransactionCallback(TransactionCallback&& callback)
@@ -907,7 +937,7 @@ TransactionCallback& WorldSession::AddTransactionCallback(TransactionCallback&& 
     return _transactionCallbacks.AddCallback(std::move(callback));
 }
 
-void WorldSession::InitWarden(BigNumber* k)
+void WorldSession::InitWarden(SessionKey const& k)
 {
     if (_os == "Win")
     {
@@ -983,11 +1013,10 @@ public:
     enum
     {
         GLOBAL_ACCOUNT_TOYS = 0,
-        BATTLE_PETS,
-        BATTLE_PET_SLOTS,
         GLOBAL_ACCOUNT_HEIRLOOMS,
         GLOBAL_REALM_CHARACTER_COUNTS,
         MOUNTS,
+        GLOBAL_ACCOUNT_BATTLE_PETS,
         ITEM_APPEARANCES,
         ITEM_FAVORITE_APPEARANCES,
 
@@ -1003,14 +1032,6 @@ public:
         LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ACCOUNT_TOYS);
         stmt->setUInt32(0, battlenetAccountId);
         ok = SetPreparedQuery(GLOBAL_ACCOUNT_TOYS, stmt) && ok;
-
-        stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_BATTLE_PETS);
-        stmt->setUInt32(0, battlenetAccountId);
-        ok = SetPreparedQuery(BATTLE_PETS, stmt) && ok;
-
-        stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_BATTLE_PET_SLOTS);
-        stmt->setUInt32(0, battlenetAccountId);
-        ok = SetPreparedQuery(BATTLE_PET_SLOTS, stmt) && ok;
 
         stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ACCOUNT_HEIRLOOMS);
         stmt->setUInt32(0, battlenetAccountId);
@@ -1078,10 +1099,10 @@ void WorldSession::InitializeSessionCallback(LoginDatabaseQueryHolder* realmHold
 
     SendSetTimeZoneInformation();
     SendFeatureSystemStatusGlueScreen();
-    SendGetDistributionListResponse();
     SendClientCacheVersion(sWorld->getIntConfig(CONFIG_CLIENTCACHE_VERSION));
     SendAvailableHotfixes();
     SendTutorialsData();
+    SendDisplayPromo();
 
     if (PreparedQueryResult characterCountsResult = holder->GetPreparedResult(AccountInfoQueryHolder::GLOBAL_REALM_CHARACTER_COUNTS))
     {
@@ -1093,12 +1114,9 @@ void WorldSession::InitializeSessionCallback(LoginDatabaseQueryHolder* realmHold
         } while (characterCountsResult->NextRow());
     }
 
-    WorldPackets::Battlenet::SetSessionState bnetConnected;
+    WorldPackets::Battlenet::ConnectionStatus bnetConnected;
     bnetConnected.State = 1;
     SendPacket(bnetConnected.Write());
-
-    _battlePetMgr->LoadFromDB(holder->GetPreparedResult(AccountInfoQueryHolder::BATTLE_PETS),
-                              holder->GetPreparedResult(AccountInfoQueryHolder::BATTLE_PET_SLOTS));
 
     delete realmHolder;
     delete holder;
@@ -1126,7 +1144,7 @@ void WorldSession::InvalidateRBACData()
     TC_LOG_DEBUG("rbac", "WorldSession::Invalidaterbac::RBACData [AccountId: %u, Name: %s, realmId: %d]",
                    _RBACData->GetId(), _RBACData->GetName().c_str(), realm.Id.Realm);
     delete _RBACData;
-    _RBACData = NULL;
+    _RBACData = nullptr;
 }
 
 bool WorldSession::DosProtection::EvaluateOpcode(WorldPacket& p, time_t time) const
@@ -1353,16 +1371,15 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
         case CMSG_CREATE_CHARACTER:                     //   7               5         3 async db queries
         case CMSG_ENUM_CHARACTERS:                      //  22               3         2 async db queries
         case CMSG_ENUM_CHARACTERS_DELETED_BY_CLIENT:    //  22               3         2 async db queries
-        case CMSG_SUPPORT_TICKET_SUBMIT_BUG:            // not profiled                1 async db query
-        case CMSG_SUPPORT_TICKET_SUBMIT_SUGGESTION:     // not profiled                1 async db query
+        case CMSG_SUBMIT_USER_FEEDBACK:                 // not profiled                1 async db query
         case CMSG_SUPPORT_TICKET_SUBMIT_COMPLAINT:      // not profiled                1 async db query
         case CMSG_CALENDAR_UPDATE_EVENT:                // not profiled
         case CMSG_CALENDAR_REMOVE_EVENT:                // not profiled
         case CMSG_CALENDAR_COPY_EVENT:                  // not profiled
-        case CMSG_CALENDAR_EVENT_INVITE:                // not profiled
+        case CMSG_CALENDAR_INVITE:                      // not profiled
         case CMSG_CALENDAR_EVENT_SIGN_UP:               // not profiled
-        case CMSG_CALENDAR_EVENT_RSVP:                  // not profiled
-        case CMSG_CALENDAR_EVENT_MODERATOR_STATUS:      // not profiled
+        case CMSG_CALENDAR_RSVP:                        // not profiled
+        case CMSG_CALENDAR_MODERATOR_STATUS:            // not profiled
         case CMSG_CALENDAR_REMOVE_INVITE:               // not profiled
         case CMSG_SET_LOOT_METHOD:                      // not profiled
         case CMSG_GUILD_INVITE_BY_NAME:                 // not profiled
@@ -1452,41 +1469,7 @@ void WorldSession::LoadRecoveries()
         std::string spells      = fields[9].GetString();
         uint32 at_login         = fields[10].GetUInt32();
 
-        uint8 hairID        = 0;
-        uint8 hairColor     = 0;
-        uint8 faceID        = 0;
-        uint8 facialHairID  = 0;
-        uint8 skinColor     = 0;
-
-        if (cclass == CLASS_DEATH_KNIGHT)
-        {
-            hairID          = 6;
-            hairColor       = 6;
-            faceID          = 11;
-            facialHairID    = 3;
-            skinColor       = 7;
-        }
-
-        WorldPackets::Character::CharacterCreateInfo* createInfo = new WorldPackets::Character::CharacterCreateInfo("Recovery", race, cclass, 0, skinColor, faceID, hairID, hairColor, facialHairID, 0);
-        createInfo->withStartOutfit = false;
-
-        if (cclass == CLASS_DEMON_HUNTER)
-        {
-            createInfo->CustomDisplay[0] = 18;
-            createInfo->CustomDisplay[1] = 1;
-            createInfo->CustomDisplay[2] = 4;
-        }
-
         Player newChar(this);
-        if (!newChar.Create(sObjectMgr->GetGenerator<HighGuid::Player>().Generate(), createInfo))
-        {
-            // Player not create (race/class/etc problem?)
-            newChar.CleanupsBeforeDelete();
-
-            SendCharCreate(CHAR_CREATE_ERROR);
-            return;
-        }
-
         newChar.SetAtLoginFlag(AT_LOGIN_FIRST);
         newChar.SetAtLoginFlag(AT_LOGIN_RENAME);
         newChar.SetAtLoginFlag(AT_LOGIN_CUSTOMIZE);
@@ -1529,7 +1512,7 @@ void WorldSession::LoadRecoveries()
         {
             if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemRecovery.itemId))
             {
-                if ((proto->GetAllowableRace() & newChar.getRace()) == 0)
+                if ((proto->GetAllowableRace().RawValue & newChar.getRaceMask()) == 0)
                     continue;
 
                 newChar.StoreNewItemInBestSlots(itemRecovery.itemId, 1, (ItemContext)itemRecovery.context);
@@ -1549,7 +1532,6 @@ void WorldSession::LoadRecoveries()
         Player::SavePositionInDB(loc, 0, newChar.GetGUID(), trans);
 
         newChar.CleanupsBeforeDelete();
-        delete createInfo;
 
         if (skill1 != 0 && skill1_value != 0)
             CharacterDatabase.PExecute("INSERT INTO character_shop (guid, type, itemId, itemCount) VALUES (%u, 5, %u, %u)", newChar.GetGUID().GetCounter(), skill1, skill1_value);
