@@ -1,55 +1,60 @@
-#ifndef THE_ARCWAY_H
-#define THE_ARCWAY_H
+#ifndef THE_ARCWAY_H_
+#define THE_ARCWAY_H_
 
-#define ArcwayScriptName "instance_the_arcway"
-#define ArcwayMapId 1516
-#define ArcwayDataHeaders "ARCWAY"
-
-constexpr uint8 EncounterCount = 5;
-
-enum ArcwayDataTypes
+enum eData
 {
-    DATA_CORSTILAX              = 0,
-    DATA_GENERAL_XAKAL          = 1,
-    DATA_NALTIRA                = 2,
-    DATA_IVANYR                 = 3,
-    DATA_ADVISOR_VANDROS        = 4,
+    DATA_IVANYR = 0,
+    DATA_CORSTILAX = 1,
+    DATA_XAKAL = 2,
+    DATA_NALTIRA = 3,
+    DATA_VANDROS = 4,
+    MAX_ENCOUNTER,
 
-    DATA_NIGHTWELL            = 1,
-    DATA_NIGHTWELL_REMOVE    = 2,
+    DATA_RAND_TELEPORT,
 };
 
-enum ArcwayCreatureIds
+enum eCreatures
 {
-    BOSS_ADVISOR_VANDROS    = 98208,
-    BOSS_GENERAL_XAKAL      = 98206,
-    BOSS_IVANYR             = 98203,
-    BOSS_NALTIRA            = 98207,
-    NPC_CORSTILAX           = 98205,
-    NPC_DESTABILIZED_ORB    = 110863,    // Used in Corstilax encounter.
-    NPC_QUARANTINE          = 99560        // Corstilax
+    //Ivanyr
+    NPC_NIGHT_CRYSTAL = 98734,
+
+    //Corstilax
+    NPC_SUPPRESSION_PROTOCOL = 99628,
+    NPC_QUARANTINE = 99560,
+    NPC_PIPE_STALKER = 99446,
+    NPC_DESTABLIZED_ORB = 110863,
+
+    //Xakal
+    NPC_FISSURE = 100342,
+    NPC_DREAD_FELBAT = 100393,
+
+    //Naltira
+    NPC_ENCHANTED_BROODLING_I = 105876, //Intro
+    NPC_VICIOUS_MANAFANG_I = 98759,  //Intro
+    NPC_VICIOUS_MANAFANG = 110966,
+
+    //Vandros
+    NPC_ADVISOR_VANDROS = 98208, //102849
+    NPC_TIMELESS_WRAITH = 103130,
 };
 
-struct NonMeleeTargetSelector : public std::unary_function<Unit*, bool>
+enum eGameObjects
 {
-    public:
-        NonMeleeTargetSelector(Unit* source, bool playerOnly = true) : _source(source), _playerOnly(playerOnly) { }
-        bool operator()(Unit const* target) const
-        {
-             if (!target)
-                return false;
+    GO_CORSTILAX_DOOR_1 = 245968,
+    GO_CORSTILAX_DOOR_2 = 246024,
+    GO_XAKAL_FISSURE = 245606,
 
-            if (_playerOnly && target->GetTypeId() != TYPEID_PLAYER)
-                return false;
+    GO_DOOR_A = 250272,
+    GO_DOOR_B = 250278,
+    GO_DOOR_D = 250273,
+    GO_DOOR_G = 250275,
+    GO_DOOR_K = 250276,
+    GO_DOOR_8 = 250634,
+    GO_DOOR_9 = 250635,
+    GO_DOOR_3 = 250636,
+    GO_DOOR_4 = 250637,
 
-            return !_source->IsWithinMeleeRange(target);
-        }
 
-    private:
-        Unit* _source;
-        bool _playerOnly;
 };
 
-using SpellTargets = std::list<WorldObject*>;
-
-#endif /* THE_ARCWAY_H */
+#endif

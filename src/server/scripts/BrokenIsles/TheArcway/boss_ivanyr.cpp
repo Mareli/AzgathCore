@@ -1,602 +1,325 @@
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
-#include "AreaTrigger.h"
-#include "AreaTriggerAI.h"
-#include "SpellAuraEffects.h"
 #include "the_arcway.h"
-#include "AreaTriggerTemplate.h"
-#include "G3D/LineSegment.h"
-#include "SmartAI.h"
-#include "Player.h"
-#include "SpellHistory.h"
-#include "Spell.h"
-#include "Creature.h"
-#include "SpellScript.h"
-#include "SpellAuras.h"
-#include "Player.h"
-
-enum Spells
-{
-    SPELL_OVERCHARGE_MANA   = 196392,
-    SPELL_OVERCHARGE        = 196396,
-    SPELL_CHARGED_BOLT_AURA = 220581,
-    SPELL_CHARGED_BOLT_DMG  = 220597,
-    SPELL_CHARGED_BOLT_AREA = 220569,
-    SPELL_ARCANE_BLAST      = 196357,
-    SPELL_VOLATILE_MAGIC    = 196562,
-    SPELL_NETHER_LINK       = 196804,
-    SPELL_NETHER_LINK_VISUAL= 196805,
-    SPELL_NETHER_LINK_AREA  = 196806,
-    SPELL_NETHER_LINK_DMG   = 196824, 
-};
-
-enum Events
-{
-    EVENT_OVERCHARGE_MANA   = 1,
-    EVENT_ARCANE_BLAST      = 2,
-    EVENT_VOLATILE_MAGIC    = 3,
-    EVENT_NETHER_LINK       = 4,
-};
 
 enum Says
 {
-    SAY_INTRO           = 0,
-    SAY_AGGRO           = 1,
-    SAY_VOLATILE_MAGIC  = 2,
-    SAY_KILL            = 3,
-    SAY_DEATH           = 4,
-    SAY_OVERCHARGUE     = 5,
+    SAY_AGGRO = 1,
+    SAY_MAGIC = 2,
+    SAY_DEATH = 3,
 };
 
-enum Data
+enum Spells
 {
-    DATA_NETHER_LINK_VERTEX_ONE     = 1,
-    DATA_NETHER_LINK_VERTEX_TWO     = 2,
-    DATA_NETHER_LINK_VERTEX_THREE   = 3,
+    SPELL_SPAWN_VISUAL = 202679, //Hit npc 98734
+    SPELL_ARCANE_BLAST = 196357,
+    SPELL_VOLATILE_MAGIC = 196562,
+    SPELL_OVERCHARGE_MANA = 196392,
+    SPELL_OVERCHARGE = 196396,
+    SPELL_NETHER_LINK = 196804,
+    SPELL_WITHERING_CONSUMPTION = 196549,
+    SPELL_CONSUME_ESSENCE = 196877,
+    SPELL_CHARGED_BOLT = 220581,
+    SPELL_CHARGED_BOLT_AT = 220569,
 };
 
-enum Actions
+enum eEvents
 {
-    ACTION_INTERRUPT_OVERCHARGE = 1,
-    ACTION_CREATE_TRIANGLE      = 2,
+    EVENT_VOLATILE_MAGIC = 1,
+    EVENT_OVERCHARGE_MANA = 2,
+    EVENT_NETHER_LINK = 3,
+    EVENT_WITHERING_CONSUMPTION = 4,
+    EVENT_CONSUME_ESSENCE = 5,
+
+    DATA_OVERCHARGE,
 };
 
-constexpr uint32 POINT_OVERCHARGE               = 1;
-constexpr uint32 NPC_NIGHT_CRYSTAL              = 98734;
-constexpr uint32 SPELL_VISUAL_OVERCHARGE        = 51100;
+enum Achieve
+{
+    ACHIEVEMENTDATA,
+};
 
-using G3D::Vector2;
-using G3D::LineSegment2D;
-
+//98203
 class boss_ivanyr : public CreatureScript
 {
-    public:
-        boss_ivanyr() : CreatureScript("boss_ivanyr")
-        {}
+public:
+    boss_ivanyr() : CreatureScript("boss_ivanyr") {}
 
-        struct boss_ivanyr_AI : public BossAI
+    struct boss_ivanyrAI : public BossAI
+    {
+        boss_ivanyrAI(Creature* creature) : BossAI(creature, DATA_IVANYR)
         {
-            explicit boss_ivanyr_AI(Creature* creature) : BossAI(creature, DATA_IVANYR)
-            {
-                _vertexsGuid.fill(ObjectGuid::Empty);
-                _vertexs.fill(Vector2(0,0));
-            }
+            DoCast(me, SPELL_SPAWN_VISUAL, true);
+            introDone = false;
+            notspellhited = true;
+        }
 
-            void EnterCombat(Unit* /**/) override
+        bool phaseLowMana;
+        bool introDone;
+        bool notspellhited;
+        uint8 overChargeCount;
+        uint32 CheckTimer;
+
+        void Reset() override
+        {
+            _Reset();
+            phaseLowMana = false;
+            notspellhited = true;
+            overChargeCount = 0;
+            me->SetReactState(REACT_AGGRESSIVE);
+            me->RemoveAurasDueToSpell(SPELL_WITHERING_CONSUMPTION);
+            me->RemoveAurasDueToSpell(SPELL_OVERCHARGE);
+            me->SummonCreature(NPC_NIGHT_CRYSTAL, 3137.53f, 5135.01f, 623.28f, 5.2f);
+        }
+
+        void Initialize()
+        {
+            CheckTimer = 1000;
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+        {
+            Talk(SAY_AGGRO); //Stay back! It's mine!
+            _EnterCombat();
+
+            events.RescheduleEvent(EVENT_VOLATILE_MAGIC, 8000);
+            events.RescheduleEvent(EVENT_OVERCHARGE_MANA, 28000);
+            events.RescheduleEvent(EVENT_NETHER_LINK, 56000);
+            events.RescheduleEvent(EVENT_WITHERING_CONSUMPTION, 2000);
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            Talk(SAY_DEATH);
+            _JustDied();
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->GetTypeId() != TYPEID_PLAYER)
+                return;
+
+            if (!introDone && me->IsWithinDistInMap(who, 130.0f))
             {
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+                introDone = true;
+                Talk(0);
+            }
+        }
+
+        void JustReachedHome() override
+        {
+            if (!me->IsInCombat())
+                DoCast(me, SPELL_SPAWN_VISUAL, true);
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type != POINT_MOTION_TYPE)
+                return;
+
+            if (id == 1)
+            {
+                overChargeCount++;
+                DoCast(me, SPELL_OVERCHARGE_MANA, true);
                 me->SetReactState(REACT_AGGRESSIVE);
-                Talk(SAY_AGGRO);
-                events.ScheduleEvent(EVENT_ARCANE_BLAST, IN_MILLISECONDS);
-                events.ScheduleEvent(EVENT_VOLATILE_MAGIC, Seconds(15));
-                events.ScheduleEvent(EVENT_NETHER_LINK, Seconds(25));
-                events.ScheduleEvent(EVENT_OVERCHARGE_MANA, Seconds(30));
+            }
+        }
+
+        uint32 GetData(uint32 type) const override
+        {
+            if (type == ACHIEVEMENTDATA)
+                return notspellhited ? 1 : 0;
+
+            switch (type)
+            {
+            case DATA_OVERCHARGE:
+                return overChargeCount;
+            }
+            return 0;
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (me->GetDistance(me->GetHomePosition()) >= 60.0f)
+            {
+                EnterEvadeMode();
+                return;
             }
 
-            void JustRegisteredAreaTrigger(AreaTrigger* at) override
+            if (CheckTimer <= diff)
             {
-                if (!at)
-                    return;
-
-                //auto& vertices = at->_polygonVertices;
-                //uint8 index = 0;
-
-                //for (auto & it :  vertices)
-                   // it = _vertexs.at(index++);
-            }
-
-            void SetGUID(ObjectGuid guid, int32 id) override
-            {
-                switch (id)
+                if (me->IsInCombat() && (me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC || me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_KEYSTONE))
                 {
-                    case DATA_NETHER_LINK_VERTEX_ONE:
-                        _vertexsGuid.at(0) = guid;
-                        break;
-                    
-                    case DATA_NETHER_LINK_VERTEX_TWO:
-                        _vertexsGuid.at(1) = guid;
-                        break;
-                    
-                    case DATA_NETHER_LINK_VERTEX_THREE:
-                        _vertexsGuid.at(2) = guid;
-                        break;
+                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                        if (Player* player = itr->GetSource())
+                            if (player->HasAura(220597))
+                                notspellhited = false;
                 }
+                CheckTimer = 1000;
             }
+            else CheckTimer -= diff;
 
-            ObjectGuid GetGUID(int32 id) const override
+            if (uint32 eventId = events.ExecuteEvent())
             {
-                switch (id)
-                {
-                    case DATA_NETHER_LINK_VERTEX_ONE:
-                        return _vertexsGuid.at(0);
-                    
-                    case DATA_NETHER_LINK_VERTEX_TWO:
-                        return _vertexsGuid.at(1);
-                        break;
-                    
-                    case DATA_NETHER_LINK_VERTEX_THREE:
-                        return _vertexsGuid.at(2);
-
-                    default : return ObjectGuid::Empty;
-                }
-            }
-
-            void JustDied(Unit* /**/) override
-            {
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-                Creature* crystal = me->FindNearestCreature(NPC_NIGHT_CRYSTAL, 500.f);
-
-                if (crystal)
-                {
-                    crystal->RemoveAllAuras();
-                    crystal->RemoveAllAreaTriggers();
-                }
-                
-                Talk(SAY_DEATH);
-                _JustDied();
-            }
-
-            void KilledUnit(Unit* victim) override
-            {
-                if (victim && victim->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_KILL);
-            }
-
-            void MovementInform(uint32 type, uint32 id) override
-            {
-                if (type == POINT_MOTION_TYPE && id == POINT_OVERCHARGE)
-                {
-                    Talk(SAY_OVERCHARGUE);
-                    Creature* crystal = me->FindNearestCreature(NPC_NIGHT_CRYSTAL, 500.f);
-                    
-                    if (crystal)
-                    {
-                        me->SetFacingToObject(crystal);
-                        me->CastSpell(crystal, SPELL_OVERCHARGE_MANA, false);
-                    }
-                }
-            }
-
-            void DoAction(int32 action) override
-            {
-                if (action == ACTION_INTERRUPT_OVERCHARGE)
-                {
-                    events.ScheduleEvent(EVENT_ARCANE_BLAST, IN_MILLISECONDS);
-                    events.ScheduleEvent(EVENT_VOLATILE_MAGIC, Seconds(15));
-                    events.ScheduleEvent(EVENT_NETHER_LINK, Seconds(18));
-                }
-                else if (action == ACTION_CREATE_TRIANGLE && !_triangleCreated)
-                {
-                    _triangleCreated = true;
-
-                    Player* targetOne = ObjectAccessor::GetPlayer(*me, _vertexsGuid.at(0));
-                    Player* targetTwo = ObjectAccessor::GetPlayer(*me, _vertexsGuid.at(1));
-                    Player* targetThree = ObjectAccessor::GetPlayer(*me, _vertexsGuid.at(2));
-
-                    if (!targetOne || !targetTwo || !targetThree)
-                        return;
-                    
-                    G3D::Vector2 v1 = { targetOne->GetPositionX(),  targetOne->GetPositionY()};
-                    G3D::Vector2 v2 = { targetTwo->GetPositionX(),  targetTwo->GetPositionY()};
-                    G3D::Vector2 v3 = { targetThree->GetPositionX(), targetThree->GetPositionY()};
-                    G3D::Vector2 mid_1 = (v1 + v2)/2;
-                    Vector2 mid_two = (v1 + v3)/2;
-                    //Vector2 mid_three = (v2 + v3)/2;
-
-                    LineSegment2D median_1 = LineSegment2D::fromTwoPoints(mid_1, v3);
-                    LineSegment2D median_2 = LineSegment2D::fromTwoPoints(mid_two, v2);
-                    //LineSegment2D median_3 = LineSegment2D::fromTwoPoints(mid_three, v1);
-
-                    Vector2 interPoint_1 = median_1.intersection(median_2);
-
-                    auto & center = interPoint_1;
-                    _vertexs.at(0) = v3 - center;
-                    _vertexs.at(1) = v2 - center;
-                    _vertexs.at(2) = v3 - center;
-
-                    me->CastSpell(center.x, center.y, me->GetPositionZ(), SPELL_NETHER_LINK_AREA, true);
-
-                }
-            }
-
-            void SpellHit(Unit* /**/, SpellInfo const* spell) override
-            {
-                if (!spell)
-                    return;
-                
-                if (spell->HasEffect(SPELL_EFFECT_INTERRUPT_CAST))
-                {
-                    Spell* currSpell = me->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
-
-                    if (currSpell && currSpell->GetSpellInfo()->Id == SPELL_OVERCHARGE_MANA)
-                    {
-                        me->CastStop();
-                        DoAction(ACTION_INTERRUPT_OVERCHARGE);
-                    }
-                }
-            }
-
-            void EnterEvadeMode(EvadeReason /*why*/) override
-            {
-                Creature* crystal = me->FindNearestCreature(NPC_NIGHT_CRYSTAL, 500.f);
-
-                if (crystal)
-                {
-                    crystal->RemoveAllAuras();
-                    crystal->RemoveAllAreaTriggers();
-                }
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-                CreatureAI::EnterEvadeMode();
-            }
-
-            void ExecuteEvent(uint32 eventId) override
-            {
-                me->GetSpellHistory()->ResetAllCooldowns();
                 switch (eventId)
                 {
-                    case EVENT_ARCANE_BLAST:
+                case EVENT_VOLATILE_MAGIC:
+                    DoCast(SPELL_VOLATILE_MAGIC);
+                    Talk(SAY_MAGIC);
+                    events.RescheduleEvent(EVENT_VOLATILE_MAGIC, 24000);
+                    break;
+                case EVENT_OVERCHARGE_MANA:
+                    me->AttackStop();
+                    me->GetMotionMaster()->MovePoint(1, me->GetHomePosition());
+                    events.RescheduleEvent(EVENT_OVERCHARGE_MANA, 40000);
+                    break;
+                case EVENT_NETHER_LINK:
+                    DoCast(SPELL_NETHER_LINK);
+                    events.RescheduleEvent(EVENT_NETHER_LINK, 56000);
+                    break;
+                case EVENT_WITHERING_CONSUMPTION:
+                    if (me->GetPower(POWER_MANA) > 0)
+                        events.RescheduleEvent(EVENT_NETHER_LINK, 2000);
+                    else
                     {
-                        DoCastVictim(SPELL_ARCANE_BLAST);
-                        events.ScheduleEvent(EVENT_ARCANE_BLAST, 2 * IN_MILLISECONDS);
-                        break;
+                        events.Reset();
+                        DoCast(SPELL_WITHERING_CONSUMPTION);
+                        events.RescheduleEvent(EVENT_CONSUME_ESSENCE, 8000);
                     }
-
-                    case EVENT_NETHER_LINK:
-                    {
-                        _triangleCreated = false;
-                        DoCast(me, SPELL_NETHER_LINK);
-                        events.ScheduleEvent(EVENT_NETHER_LINK, Seconds(30));
-                        break;
-                    }
-
-                    case EVENT_OVERCHARGE_MANA:
-                    {
-                        events.DelayEvents(Seconds(5));
-                        me->GetMotionMaster()->MovePoint(POINT_OVERCHARGE, me->GetHomePosition());
-                        events.ScheduleEvent(EVENT_OVERCHARGE_MANA, Seconds(45));
-                        break;
-                    }
-
-                    case EVENT_VOLATILE_MAGIC:
-                    {
-                        Talk(SAY_VOLATILE_MAGIC);
-                        DoCast(me, SPELL_VOLATILE_MAGIC);
-                        events.ScheduleEvent(EVENT_VOLATILE_MAGIC, Seconds(30));
-                        break;
-                    }
-                    
+                    break;
+                case EVENT_CONSUME_ESSENCE:
+                    DoCast(SPELL_CONSUME_ESSENCE);
+                    events.RescheduleEvent(EVENT_CONSUME_ESSENCE, 16000);
+                    break;
                 }
             }
-
-            private:
-                std::array<Vector2, 3> _vertexs;
-                std::array<ObjectGuid, 3> _vertexsGuid;
-                bool _triangleCreated;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new boss_ivanyr_AI(creature);
+            if (me->HasAura(SPELL_WITHERING_CONSUMPTION))
+                DoMeleeAttackIfReady();
+            else
+                DoSpellAttackIfReady(SPELL_ARCANE_BLAST);
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new boss_ivanyrAI(creature);
+    }
 };
 
-class spell_ivanyr_nether_link : public SpellScriptLoader
-{
-    public:
-        spell_ivanyr_nether_link() : SpellScriptLoader("spell_ivanyr_nether_link")
-        {}
-
-        class spell_nether_link_SpellScript : public SpellScript
-        {
-            public:
-                PrepareSpellScript(spell_nether_link_SpellScript);
-
-                bool Load() override
-                {
-                    _playerCounter = 0;
-                    return true;
-                }
-
-                void HandleOnCast()
-                {
-                    std::list<ObjectGuid> _guids;
-                    std::list<Player*> players;
-                    
-                    GetCaster()->GetPlayerListInGrid(players, 250.f);
-
-                    if (!players.empty())
-                    {
-                        for (auto & it : players)
-                        {
-                            if (_guids.size() >= 3)
-                                break;
-
-                            if (it)
-                                _guids.push_back(it->GetGUID());
-                        }
-                    }
-
-                    for (auto & it : _guids)
-                    {
-                        Player* ptr = ObjectAccessor::GetPlayer(*GetCaster(), it);
-                        
-                        if (!ptr)
-                            continue;
-                            
-                        GetCaster()->AddAura(SPELL_NETHER_LINK_VISUAL, ptr);
-                        G3D::Vector3 pos = { ptr->GetPositionX(), ptr->GetPositionY(), ptr->GetPositionZ() };
-                        //ptr->SendPlaySpellVisual(pos, 39597, 0, 0, 34, false);
-
-                        switch (_playerCounter++)
-                        {
-                            case 0:
-                                GetCaster()->GetAI()->SetGUID(ptr->GetGUID(), DATA_NETHER_LINK_VERTEX_ONE);
-                                break;
-                            
-                            case 1:
-                                GetCaster()->GetAI()->SetGUID(ptr->GetGUID(), DATA_NETHER_LINK_VERTEX_TWO);
-                                break;
-                            
-                            case 2:
-                                GetCaster()->GetAI()->SetGUID(ptr->GetGUID(), DATA_NETHER_LINK_VERTEX_THREE);
-                                break;
-
-                            default : break;
-                        }
-
-                        if (_playerCounter >= 3)
-                            break;
-                    }
-
-                }
-
-                void Register() override
-                {
-                    OnCast += SpellCastFn(spell_nether_link_SpellScript::HandleOnCast);
-                }
-
-                private:
-                    uint8 _playerCounter;
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_nether_link_SpellScript();
-        }
-};
-
-class spell_ivanyr_nether_link_dmg : public SpellScriptLoader
-{
-    public:
-        spell_ivanyr_nether_link_dmg() : SpellScriptLoader("spell_ivanyr_nether_link_dmg")
-        {}
-        
-        class spell_nether_link_dmg_AuraScript : public AuraScript
-        {
-            public:
-                PrepareAuraScript(spell_nether_link_dmg_AuraScript);
-
-                void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-                {
-                    if (GetCaster()->GetTypeId() != TYPEID_PLAYER)
-                        GetCaster()->GetAI()->DoAction(ACTION_CREATE_TRIANGLE);
-                }
-
-                void Register() override
-                {
-                    OnEffectRemove += AuraEffectRemoveFn(spell_nether_link_dmg_AuraScript::HandleOnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_nether_link_dmg_AuraScript();
-        }
-};
-
+//196392
 class spell_ivanyr_overcharge_mana : public SpellScriptLoader
 {
-    public:
-        spell_ivanyr_overcharge_mana() : SpellScriptLoader("spell_ivanyr_overcharge_mana")
-        {}
+public:
+    spell_ivanyr_overcharge_mana() : SpellScriptLoader("spell_ivanyr_overcharge_mana") { }
 
-        class spell_overcharge_mana_AuraScript : public AuraScript
+    class spell_ivanyr_overcharge_mana_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_ivanyr_overcharge_mana_AuraScript);
+
+        uint16 tickTimer = 1000;
+
+        void OnTick(AuraEffect const* aurEff)
         {
-            public:
-                PrepareAuraScript(spell_overcharge_mana_AuraScript);
+            if (!GetCaster() || !GetTarget())
+                return;
 
-                void HandlePeriodic(AuraEffect const* /**/)
-                {
-                    GetUnitOwner()->SendPlaySpellVisual(GetCaster()->GetGUID(), SPELL_VISUAL_OVERCHARGE, 0, 0, 1, true);
-                    GetCaster()->CastSpell(GetCaster(), SPELL_OVERCHARGE, true);
-                }
-
-                void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-                {
-                    if (!GetUnitOwner())
-                        return;
-
-                    if (AuraEffect* auraEff = GetUnitOwner()->GetAuraEffect(SPELL_CHARGED_BOLT_AURA, EFFECT_0))
-                        auraEff->SetPeriodicTimer(auraEff->GetPeriodicTimer() > 250 ? auraEff->GetPeriodicTimer() - 250 : 250);
-                    else
-                        GetUnitOwner()->CastSpell(GetUnitOwner(), SPELL_CHARGED_BOLT_AURA, true);
-
-                    if (auto* ptr = GetCaster()->ToCreature())
-                        ptr->GetAI()->DoAction(ACTION_INTERRUPT_OVERCHARGE);
-                }
-
-                void Register() override
-                {
-                    OnEffectRemove += AuraEffectRemoveFn(spell_overcharge_mana_AuraScript::HandleOnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_overcharge_mana_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_overcharge_mana_AuraScript();
+            if (tickTimer <= 0)
+            {
+                GetCaster()->CastSpell(GetCaster(), SPELL_OVERCHARGE, true);
+                tickTimer = 1000;
+            }
+            else
+                tickTimer -= 100;
         }
+
+        void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (GetTarget() && !GetTarget()->HasAura(SPELL_CHARGED_BOLT))
+                GetTarget()->CastSpell(GetTarget(), SPELL_CHARGED_BOLT, true);
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_ivanyr_overcharge_mana_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+            OnEffectApply += AuraEffectApplyFn(spell_ivanyr_overcharge_mana_AuraScript::OnApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_ivanyr_overcharge_mana_AuraScript();
+    }
 };
 
+//220581
 class spell_ivanyr_charged_bolt : public SpellScriptLoader
 {
-    public:
-        spell_ivanyr_charged_bolt() : SpellScriptLoader("spell_ivanyr_charged_bolt")
-        {}
+public:
+    spell_ivanyr_charged_bolt() : SpellScriptLoader("spell_ivanyr_charged_bolt") { }
 
-        class spell_charged_bolt_AuraScript : public AuraScript
+    class spell_ivanyr_charged_bolt_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_ivanyr_charged_bolt_AuraScript);
+
+        uint8 chargeCount = 0;
+
+        void OnTick(AuraEffect const* aurEff)
         {
-            public:
-                PrepareAuraScript(spell_charged_bolt_AuraScript);
+            if (Unit* target = GetTarget())
+            {
+                if (target->GetOwner())
+                    if (Unit* owner = target->GetOwner())
+                        chargeCount = owner->GetAI()->GetData(DATA_OVERCHARGE);
 
-                void HandlePeriodic(AuraEffect const* /**/)
-                {
-                    GetCaster()->CastSpell(GetCaster(), SPELL_CHARGED_BOLT_AREA, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_charged_bolt_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_charged_bolt_AuraScript();
+                for (uint8 i = 0; i < chargeCount; i++)
+                    target->CastSpell(target, SPELL_CHARGED_BOLT_AT, true);
+            }
         }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_ivanyr_charged_bolt_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_ivanyr_charged_bolt_AuraScript();
+    }
 };
 
-class at_arc_charged_bolt : public AreaTriggerEntityScript
+//31372
+class achievement_arcanic_cling : public AchievementCriteriaScript
 {
-    public:
-        at_arc_charged_bolt() : AreaTriggerEntityScript("at_arc_charged_bolt")
-        {}
+public:
+    achievement_arcanic_cling() : AchievementCriteriaScript("achievement_arcanic_cling") {}
 
-        struct at_arc_charged_bolt_AI : public AreaTriggerAI
-        {
-            explicit at_arc_charged_bolt_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {}
+    bool OnCheck(Player* /*player*/, Unit* target) override
+    {
+        if (!target)
+            return false;
 
-            void SetupSpline()
-            {
-                if (!at->GetCaster())
-                    return;
+        if (auto ivanyr = target->ToCreature())
+            if (ivanyr->IsAIEnabled && ivanyr->AI()->GetData(ACHIEVEMENTDATA))
+                return true;
 
-                std::vector<G3D::Vector3> points;
-                float dist = 100.f;
-
-                G3D::Vector3 src = { at->GetPositionX(), at->GetPositionY(), at->GetPositionZ() };
-                G3D::Vector3 tgt;
-
-                tgt.x = src.x + (dist * cosf(frand(3.93f, 6.20f)));
-                tgt.y = src.y + (dist * sinf(frand(3.93f, 6.20f)));
-                tgt.z = src.z;
-
-                float dx = (tgt.x - src.x);
-                float dy = (tgt.y - src.y);
-
-                for (uint32 i = 0; i < 100; ++i)
-                {
-                    src.x += (dx/dist);
-                    src.y += (dy/dist);
-
-                    points.push_back(src);
-                }
-
-                at->InitSplines(points, at->GetDuration());
-            }
-
-            void OnInitialize() override
-            {
-                SetupSpline();
-            }
-
-            void OnUnitEnter(Unit* target) override
-            {
-                if (!target)
-                    return;
-                
-                if (target->GetTypeId() != TYPEID_PLAYER)
-                    return;
-                
-                target->CastSpell(target, SPELL_CHARGED_BOLT_DMG, true);
-            }
-
-            void OnUnitExit(Unit* target) override
-            {
-                if (!target)
-                    return;
-                
-                if (target->GetTypeId() != TYPEID_PLAYER)
-                    return;
-                
-                target->RemoveAurasDueToSpell(SPELL_CHARGED_BOLT_DMG);
-            }
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_charged_bolt_AI(at);
-        }
-};
-
-class at_arc_nether_link : public AreaTriggerEntityScript
-{
-    public:
-        at_arc_nether_link() : AreaTriggerEntityScript("at_arc_nether_link")
-        {}
-
-        struct at_arc_nether_link_AI : public AreaTriggerAI
-        {
-            explicit at_arc_nether_link_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {}
-
-            void OnUnitEnter(Unit* target) override
-            {
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                    target->CastSpell(target, SPELL_NETHER_LINK_DMG, true);
-            }
-
-            void OnUnitExit(Unit* target) override
-            {
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                    target->RemoveAurasDueToSpell(SPELL_NETHER_LINK_DMG);
-            }
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_nether_link_AI(at);
-        }
+        return false;
+    }
 };
 
 void AddSC_boss_ivanyr()
 {
     new boss_ivanyr();
-    new spell_ivanyr_charged_bolt();
     new spell_ivanyr_overcharge_mana();
-    new spell_ivanyr_nether_link();
-    new spell_ivanyr_nether_link_dmg();
-    new at_arc_charged_bolt();
-    new at_arc_nether_link();
+    new spell_ivanyr_charged_bolt();
+    new achievement_arcanic_cling();
 }

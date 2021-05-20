@@ -1,696 +1,485 @@
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
-#include "AreaTrigger.h"
-#include "AreaTriggerTemplate.h"
-#include "AreaTriggerAI.h"
 #include "the_arcway.h"
-
-enum Spells
-{
-    SPELL_CHRONO_SHARDS         = 203881,
-    SPELL_SUMMON_CHRONO_SHARD   = 203254,
-    SPELL_CHRONO_SHARD_PULSE    = 203835,
-    SPELL_CHRONO_SHARD_SPAWN    = 203823,
-    SPELL_ACCELERATING_BLAST    = 203176,
-    SPELL_FORCE_BOMB            = 202974,
-    SPELL_FORCE_BOMB_AREA       = 202975,
-    SPELL_FORCE_DETONATION      = 203087,
-    SPELL_FORCE_NOVA_AREA       = 203090,
-    SPELL_FORCE_NOVA_DMG        = 203139,
-    SPELL_TIME_SPLIT            = 203833,
-    SPELL_BANISH_IN_TIME        = 203882,
-    SPELL_BANISH_IN_TIME_AURA   = 203914, // Visual Effect on Screen
-    SPELL_BANISH_IN_TIME_TELE   = 203883,
-    SPELL_LOST_IN_TIME          = 203935,
-    SPELL_UNSTABLE_MANA         = 220871,
-    SPELL_UNSTABLE_MANA_DMG     = 220872,
-
-    SPELL_TIME_LOCK             = 203957,
-    SPELL_BREACH_DMG            = 203954,
-};
-
-enum Events
-{
-    EVENT_CHRONO_SHARDS         = 1,
-    EVENT_ACCELERATING_BLAST    = 2,
-    EVENT_FORCE_BOMB            = 3,
-    EVENT_UNSTABLE_MANA         = 4,
-    EVENT_BANISH_IN_TIME        = 5,
-
-    EVENT_TIME_LOCK             = 6,
-};
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
 
 enum Says
 {
-    SAY_INTRO           = 0,
-    SAY_INTRO_2         = 1,
-    SAY_AGGRO           = 2,
-    SAY_CHRONO          = 3,
-    SAY_BANISH          = 4,
-    SAY_REACH_SUCCESFUL = 5,
-    SAY_KILL            = 6,
-    SAY_WIPE            = 7,
-    SAY_DEATH           = 8,
+    SAY_AGGRO = 2,
+    SAY_BOMB = 3,
+    SAY_TIME = 4,
+    SAY_TIME_EMOTE = 5,
+    SAY_TIME_REM = 6,
+    //    SAY_?????           = 7,    i dont know, where he say its   "Think of this as a mercy killing."
+    SAY_EVADE = 8,
+    SAY_DEATH = 9,
 };
 
-Position VandrosTeleportLocations [] = 
+enum Spells
 {
-    { 3144.530f, 4662.319f, 574.185f, 1.41f }, // Naltira Room
-    { 3319.854f, 4522.469f, 570.788f, 1.53f }, // Xakal Room
-    { 3155.316f, 5102.332f, 623.203f, 5.22f }, // Ivanyr Room
-    { 3147.322f, 4887.054f, 617.710f, 0.20f }, // Corstilax Room
+    SPELL_ACCELERATING_BLAST = 203176,
+    SPELL_CHRONO_SHARDS = 203254,
+    SPELL_FORCE_BOMB = 202974,
+    SPELL_FORCE_BOMB_AT = 202975,
+    SPELL_FORCE_BOMB_AT_2 = 203090, //Разрастающийся взрыв
+    //Health - 50% 
+    SPELL_BANISH_IN_TIME_STUN = 203922,
+    SPELL_BANISH_IN_TIME_AT = 203882,
+    SPELL_BANISH_IN_TIME_TP = 203883,
+    SPELL_BANISH_IN_TIME_TIMER = 203914,
+    SPELL_BANISH_IN_TIME_REMOVE = 203941,
+    SPELL_UNSTABLE_MANA = 220871,
+
+    SPELL_TIME_SPLIT = 203833,
+    SPELL_PULSE_VISUAL = 203835, //Chrono Shard Pulse Visual
 };
 
-uint32 ROOM_POSITION = 0;
-constexpr uint32 DATA_LOST_IN_TIME = 1;
-//constexpr uint32 LOST_IN_TIME_PHASE = 290;
+enum eEvents
+{
+    EVENT_A_BLAST = 1,
+    EVENT_CHRONO_SHARDS = 2,
+    EVENT_FORCE_BOMB = 3,
+    EVENT_BANISH_IN_TIME = 4,
+    EVENT_UNSTABLE_MANA = 5,
+    EVENT_1,
+    EVENT_2,
+};
 
+Position const tpPos[4] =
+{
+    {3134.70f, 4892.10f, 617.64f, 2.86f},
+    {3151.23f, 5109.96f, 623.22f, 2.06f},
+    {3154.38f, 4661.42f, 574.20f, 2.95f},
+    {3327.04f, 4523.76f, 570.80f, 3.25f}
+};
+
+Position const wraithPos[12] =
+{
+    {3202.04f, 4863.76f, 619.78f, 5.94f},
+    {3214.42f, 4990.87f, 624.14f, 1.79f},
+    {3237.84f, 4626.11f, 575.03f, 2.78f},
+    {3244.24f, 4937.37f, 619.45f, 3.66f},
+    {3263.59f, 4879.47f, 619.14f, 0.64f},
+    {3323.22f, 4962.37f, 619.30f, 0.0f},
+    {3348.97f, 4608.84f, 550.74f, 6.01f},
+    {3413.84f, 4714.62f, 590.55f, 0.0f},
+    {3415.29f, 4962.56f, 598.39f, 0.0f},
+    {3432.10f, 4775.44f, 590.94f, 0.70f},
+    {3451.70f, 4640.10f, 567.34f, 1.53f},
+    {3467.79f, 4543.19f, 571.34f, 0.03f}
+};
+
+//98208
 class boss_advisor_vandros : public CreatureScript
 {
-    public:
-        boss_advisor_vandros() : CreatureScript("boss_advisor_vandros")
-        {}
+public:
+    boss_advisor_vandros() : CreatureScript("boss_advisor_vandros") {}
 
-        struct boss_advisor_vandros_AI : public BossAI
+    struct boss_advisor_vandrosAI : public BossAI
+    {
+        boss_advisor_vandrosAI(Creature* creature) : BossAI(creature, DATA_VANDROS), summons(me)
         {
-            explicit boss_advisor_vandros_AI(Creature* creature) : BossAI(creature, DATA_ADVISOR_VANDROS)
-            {
-                _lostInTime = false;
-            }
+            me->SetVisible(false);
+            me->SetReactState(REACT_PASSIVE);
+        }
 
-            uint32 GetData(uint32 id) const override
-            {
-                if (id == DATA_LOST_IN_TIME)
-                    return _reachSuccesful ? 0 : 1;
+        SummonList summons;
+        bool specialPhase = false;
+        bool specialPhaseComplete = false;
 
-                return 0;
-            }
+        void Reset() override
+        {
+            _Reset();
+            summons.DespawnAll();
+            specialPhase = false;
+            specialPhaseComplete = false;
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BANISH_IN_TIME_TIMER);
+        }
 
-            void KilledUnit(Unit* victim) override
-            {
-                if (victim && victim->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_KILL);
-            }
-            
-            void JustReachedHome() override
-            {
-                Talk(SAY_WIPE);
-                me->SetReactState(REACT_AGGRESSIVE);
-                _JustReachedHome();
-            }
+        void EnterCombat(Unit* /*who*/) override
+        {
+            Talk(SAY_AGGRO);
+            _EnterCombat();
+            DefaultEvents();
+        }
 
-            void EnterEvadeMode(EvadeReason why) override
-            {
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-                me->RemoveAllAreaTriggers();
-                CreatureAI::EnterEvadeMode(why);
-            }
-            
-            void JustDied(Unit* /**/) override
-            {
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-                Talk(SAY_DEATH);
-                _JustDied();
-            }
+        void DefaultEvents()
+        {
+            events.RescheduleEvent(EVENT_A_BLAST, 3000);
+            events.RescheduleEvent(EVENT_CHRONO_SHARDS, 6000);
+            events.RescheduleEvent(EVENT_FORCE_BOMB, 16000);
+        }
 
-            void EnterCombat(Unit* /**/) override
-            {
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
-                Talk(SAY_AGGRO);
-                _lostInTime = false;
-                _EnterCombat();
-                events.ScheduleEvent(EVENT_FORCE_BOMB, Seconds(30));
-                events.ScheduleEvent(EVENT_CHRONO_SHARDS, Seconds(10));
-                events.ScheduleEvent(EVENT_ACCELERATING_BLAST, Seconds(3));
-            }
+        void EnterEvadeMode(EvadeReason w) override
+        {
+            me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+            me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC);
+            me->RemoveUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
+            me->SetReactState(REACT_AGGRESSIVE);
+            Talk(SAY_EVADE);
+        }
 
-            void DamageTaken(Unit* /**/, uint32& /*damage*/) override
+        void JustDied(Unit* /*killer*/) override
+        {
+            Talk(SAY_DEATH);
+            _JustDied();
+            summons.DespawnAll();
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BANISH_IN_TIME_TIMER);
+        }
+
+        void JustSummoned(Creature* summon)
+        {
+            summons.Summon(summon);
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_BANISH_IN_TIME_AT)
             {
-                if (me->HealthBelowPct(50) && !_lostInTime)
+                me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+                me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_NPC);
+                me->SetUnitFlags(UNIT_FLAG_NOT_ATTACKABLE_1);
+                me->NearTeleportTo(me->GetHomePosition().GetPositionX(), me->GetHomePosition().GetPositionY(), me->GetHomePosition().GetPositionZ(), me->GetHomePosition().GetOrientation());
+                me->GetMotionMaster()->Clear(false);
+
+                Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                    if (Player* player = itr->GetSource())
+                        if (player->IsAlive())
+                        {
+                            player->CastSpell(player, SPELL_BANISH_IN_TIME_TP, true);
+                            player->CastSpell(player, SPELL_BANISH_IN_TIME_TIMER, true);
+                            Talk(SAY_TIME_EMOTE);
+                        }
+            }
+        }
+
+        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_FORCE_BOMB)
+                DoCast(target, SPELL_FORCE_BOMB_AT, true);
+        }
+
+        void DamageTaken(Unit* attacker, uint32& damage)
+        {
+            if (me->HealthBelowPct(50) && !specialPhase)
+            {
+                specialPhase = true;
+                events.Reset();
+                me->AttackStop();
+                events.RescheduleEvent(EVENT_BANISH_IN_TIME, 500);
+
+                for (uint8 i = 0; i < 12; ++i)
+                    me->SummonCreature(NPC_TIMELESS_WRAITH, wraithPos[i]);
+            }
+        }
+
+        void OnSpellFinished(SpellInfo const* spellInfo) override
+        {
+            switch (spellInfo->Id)
+            {
+            case SPELL_BANISH_IN_TIME_REMOVE:
+            {
+                if (!specialPhaseComplete)
                 {
-                    _lostInTime = true;
-                    _reachSuccesful = false;
-                    ROOM_POSITION = urand(0,3);
-                    events.DelayEvents(5000);
-                    events.ScheduleEvent(EVENT_BANISH_IN_TIME, 100);
-                }
-            }
-
-            void SpellHit(Unit* /**/, SpellInfo const* spell) override
-            {
-                if (!spell)
-                    return;
-                
-                if (spell->HasEffect(SPELL_EFFECT_INTERRUPT_CAST) && me->HasAura(SPELL_BANISH_IN_TIME))
-                {
-                    _reachSuccesful = true;
-                    Talk(SAY_REACH_SUCCESFUL);
-                    me->CastStop();
+                    specialPhaseComplete = true;
+                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BANISH_IN_TIME_TIMER);
+                    me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                    me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC);
+                    me->RemoveUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
                     me->SetReactState(REACT_AGGRESSIVE);
-                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BANISH_IN_TIME_AURA);
-                    events.ScheduleEvent(EVENT_UNSTABLE_MANA, Seconds(15));
+                    me->InterruptNonMeleeSpells(false);
+                    Talk(SAY_TIME_REM);
+                    DefaultEvents();
+                    events.RescheduleEvent(EVENT_UNSTABLE_MANA, 3000);
                 }
+                break;
             }
+            }
+        }
 
-            void ExecuteEvent(uint32 eventId) override
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
-                    case EVENT_BANISH_IN_TIME:
-                    {
-                        Talk(SAY_BANISH);
-                        me->CastSpell(me, SPELL_BANISH_IN_TIME, false);
-                        break;
-                    }
-
-                    case EVENT_ACCELERATING_BLAST:
-                    {
-                        DoCastVictim(SPELL_ACCELERATING_BLAST);
-                        events.ScheduleEvent(EVENT_ACCELERATING_BLAST, Seconds(7));
-                        break;
-                    }
-
-                    case EVENT_CHRONO_SHARDS:
-                    {
-                        if (roll_chance_i(50))
-                            Talk(SAY_CHRONO);
-
-                        for (uint32 i = 3; i > 0; --i)
-                        {
-                            if (i % 2 == 0)
-                                DoCast(me, SPELL_CHRONO_SHARDS, true);
-                            else
-                                DoCast(me, SPELL_SUMMON_CHRONO_SHARD, true);
-                        }
-
-                        events.ScheduleEvent(EVENT_CHRONO_SHARDS, Seconds(12));
-                        break;
-                    }
-
-                    case EVENT_FORCE_BOMB:
-                    {
-                        DoCast(me, SPELL_FORCE_BOMB);
-                        events.ScheduleEvent(EVENT_FORCE_BOMB, Seconds(30));
-                        break;
-                    }
-
-                    case EVENT_UNSTABLE_MANA:
-                    {
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                            DoCast(target, SPELL_UNSTABLE_MANA);
-                        
-                        events.ScheduleEvent(EVENT_UNSTABLE_MANA, Seconds(40));
-                        break;
-                    }
-
-                    default : break;
+                case EVENT_A_BLAST:
+                    DoCast(SPELL_ACCELERATING_BLAST);
+                    events.RescheduleEvent(EVENT_A_BLAST, 6000);
+                    break;
+                case EVENT_CHRONO_SHARDS:
+                    for (uint8 i = 0; i < 3; i++)
+                        DoCast(SPELL_CHRONO_SHARDS);
+                    events.RescheduleEvent(EVENT_CHRONO_SHARDS, 6000);
+                    break;
+                case EVENT_FORCE_BOMB:
+                    Talk(SAY_BOMB);
+                    DoCast(SPELL_FORCE_BOMB);
+                    events.RescheduleEvent(EVENT_FORCE_BOMB, 16000);
+                    break;
+                case EVENT_BANISH_IN_TIME:
+                    Talk(SAY_TIME);
+                    instance->SetData(DATA_RAND_TELEPORT, urand(0, 3));
+                    DoCast(me, SPELL_BANISH_IN_TIME_STUN, true);
+                    DoCast(SPELL_BANISH_IN_TIME_AT);
+                    break;
+                case EVENT_UNSTABLE_MANA:
+                    DoCast(SPELL_UNSTABLE_MANA);
+                    events.RescheduleEvent(EVENT_UNSTABLE_MANA, 30000);
+                    break;
                 }
             }
-
-            private:
-                bool _lostInTime;
-                bool _reachSuccesful;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new boss_advisor_vandros_AI(creature);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new boss_advisor_vandrosAI(creature);
+    }
 };
 
-class npc_arc_chrono_shard : public CreatureScript
+//102849
+class npc_vandros_chrono_shard : public CreatureScript
 {
-    public:
-        npc_arc_chrono_shard() : CreatureScript("npc_arc_chrono_shard")
-        {}
+public:
+    npc_vandros_chrono_shard() : CreatureScript("npc_vandros_chrono_shard") {}
 
-        struct npc_arc_chrono_shard_AI : public ScriptedAI
+    struct npc_vandros_chrono_shardAI : public ScriptedAI
+    {
+        npc_vandros_chrono_shardAI(Creature* creature) : ScriptedAI(creature)
         {
-            explicit npc_arc_chrono_shard_AI(Creature* creature) : ScriptedAI(creature)
-            {
-                me->CastSpell(me, SPELL_CHRONO_SHARD_SPAWN, true);
-            }
-            
-            void IsSummonedBy(Unit* /**/) override
-            {
-                me->CastSpell(me, SPELL_CHRONO_SHARD_PULSE, true);
-                me->GetMotionMaster()->MovePoint(0, me->GetRandomNearPosition(25));
-                _timerExplotion = 0;
-            }
+            me->SetReactState(REACT_PASSIVE);
+        }
 
-            void MovementInform(uint32 type, uint32 id) override
-            {
-                if (type == POINT_MOTION_TYPE && id == 0)
-                    me->AddUnitState(UNIT_STATE_ROOT);
-            }
+        EventMap events;
 
-            void UpdateAI(uint32 diff) override
-            {
-                _timerExplotion += diff;
+        void Reset() override {}
 
-                if (_timerExplotion >= 8 * IN_MILLISECONDS)
+        void IsSummonedBy(Unit* summoner) override
+        {
+            events.RescheduleEvent(EVENT_1, 8000);
+            DoCast(me, SPELL_PULSE_VISUAL, true);
+            Position pos;
+            me->GetRandomNearPosition(10.0f);
+            me->GetMotionMaster()->MovePoint(1, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ());
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
                 {
-                    _timerExplotion = 0;
+                case EVENT_1:
                     DoCast(me, SPELL_TIME_SPLIT, true);
-                    me->DespawnOrUnsummon(4000);
+                    me->DespawnOrUnsummon(1000);
+                    break;
                 }
             }
-
-            private:
-                uint32 _timerExplotion;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_arc_chrono_shard_AI(creature);
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_vandros_chrono_shardAI(creature);
+    }
 };
 
-class npc_arc_timeless_wraith : public CreatureScript
+//203883
+class spell_vandros_teleport_plr : public SpellScriptLoader
 {
-    public:
-        npc_arc_timeless_wraith() : CreatureScript("npc_arc_timeless_wraith")
-        {}
+public:
+    spell_vandros_teleport_plr() : SpellScriptLoader("spell_vandros_teleport_plr") { }
 
-        struct npc_arc_timeless_wraith_AI : public ScriptedAI
+    class spell_vandros_teleport_plr_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_vandros_teleport_plr_SpellScript);
+
+        uint8 rand = 0;
+
+        void HandleScriptEffect(SpellEffIndex effIndex)
         {
-            explicit npc_arc_timeless_wraith_AI(Creature* creature) : ScriptedAI(creature)
-            {}
+            PreventHitDefaultEffect(effIndex);
 
-            void Reset() override
-            {
-                //me->SetInPhase(2, true, true);
-                _events.Reset();
-            }
+            Player* player = GetCaster()->ToPlayer();
+            if (!player)
+                return;
 
-            void EnterCombat(Unit* victim) override
-            {
-                if (!victim)
-                    return;
+            if (InstanceScript* instance = player->GetInstanceScript())
+                rand = instance->GetData(DATA_RAND_TELEPORT);
 
-                if (!victim->HasAura(SPELL_BANISH_IN_TIME_AURA))
-                    return;
-                
-                DoZoneInCombat();
-                DoCast(victim, SPELL_TIME_LOCK);
-                _events.ScheduleEvent(EVENT_TIME_LOCK, Seconds(2));
-            }
-
-            bool CanAIAttack(Unit const* target) const override
-            {
-                if (!target)
-                    return false;
-                
-                if (!target->HasAura(SPELL_BANISH_IN_TIME_AURA))
-                    return false;
-                
-                return true;
-            }
-
-            void SpellHit(Unit* /**/, SpellInfo const* spell) override
-            {
-                if (!spell)
-                    return;
-                
-                if (spell->HasEffect(SPELL_EFFECT_INTERRUPT_CAST) && me->HasUnitState(UNIT_STATE_CASTING))
-                    _events.RescheduleEvent(EVENT_TIME_LOCK, Seconds(5));
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                _events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = _events.ExecuteEvent())
-                {
-                    if (eventId == EVENT_TIME_LOCK)
-                    {
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                            DoCast(target, SPELL_TIME_LOCK, false);
-                        
-                        _events.ScheduleEvent(EVENT_TIME_LOCK, Seconds(8));
-                    }
-                }
-                
-                DoMeleeAttackIfReady();
-            };
-
-            private:
-                EventMap _events;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_arc_timeless_wraith_AI(creature);
+            player->TeleportTo(player->GetMapId(), tpPos[rand].GetPositionX(), tpPos[rand].GetPositionY(), tpPos[rand].GetPositionZ(), tpPos[rand].GetOrientation());
         }
+
+        void Register() override
+        {
+            OnEffectHitTarget += SpellEffectFn(spell_vandros_teleport_plr_SpellScript::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_TELEPORT_UNITS);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_vandros_teleport_plr_SpellScript();
+    }
 };
 
-class spell_vandros_force_bomb : public SpellScriptLoader
+//203914
+class spell_vandros_banish_in_time_timer : public SpellScriptLoader
 {
-    public:
-        spell_vandros_force_bomb() : SpellScriptLoader("spell_vandros_force_bomb")
-        {}
+public:
+    spell_vandros_banish_in_time_timer() : SpellScriptLoader("spell_vandros_banish_in_time_timer") { }
 
-        class spell_force_bomb_SpellScript : public SpellScript
+    class spell_vandros_banish_in_time_timer_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_vandros_banish_in_time_timer_AuraScript);
+
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes mode)
         {
-            public:
-                PrepareSpellScript(spell_force_bomb_SpellScript);
+            if (!GetTarget())
+                return;
 
-                void HandleDummy(SpellEffIndex /**/)
-                {
-                    if (!GetHitUnit())
-                        return;
-                    
-                    GetCaster()->CastSpell(GetHitUnit(), SPELL_FORCE_BOMB_AREA, true);
-                }
+            AuraRemoveMode removeMode = GetTargetApplication()->GetRemoveMode();
 
-                void Register() override
-                {
-                    OnEffectHitTarget += SpellEffectFn(spell_force_bomb_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-                }
-        };
+            if (removeMode == AURA_REMOVE_BY_EXPIRE)
+                GetTarget()->Kill(GetTarget());
 
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_force_bomb_SpellScript();
         }
+
+        void Register() override
+        {
+            OnEffectRemove += AuraEffectApplyFn(spell_vandros_banish_in_time_timer_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCREEN_EFFECT, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_vandros_banish_in_time_timer_AuraScript();
+    }
 };
 
+//220871
 class spell_vandros_unstable_mana : public SpellScriptLoader
 {
-    public:
-        spell_vandros_unstable_mana() : SpellScriptLoader("spell_vandros_unstable_mana")
-        {}
+public:
+    spell_vandros_unstable_mana() : SpellScriptLoader("spell_vandros_unstable_mana") { }
 
-        class spell_unstable_mana_AuraScript : public AuraScript
+    class spell_vandros_unstable_mana_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_vandros_unstable_mana_AuraScript);
+
+        void OnPereodic(AuraEffect const* aurEff)
         {
-            public:
-                PrepareAuraScript(spell_unstable_mana_AuraScript);
-        
-                void HandlePeriodic(AuraEffect const* /**/)
-                {
-                    if (!GetUnitOwner())
-                        return;
-                    
-                    Unit*&& owner = GetUnitOwner();
+            if (!GetCaster() || !GetTarget())
+                return;
 
-                    owner->CastSpell(owner, SPELL_UNSTABLE_MANA_DMG, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_unstable_mana_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_unstable_mana_AuraScript();
+            GetCaster()->CastSpell(GetTarget(), 220872, true);
         }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_vandros_unstable_mana_AuraScript::OnPereodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_vandros_unstable_mana_AuraScript();
+    }
 };
 
-class spell_vandros_banish_in_time : public SpellScriptLoader
+//98426 98425
+class npc_unstable_amalgamation : public CreatureScript
 {
-    public:
-        spell_vandros_banish_in_time() : SpellScriptLoader("spell_vandros_banish_in_time")
-        {}
+public:
+    npc_unstable_amalgamation() : CreatureScript("npc_unstable_amalgamation") {}
 
-        class spell_banish_in_time_SpellScript : public SpellScript
+    struct npc_unstable_amalgamationAI : public ScriptedAI
+    {
+        npc_unstable_amalgamationAI(Creature* creature) : ScriptedAI(creature) {}
+
+        EventMap events;
+        uint32 AddSum = 0;
+
+        void EnterCombat(Unit* /*who*/) override
         {
-            public:
-              PrepareSpellScript(spell_banish_in_time_SpellScript);
-
-                void HandleBeforeCast()
-                {
-                    for (auto & it : GetCaster()->GetMap()->GetPlayers())
-                    {
-                        if (Player* player = it.GetSource())
-                            player->CastSpell(player, SPELL_BANISH_IN_TIME_AURA, true);
-                    }
-
-                    //GetCaster()->SetInPhase(2, true, true);
-                }
-
-                void Register() override
-                {
-                    BeforeCast += SpellCastFn(spell_banish_in_time_SpellScript::HandleBeforeCast);
-                }
-        };
-
-        class spell_banish_in_time_AuraScript : public AuraScript
-        {
-            public:
-                PrepareAuraScript(spell_banish_in_time_AuraScript);
-
-                void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-                {
-                    if (GetCaster()->GetAI()->GetData(DATA_LOST_IN_TIME) == 1)
-                    {
-                        InstanceScript* instance = GetCaster()->GetInstanceScript();
-
-                        if (instance)
-                            instance->DoCastSpellOnPlayers(SPELL_LOST_IN_TIME);
-                    }
-                    //GetCaster()->SetInPhase(2, true, false);
-                }
-
-                void Register() override
-                {
-                    OnEffectRemove += AuraEffectRemoveFn(spell_banish_in_time_AuraScript::HandleOnRemove, EFFECT_0, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_banish_in_time_AuraScript();
+            events.RescheduleEvent(EVENT_1, 30000); //193942
+            if (me->GetEntry() == 98425)
+                events.RescheduleEvent(EVENT_2, 15000); //193938
         }
 
-        SpellScript* GetSpellScript() const override
+        void JustDied(Unit* /*killer*/) override
         {
-            return new spell_banish_in_time_SpellScript();
-        }
-        
-};
-
-class spell_vandros_banish_in_time_buff : public SpellScriptLoader
-{
-    public:
-        spell_vandros_banish_in_time_buff() : SpellScriptLoader("spell_vandros_banish_in_time_buff")
-        {}
-
-        class spell_banish_in_time_AuraScript : public AuraScript
-        {
-            public:
-                PrepareAuraScript(spell_banish_in_time_AuraScript);
-
-                void HandleOnApply(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-                {
-                    if (!GetUnitOwner())
-                        return;
-                    
-                    GetUnitOwner()->CastSpell(GetUnitOwner(), SPELL_BANISH_IN_TIME_TELE, true);
-                    //GetUnitOwner()->SetInPhase(2, true, true);
-                }
-
-                void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-                {
-                    if (!GetUnitOwner())
-                        return;
-
-                    //GetUnitOwner()->SetInPhase(2, true, false);
-                }
-
-                void Register() override
-                {
-                    OnEffectApply += AuraEffectApplyFn(spell_banish_in_time_AuraScript::HandleOnApply, EFFECT_0, SPELL_AURA_SCREEN_EFFECT, AURA_EFFECT_HANDLE_REAL);
-                    OnEffectRemove += AuraEffectRemoveFn(spell_banish_in_time_AuraScript::HandleOnRemove, EFFECT_0, SPELL_AURA_SCREEN_EFFECT, AURA_EFFECT_HANDLE_REAL);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_banish_in_time_AuraScript();
-        }
-};
-
-class spell_vandros_banish_in_time_tele : public SpellScriptLoader
-{
-    public:
-        spell_vandros_banish_in_time_tele() : SpellScriptLoader("spell_vandros_banish_in_time_tele")
-        {
-        }
-        
-        class spell_banish_in_time_tele_SpellScript : public SpellScript
-        {
-            public:
-                PrepareSpellScript(spell_banish_in_time_tele_SpellScript);
-
-                void HandleTeleport()
-                {
-                    WorldLocation pos;
-
-                    pos.Relocate(VandrosTeleportLocations[ROOM_POSITION]);
-                    
-                    SetExplTargetDest(pos);
-                }
-
-                void Register() override
-                {
-                    BeforeCast += SpellCastFn(spell_banish_in_time_tele_SpellScript::HandleTeleport);
-                }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_banish_in_time_tele_SpellScript();
-        }
-};
-
-class spell_arc_breach : public SpellScriptLoader
-{
-    public:
-        spell_arc_breach() : SpellScriptLoader("spell_arc_breach")
-        {}
-
-        class spell_arc_breach_AuraScript :  public AuraScript
-        {
-            public:
-                PrepareAuraScript(spell_arc_breach_AuraScript);
-
-                void HandlePeriodic(AuraEffect const* /**/)
-                {
-                    if (!GetUnitOwner())
-                        return;
-                    
-                    GetUnitOwner()->CastSpell(GetUnitOwner(), SPELL_BREACH_DMG, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_arc_breach_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_arc_breach_AuraScript();
-        }
-};
-
-class at_arc_force_bomb : public AreaTriggerEntityScript
-{
-    public:
-        at_arc_force_bomb() : AreaTriggerEntityScript("at_arc_force_bomb")
-        {}
-
-        struct at_arc_force_bomb_AI : public AreaTriggerAI
-        {
-            explicit at_arc_force_bomb_AI(AreaTrigger* at) : AreaTriggerAI(at)
+            Position pos;
+            float x, y, z;
+            me->GetPosition(x, y, z);
+            if (me->GetEntry() == 98425)
+                AddSum = 98426;
+            if (me->GetEntry() == 98426)
+                AddSum = 98435;
+            for (uint8 i = 0; i < 4; i++)
             {
-                _timerForce = 0;
-            }
-
-            void OnUpdate(uint32 diff) override
-            {
-                _timerForce += diff;
-
-                if (_timerForce >= 4000)
+                if (Unit* summon = me->SummonCreature(AddSum, x, y, z, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000))
                 {
-                    _timerForce = 0;
-                    at->GetCaster()->CastSpell(at->GetPositionX(), at->GetPositionY(), at->GetPositionZ(), SPELL_FORCE_NOVA_AREA, true);
-                    at->GetCaster()->CastSpell(at->GetPositionX(), at->GetPositionY(), at->GetPositionZ(), SPELL_FORCE_DETONATION, true);
+                    float angle = i * static_cast<float>(M_PI);
+                    me->GetNearPosition(5.0f, angle);
+                    summon->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), 193852, true);
                 }
             }
-
-            private:
-                uint32 _timerForce;
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_force_bomb_AI(at);
         }
-};
 
-class at_arc_force_nova : public AreaTriggerEntityScript
-{
-    public:
-        at_arc_force_nova() : AreaTriggerEntityScript("at_arc_force_nova")
-        {}
-
-        struct at_arc_force_nova_AI : public AreaTriggerAI
+        void UpdateAI(uint32 diff) override
         {
-            explicit at_arc_force_nova_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {
-                _timerForce = 0;
-                _radius = 10.f;
-            }
+            if (!UpdateVictim())
+                return;
 
-            void OnUpdate(uint32 diff) override
-            {
-                _timerForce += diff;
+            events.Update(diff);
 
-                if (_timerForce >= 500)
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
                 {
-                    _timerForce = 0;
-                    
-                    for (auto & it : at->GetMap()->GetPlayers())
-                    {
-                        Player* ptr = it.GetSource();
-
-                        if (!ptr)
-                            continue;
-                        
-                        float dist = ptr->GetDistance2d(at);
-                        
-                        if (std::fabs(dist - _radius) <= 3.f)
-                            OnUnitEnter(ptr);
-                        else
-                            OnUnitExit(ptr);
-                    }
-                    _radius += 4.f;
+                case EVENT_1:
+                    DoCast(193942);
+                    events.RescheduleEvent(EVENT_1, 30000);
+                    break;
+                case EVENT_2:
+                    DoCast(193938);
+                    events.RescheduleEvent(EVENT_2, 16000);
+                    break;
                 }
             }
-            
-            void OnUnitEnter(Unit* target) override
-            {
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                {
-                    //float dist = target->GetDistance2d(at);
-                    target->CastSpell(target, SPELL_FORCE_NOVA_DMG, true);
-                }
-            }
-
-            void OnUnitExit(Unit* target) override
-            {
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                    target->RemoveAurasDueToSpell(SPELL_FORCE_NOVA_DMG);
-            }
-
-            private:
-                uint32 _timerForce;
-                float _radius;
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_force_nova_AI(at);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_unstable_amalgamationAI(creature);
+    }
 };
 
 void AddSC_boss_advisor_vandros()
 {
     new boss_advisor_vandros();
-    new npc_arc_chrono_shard();
-    new npc_arc_timeless_wraith();
-    new at_arc_force_bomb();
-    new at_arc_force_nova();
-    new spell_vandros_force_bomb();
-    new spell_vandros_banish_in_time();
-    new spell_vandros_banish_in_time_buff();
-    new spell_vandros_banish_in_time_tele();
+    new npc_vandros_chrono_shard();
+    new spell_vandros_teleport_plr();
+    new spell_vandros_banish_in_time_timer();
     new spell_vandros_unstable_mana();
-    new spell_arc_breach();
+    new npc_unstable_amalgamation();
 }

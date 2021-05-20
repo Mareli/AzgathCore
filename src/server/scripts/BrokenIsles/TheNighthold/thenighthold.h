@@ -1,617 +1,249 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+#ifndef ThiNightholdH_
+#define ThiNightholdH_
 
-#include <G3D/Vector3.h>
-#include "MoveSplineInitArgs.h"
+// DON'T DELETE THIS ONES WITHOUT LETTING ME KNOW! blank functions atm, further implementation 
+void AddDelayedEvent(uint64 timeOffset, std::function<void()>&& function);
+void KillAllDelayedEvents();
+void AddDelayedCombat(uint64 timeOffset, std::function<void()>&& function);
+void KillAllDelayedCombats();
 
-#ifndef THE_HIGHTHOLD_H_
-#define THE_HIGHTHOLD_H_
-
-#define TNScriptName "instance_the_nighthold"
-#define DataHeader    "TN"
-
-static const Position scorpidSpawnPosition = { 133.3403f, 3399.205f, -250.1467f };
-static const Position temporalOrbsSpawnPosition = { 276.3507f, 3136.081f, -236.9497f };
-
-static const Movement::PointsArray WaypointScorpid1 =
+enum eData
 {
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 118.763f, 3426.159f, -249.845f },
-    { 119.263f, 3429.159f, -249.845f },
-    { 119.763f, 3431.659f, -249.845f },
-    { 122.4149f, 3441.74f, -250.0434f },
-    { 107.601318f, 3472.371582f, -250.146759f },
-    { 90.666519f, 3476.158203f, -250.146759f },
-    { 78.17709f, 3473.611f, -250.0633f }
+    DATA_SKORPYRON = 0,
+    DATA_ANOMALY = 1,
+    DATA_TRILLIAX = 2,
+    
+    DATA_ALURIEL = 3,
+    DATA_ETRAEUS = 4,
+    DATA_TELARN = 5,
+
+    DATA_KROSUS = 6,
+    DATA_TICHONDRIUS = 7,
+    DATA_ELISANDE = 8,
+
+    DATA_GULDAN = 9,
+    
+    MAX_ENCOUNTER,
+
+    DATA_SKORPYRON_PATH,
+    DATA_ANOMALY_SPEED,
+    DATA_ANOMALY_OVERWHELMING,
+    DATA_TRILLIAX_INTRO,
+    DATA_TRILLIAX_IMPRINT_DOOR,
+
+    DATA_STAR_AUGUR_ETRAEUS_PHASE,
+    DATA_STAR_AUGUR_ETRAEUS_GRAVITY_PULL_COUNTER,
+
+    DATA_KROSUS_PLATFORM1,
+    DATA_KROSUS_PLATFORM2,
+    DATA_KROSUS_PLATFORM3,
+    DATA_KROSUS_PLATFORM4,
+    DATA_IMAGE_OF_KADGHAR,
+    DATA_KROSUS_INTRO_TRASH,
+    DATA_CHAOS_MAGE_BELORN,
+    DATA_SUMMONER_XIV,
+    DATA_FELWEAVER_PHARAMERE,
+
+    DATA_TELARN_CALL_OF_NIGHT,
 };
 
-static const Movement::PointsArray WaypointScorpid2 =
+enum eCreatures
 {
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 120.1605f, 3426.993f, -249.8774f },
-    { 121.1605f, 3428.993f, -249.8774f },
-    { 121.6605f, 3429.993f, -249.8774f },
-    { 122.4105f, 3431.493f, -249.8774f },
-    { 123.2099f, 3433.407f, -250.1082f }
+    //General
+    NPC_TALYSRA = 110791,
+    NPC_TALYSRA_ADDS = 113608,
+    NPC_TALYSRA_ADDS_1 = 113605,
+    NPC_KHADGAR = 110792,
+
+    //Scorpyron
+    NPC_SKORPYRON = 102263,
+    NPC_CRYSTALLINE_SCORPID = 103217,
+    NPC_VOLATILE_SCORPID = 103224,
+    NPC_ACIDMAW_SCORPID = 103225,
+    NPC_CRYSTALLINE_SHARD = 103209,
+    NPC_VOLATILE_SHARD = 108132,
+    NPC_ACIDIC_SHARD = 108131,
+    NPC_ARCANE_TETHER = 103682,
+
+    //Anomaly
+    NPC_CHRONOMATIC_ANOMALY = 104415,
+    NPC_FRAGMENTED_TIME = 114671,
+    NPC_SURAMAR_TRIG = 108786,
+    NPC_THE_NIGHTWELL = 104738,
+    NPC_WANING_TIME_PARTICLE = 104676,
+    NPC_TEMPORAL_RIFT = 106878,
+
+    //Trilliax
+    NPC_TRILLIAX = 104288,
+    NPC_TRILLIAX_COPY_CLEANER = 108303, //Mythic
+    NPC_TRILLIAX_COPY_MANIAC = 108144, //Mythic
+    NPC_SLUDGERAX = 112255,
+    NPC_PUTRID_SLUDGE = 112251,
+    NPC_SUCCULENT_FEAST = 104561,
+    NPC_TOXIC_SLICE = 104547,
+    NPC_SCRUBBER = 104596,
+
+    //Spellblade Aluriel
+    NPC_SPELLBLADE_ALURIEL = 104881,
+    NPC_SPELLBLADE_ALURIEL_IMAG = 107980,
+    NPC_MARK_OF_FROST = 107694, //Trigger
+    NPC_ICY_ENCHANTMENT = 107237,
+    NPC_SEARING_BRAND = 107584, //Trigger
+    NPC_FIERY_ENCHANTMENT = 107285,
+    NPC_ARCANE_ORB = 107510,
+    NPC_ARCANE_ENCHANTMENT = 107287,
+    NPC_ICE_SHARDS = 107592, //Heroic+
+    NPC_FROST_VISUAL_1 = 108545, //Trigger. Heroic+
+    NPC_FROST_VISUAL_2 = 108546, //Trigger. Heroic+
+    NPC_FROST_VISUAL_3 = 108547, //Trigger. Heroic+
+    NPC_FROST_VISUAL_4 = 108548, //Trigger. Heroic+
+    NPC_FEL_SOUL = 115905, //Mythic
+
+    //Krosus
+    NPC_KROSUS = 101002,
+    NPC_IMGAGE_OF_KADGNAR = 110677,
+    NPC_CHAOS_MAGE_BELORN = 111225,
+    NPC_SUMMONER_XIV = 111226,
+    NPC_FELWEAVER_PHARAMERE = 111227,
+
+    //High Botanist Tel'arn
+    NPC_TELARN = 104528,
+    NPC_SOLARIST_TELARN = 109038,
+    NPC_ARCANIST_TELARN = 109040,
+    NPC_NATURALIST_TELARN = 109041,
+    NPC_CONTROLLED_CHAOS_STALKER = 109792,
+    NPC_PARASITIC_LASHER = 109075,
+    NPC_SOLAR_COLLAPSE_STALKER = 109583,
+    NPC_TOXIC_SPORE = 110125,
+    NPC_PLASMA_SPHERE = 109804,
+    NPC_CHAOS_SPHERE = 111993,
+    NPC_BOTANIST_HEALTH_CONTROLLER = 109164,
+    NPC_IMAGE_ARCANIST_TELARN = 110341,
+    NPC_DUSKWATCH_WEAVER = 112973,
+    NPC_TELARN_GENERIC_TRIGGER = 68553,  //SLG Generic MoP (Large AOI)
+
+    //Star Augur Etraeus
+    NPC_STAR_AUGUR_ETRAEUS = 103758,
+    NPC_CORONAL_EJECTION = 103790,
+    NPC_ICE_CRYSTAL = 109003,
+    NPC_EYE_OF_THE_VOID = 109082,
+    NPC_EYE_OF_THE_VOID_PASSENGER = 109088,
+    NPC_REMNANT_OF_THE_VOID = 109151,
+
+    //Tichondrius
+    NPC_TICHONDRIUS = 103685,
+    NPC_TAINTED_BLOOD = 108934,
+    NPC_FEL_SPIRE = 108625,
+    NPC_COMBAT_STALKER = 104271,
+    NPC_CARRION_NIGHTMARE = 108739,
+    NPC_PHANTASMAL_BLOODFANG = 104326,
+    NPC_FELSWORN_SPELLGUARD = 108591,
+    NPC_SIGHTLESS_WATCHER = 108593,
+
+    //Elisande <Grand Magistrix>
+    NPC_ELISANDE = 106643,
+    NPC_ELISANDE_COPY_1 = 105297, //Unk
+    NPC_ELISANDE_COPY_2 = 106330, //Unk
+    NPC_ECHO_OF_ELISANDE_RING = 105364, //ARCANETIC_RING
+    NPC_ECHO_OF_ELISANDE_SINGULAR = 105622, //SPANNING_SINGULARITY
+    NPC_ECHO_OF_ELISANDE_BEAM = 105624, //DELPHURIC_BEAM
+    NPC_ECHO_OF_ELISANDE_ORB_TRIG = 105958, //EPOCHERIC_ORB - Trigger
+    NPC_ECHO_OF_ELISANDE_ORB_VIS = 106680, //EPOCHERIC_ORB - Echo Visual
+    NPC_ARCANETIC_RING = 105315,
+    NPC_ARCANETIC_RING_2 = 105367,
+    NPC_ARCANETIC_RING_3 = 105370,
+    NPC_RECURSIVE_ELEMENTAL = 105299,
+    NPC_EXPEDIENT_ELEMENTAL = 105301,
+    NPC_EPOCHERIC_ORB_TRIGGER = 107754,
+
+    //Guldan
+    NPC_GULDAN = 104154,
+    NPC_HELLFIRE = 104396,
+    NPC_BOUNDS_OF_FEL = 104252,
+    NPC_EYE_OF_GULDAN = 105630,
+    NPC_EMPOWERED_EYE_OF_GULDAN = 106545,
+    NPC_VISUAL_SELECT = 114440,
+    NPC_KURAZMAL = 104537,
+    NPC_VETRIZ = 104536,
+    NPC_DZORIKS = 104534,
+    NPC_KHADGAR_PHASE_3 = 106522,
+    NPC_KHADGAR_FIGURE = 116153,
+    NPC_KHADGAR_FIGURE_1 = 116156,
+    NPC_CRYSTALL_OF_ILLIDAN = 114437,
+    NPC_BLACK_SOUL = 110688,
+    NPC_AZAGRIM = 105295,
+    NPC_BELTERIS = 107232,
+    NPC_DALVENGIR = 107233,
+
+    NPC_DEMON_WITHIN = 111022, // mini boss
+    NPC_SHADOW_DEMON = 111047,
+    NPC_SHADOW_SOUL = 107229,
+    NPC_PART_OF_AZZINOTH = 111070,
+    NPC_DEMONIC_ESSENCE = 111222,
+    NPC_NIGHT_SPHERE = 111054,
+    NPC_DEMON_VEHICLE = 111251,
 };
 
-static const Movement::PointsArray WaypointScorpid3 =
+enum eGameObjects
 {
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 118.763f, 3426.159f, -249.845f },
-    { 119.263f, 3429.159f, -249.845f },
-    { 119.763f, 3431.659f, -249.845f },
-    { 122.4149f, 3441.74f, -250.0434f },
-    { 101.6649f, 3480.065f, -250.0634f }
+    GO_SCORPYRON_DOOR_1 = 252105,
+    GO_SCORPYRON_DOOR_2 = 252103,
+    GO_ANOMALY_DOOR_1 = 252349,
+    GO_ANOMALY_DOOR_2 = 252348,
+    GO_TRILLIAX_DOOR_1 = 250243,
+    GO_TRILLIAX_DOOR_2 = 251397,
+    GO_TRILLIAX_DOOR_3 = 250241,
+    GO_TRILLIAX_DOOR_4 = 250242,
+    GO_STAR_AUGUR_ETRAEUS_DOOR = 248932, // 252435
+
+    GO_ANOMALY_PRE = 251519,
+
+    GO_ALURIEL_DOOR_PORTAL = 254240,
+
+    GO_KROSUS_PLATFORM1 = 247972,
+    GO_KROSUS_PLATFORM2 = 247971,
+    GO_KROSUS_PLATFORM3 = 247973,
+    GO_KROSUS_PLATFORM4 = 247970,
+    GO_KROSUS_CHEST = 248513,
+
+    GO_BOTANIST_LEFT_DOOR = 251833,
+    GO_BOTANIST_RIGHT_DOOR = 251832,
+
+    GO_EYE_OF_AMANTUL = 252318,
+    GO_ROOM = 253462,
+
+    GO_STATUE_1 = 252319,
+    GO_STATUE_2 = 251988,
+    GO_STATUE_3 = 252320,
+    GO_STATUE_4 = 252321,
+
+    //Tichondrius
+    GO_TICHONDRIUS_DOOR_1 = 253178,
+    GO_TICHONDRIUS_DOOR_2 = 251687,
+    GO_TICHONDRIUS_DOOR_3 = 253924,
+    GO_TICHONDRIUS_DOOR_4 = 253923,
+    GO_TICHONDRIUS_DOOR_5 = 251686,
+
+    //Elisande
+    GO_ELISANDE_DOOR_1 = 251612,
+    GO_ELISANDE_DOOR_2 = 252315,
+    GO_ELISANDE_DOOR_3 = 252316,
+
+    //Guldan
+    GO_GULDAN_CHEST = 266483,
 };
 
-static const Movement::PointsArray WaypointScorpid4 =
+enum eAction // actions move for talysra
 {
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 118.763f, 3426.159f, -249.845f },
-    { 119.263f, 3429.159f, -249.845f },
-    { 119.763f, 3431.659f, -249.845f },
-    { 122.4149f, 3441.74f, -250.0434f },
-    { 119.493744f, 3461.177734f, -250.145721f },
-    { 90.82813f, 3479.208f, -250.0634f }
+    ACTION_MOVE_FIRST_POINT = 0,
+    ACTION_MOVE_FIRST_BOSS,
+    ACTION_MOVE_AFTER_FIRST_BOSS,
+    ACTION_OPEN_DOOR_SECOND,
+    ACTION_MOVE_AFTER_SECOND,
+    ACTION_MOVE_AFTER_THIRD,
+    ACTION_MOVE_TO_FOURTH
 };
 
-static const Movement::PointsArray WaypointScorpid5 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.9384f, 3418.769f, -249.8703f },
-    { 104.1884f, 3414.019f, -249.8703f },
-    { 98.76563f, 3411.96f, -250.094f },
-    { 59.93056f, 3424.537f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid6 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.3602f, 3423.155f, -249.8672f },
-    { 121.1094f, 3424.732f, -250.0877f }
-};
-
-static const Movement::PointsArray WaypointScorpid7 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.9384f, 3418.769f, -249.8703f },
-    { 104.1884f, 3414.019f, -249.8703f },
-    { 98.76563f, 3411.96f, -250.094f },
-    { 84.27084f, 3405.892f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid8 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 113.5f, 3419.552f, -249.8732f },
-    { 100.75f, 3413.552f, -249.8732f },
-    { 91.38889f, 3409.027f, -250.0998f }
-};
-
-static const Movement::PointsArray WaypointScorpid9 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.796f, 3427.591f, -249.8339f },
-    { 120.796f, 3430.341f, -249.8339f },
-    { 122.796f, 3437.341f, -249.8339f },
-    { 124.046f, 3440.591f, -249.8339f },
-    { 124.9809f, 3443.604f, -250.0211f }
-};
-
-static const Movement::PointsArray WaypointScorpid10 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.3498f, 3418.302f, -249.6507f },
-    { 104.8498f, 3413.552f, -249.9007f },
-    { 98.08854f, 3411.026f, -250.1548f },
-    { 73.299416f, 3414.603760f, -250.154800f },
-    { 61.618927f, 3429.193115f, -250.154800f },
-    { 60.8941f, 3456.313f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid11 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 111.6745f, 3417.404f, -249.8632f },
-    { 104.2378f, 3412.229f, -250.0798f }
-};
-
-static const Movement::PointsArray WaypointScorpid12 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.2795f, 3426.869f, -249.8451f },
-    { 120.0295f, 3429.869f, -249.8451f },
-    { 120.5295f, 3432.619f, -249.8451f },
-    { 122.9479f, 3441.66f, -250.0435f },
-    { 121.5347f, 3458.441f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid13 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 116.1736f, 3419.587f, -250.0128f },
-};
-
-static const Movement::PointsArray WaypointScorpid14 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.3498f, 3418.302f, -249.6507f },
-    { 104.8498f, 3413.552f, -249.9007f },
-    { 98.08854f, 3411.026f, -250.1548f },
-    { 77.574356f, 3413.180420f, -250.154800f },
-    { 64.107910f, 3425.887207f, -250.154800f },
-    { 53.85938f, 3452.537f, -250.0114f }
-};
-
-static const Movement::PointsArray WaypointScorpid15 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.9384f, 3418.769f, -249.8703f },
-    { 104.1884f, 3414.019f, -249.8703f },
-    { 98.76563f, 3411.96f, -250.094f },
-    { 80.56077f, 3411.691f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid16 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 118.763f, 3426.159f, -249.845f },
-    { 119.263f, 3429.159f, -249.845f },
-    { 119.763f, 3431.659f, -249.845f },
-    { 122.4149f, 3441.74f, -250.0434f },
-    { 121.245682f, 3457.032471f, -250.146530f },
-    { 111.104828f, 3469.851318f, -250.146530f },
-    { 80.73264f, 3479.064f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid17 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.3498f, 3418.302f, -249.6507f },
-    { 104.8498f, 3413.552f, -249.9007f },
-    { 98.08854f, 3411.026f, -250.1548f },
-    { 77.227753f, 3412.726563f, -250.146362f },
-    { 64.043083f, 3425.474854f, -250.146362f },
-    { 57.83681f, 3444.625f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid18 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.2795f, 3426.869f, -249.8451f },
-    { 120.0295f, 3429.869f, -249.8451f },
-    { 120.5295f, 3432.619f, -249.8451f },
-    { 122.9479f, 3441.66f, -250.0435f },
-    { 121.265633f, 3457.291016f, -250.145828f },
-    { 105.1563f, 3475.252f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid19 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 111.127f, 3416.625f, -249.7489f },
-    { 104.627f, 3411.875f, -249.9989f },
-    { 98.14284f, 3406.671f, -249.8512f }
-};
-
-static const Movement::PointsArray WaypointScorpid20 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.3498f, 3418.302f, -249.6507f },
-    { 104.8498f, 3413.552f, -249.9007f },
-    { 98.08854f, 3411.026f, -250.1548f },
-    { 79.620987f, 3412.137939f, -250.154800f },
-    { 68.004456f, 3418.307129f, -250.154800f },
-    { 54.29688f, 3438.09f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid21 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.3498f, 3418.302f, -249.6507f },
-    { 104.8498f, 3413.552f, -249.9007f },
-    { 98.08854f, 3411.026f, -250.1548f },
-    { 80.171112f, 3411.329590f, -250.154800f },
-    { 64.585449f, 3424.050537f, -250.154800f },
-    { 58.426178f, 3441.659424f, -250.154800f },
-    { 62.34028f, 3463.875f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid22 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 120.6181f, 3428.603f, -250.0651f },
-    { 121.6181f, 3431.103f, -249.8151f },
-    { 122.8681f, 3434.353f, -249.8151f },
-    { 128.125f, 3447.628f, -249.9836f }
-};
-
-static const Movement::PointsArray WaypointScorpid23 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 118.763f, 3426.159f, -249.845f },
-    { 119.263f, 3429.159f, -249.845f },
-    { 119.763f, 3431.659f, -249.845f },
-    { 122.4149f, 3441.74f, -250.0434f },
-    { 122.948242f, 3454.770020f, -250.146545f },
-    { 113.697266f, 3467.749756f, -250.146545f },
-    { 97.3941f, 3475.97f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid24 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.2795f, 3426.869f, -249.8451f },
-    { 120.0295f, 3429.869f, -249.8451f },
-    { 120.5295f, 3432.619f, -249.8451f },
-    { 122.9479f, 3441.66f, -250.0435f },
-    { 123.096268f, 3453.047852f, -250.146423f },
-    { 112.0208f, 3474.897f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid25 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.2795f, 3426.869f, -249.8451f },
-    { 120.0295f, 3429.869f, -249.8451f },
-    { 120.5295f, 3432.619f, -249.8451f },
-    { 122.9479f, 3441.66f, -250.0435f },
-    { 127.1858f, 3453.653f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid26 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.9384f, 3418.769f, -249.8703f },
-    { 104.1884f, 3414.019f, -249.8703f },
-    { 98.76563f, 3411.96f, -250.094f },
-    { 83.821014f, 3411.038330f, -250.146698f },
-    { 69.824844f, 3418.261230f, -250.146698f },
-    { 60.54167f, 3433.258f, -250.0633f }
-};
-
-static const Movement::PointsArray WaypointScorpid27 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 119.2795f, 3426.869f, -249.8451f },
-    { 120.0295f, 3429.869f, -249.8451f },
-    { 120.5295f, 3432.619f, -249.8451f },
-    { 122.9479f, 3441.66f, -250.0435f },
-    { 124.5417f, 3462.165f, -250.0634f }
-};
-
-static const Movement::PointsArray WaypointScorpid28 =
-{
-    { 132.6806f, 3400.784f, -250.1467f },
-    { 127.6649f, 3408.174f, -250.1467f },
-    { 120.099f, 3419.889f, -250.1467f },
-    { 119.1458f, 3420.806f, -250.1467f },
-    { 117.6111f, 3421.578f, -250.1467f },
-    { 112.9384f, 3418.769f, -249.8703f },
-    { 104.1884f, 3414.019f, -249.8703f },
-    { 98.76563f, 3411.96f, -250.094f },
-    { 71.3125f, 3411.25f, -250.0413f }
-};
-
-static const std::vector<Movement::PointsArray> scorpidsPath =
-{
-    WaypointScorpid1,
-    WaypointScorpid2,
-    WaypointScorpid3,
-    WaypointScorpid4,
-    WaypointScorpid5,
-    WaypointScorpid6,
-    WaypointScorpid7,
-    WaypointScorpid8,
-    WaypointScorpid9,
-    WaypointScorpid10,
-    WaypointScorpid11,
-    WaypointScorpid12,
-    WaypointScorpid13,
-    WaypointScorpid14,
-    WaypointScorpid15,
-    WaypointScorpid16,
-    WaypointScorpid17,
-    WaypointScorpid18,
-    WaypointScorpid19,
-    WaypointScorpid20,
-    WaypointScorpid21,
-    WaypointScorpid22,
-    WaypointScorpid23,
-    WaypointScorpid24,
-    WaypointScorpid25,
-    WaypointScorpid26,
-    WaypointScorpid27,
-    WaypointScorpid28
-};
-
-static const Movement::PointsArray WaypointChronomaticAnomaly =
-{
-    { 242.7361f, 3169.684f, -234.9167f },
-    { 258.3084f, 3180.089f, -236.8933f },
-    { 276.6773f, 3183.743f, -236.8933f },
-    { 295.0461f, 3180.089f, -236.8933f },
-    { 310.6184f, 3169.684f, -236.8933f },
-    { 321.0235f, 3154.112f, -236.8933f },
-    { 324.6772f, 3135.743f, -236.8933f },
-    { 321.0234f, 3117.374f, -236.8933f },
-    { 310.6183f, 3101.802f, -236.8933f },
-    { 295.046f, 3091.397f, -236.8933f },
-    { 276.6772f, 3087.743f, -236.8933f },
-    { 258.3084f, 3091.397f, -236.8933f },
-    { 242.7361f, 3101.802f, -236.8933f },
-};
-
-static const Position temporalOrbsDestPositions[72] =
-{
-    { 191.4979f, 3220.934f, -236.9497f },
-    { 178.0525f, 3204.91f, -236.9497f },
-    { 167.5938f, 3186.795f, -236.9497f },
-    { 160.4396f, 3167.139f, -236.9497f },
-    { 156.8073f, 3146.54f, -236.9497f },
-    { 156.8073f, 3125.622f, -236.9497f },
-    { 160.4396f, 3105.022f, -236.9497f },
-    { 167.5938f, 3085.367f, -236.9497f },
-    { 178.0525f, 3067.252f, -236.9497f },
-    { 191.4979f, 3051.228f, -236.9497f },
-    { 207.5215f, 3037.782f, -236.9497f },
-    { 225.6365f, 3027.324f, -236.9497f },
-    { 245.2924f, 3020.17f, -236.9497f },
-    { 265.892f, 3016.537f, -236.9497f },
-    { 286.8094f, 3016.537f, -236.9497f },
-    { 307.409f, 3020.17f, -236.9497f },
-    { 327.0649f, 3027.324f, -236.9497f },
-    { 345.1799f, 3037.782f, -236.9497f },
-    { 361.2035f, 3051.228f, -236.9497f },
-    { 374.649f, 3067.252f, -236.9497f },
-    { 385.1076f, 3085.367f, -236.9497f },
-    { 392.2618f, 3105.022f, -236.9497f },
-    { 395.8941f, 3125.622f, -236.9497f },
-    { 395.8941f, 3146.54f, -236.9497f },
-    { 392.2618f, 3167.139f, -236.9497f },
-    { 385.1076f, 3186.795f, -236.9497f },
-    { 374.649f, 3204.91f, -236.9497f },
-    { 361.2035f, 3220.934f, -236.9497f },
-    { 345.1799f, 3234.379f, -236.9497f },
-    { 327.0649f, 3244.838f, -236.9497f },
-    { 307.409f, 3251.992f, -236.9497f },
-    { 286.8094f, 3255.624f, -236.9497f },
-    { 265.892f, 3255.624f, -236.9497f },
-    { 245.2924f, 3251.992f, -236.9497f },
-    { 225.6365f, 3244.838f, -236.9497f },
-    { 207.5215f, 3234.379f, -236.9497f },
-    { 297.1885f, 3017.904f, -236.9497f },
-    { 317.3931f, 3023.318f, -236.9497f },
-    { 336.3507f, 3032.158f, -236.9497f },
-    { 353.4852f, 3044.156f, -236.9497f },
-    { 368.276f, 3058.946f, -236.9497f },
-    { 380.2737f, 3076.081f, -236.9497f },
-    { 389.1138f, 3095.038f, -236.9497f },
-    { 394.5276f, 3115.243f, -236.9497f },
-    { 396.3507f, 3136.081f, -236.9497f },
-    { 394.5276f, 3156.919f, -236.9497f },
-    { 389.1138f, 3177.123f, -236.9497f },
-    { 380.2737f, 3196.081f, -236.9497f },
-    { 368.276f, 3213.215f, -236.9497f },
-    { 353.4852f, 3228.006f, -236.9497f },
-    { 336.3507f, 3240.004f, -236.9497f },
-    { 317.3931f, 3248.844f, -236.9497f },
-    { 297.1885f, 3254.258f, -236.9497f },
-    { 276.3507f, 3256.081f, -236.9497f },
-    { 255.5129f, 3254.258f, -236.9497f },
-    { 235.3083f, 3248.844f, -236.9497f },
-    { 216.3507f, 3240.004f, -236.9497f },
-    { 199.2162f, 3228.006f, -236.9497f },
-    { 184.4254f, 3213.215f, -236.9497f },
-    { 172.4277f, 3196.081f, -236.9497f },
-    { 163.5876f, 3177.123f, -236.9497f },
-    { 158.1738f, 3156.919f, -236.9497f },
-    { 156.3507f, 3136.081f, -236.9497f },
-    { 158.1738f, 3115.243f, -236.9497f },
-    { 163.5876f, 3095.038f, -236.9497f },
-    { 172.4277f, 3076.081f, -236.9497f },
-    { 184.4254f, 3058.946f, -236.9497f },
-    { 199.2162f, 3044.156f, -236.9497f },
-    { 216.3507f, 3032.158f, -236.9497f },
-    { 235.3083f, 3023.318f, -236.9497f },
-    { 255.5129f, 3017.904f, -236.9497f },
-    { 276.3507f, 3016.081f, -236.9497f }
-};
-
-static const Position waningTimeParticleSpawnPositions[2] =
-{
-    { 254.769836f, 3092.668213f, -237.012711f },
-    { 296.969727f, 3179.675293f, -237.012833f }
-};
-
-static const Movement::PointsArray WaypointAlurielAnomaly =
-{
-    { 360.707f, 3290.48f, 142.136f },
-    { 345.7813f, 3282.544f,  142.1351f },
-    { 336.8507f, 3255.997f,  142.1367f },
-    { 349.757f, 3225.975f,   142.1367f },
-    { 367.8663f, 3206.712f, 142.1367f },
-    { 409.394f, 3195.435f, 142.1367f },
-    { 438.277f, 3212.269f, 142.1367f },
-    { 443.168f, 3239.752f, 142.1367f },
-    { 427.967f, 3273.432f, 142.1367f },
-    { 399.971f, 3290.818f, 142.1367f },
-};
-
-enum TheNightholdDataTypes
-{
-    DATA_CAGE_REMATCH               = 1,
-    DATA_TORM_THE_BRUTE             = 2,
-    DATA_SLIME_POOL                 = 3,
-};
-
-enum TheNightholdGuidData
-{
-    DATAGUID_THE_NIGHTWELL          = 1,
-    DATAGUID_TRILLAX                = 2,
-};
-
-enum TheNightholdNPCs
-{
-    NPC_CRYSTALLINE_SCORPID         = 103217,
-    NPC_CRYSTALLINE_SHARD           = 103209,
-    NPC_FRAGMENTED_TIME_PARTICLE    = 114671,
-    NPC_THE_NIGHTWELL               = 104738,
-    NPC_TRILLAX                     = 104288,
-};
-
-enum TheNightholdGOBs
-{
-    GO_SKORPYRON_DOOR_01            = 252105,
-    GO_SKORPYRON_DOOR_02            = 252103,
-    GO_TORM_THE_BRUTE_DOOR          = 251519,
-    GO_CHRONOMATIC_ANOMALY_01       = 252349,
-    GO_CHRONOMATIC_ANOMALY_02       = 252348,
-    GO_TRILLIAX_DOOR_01             = 251397,
-    GO_TRILLIAX_DOOR_02             = 250243,
-};
-
-enum TheNightholdBosses
-{
-    BOSS_SKORPYRON                  = 0,
-    BOSS_CHRONOMATIC_ANOMALY        = 1,
-    BOSS_TRILLIAX                   = 2,
-    BOSS_ALURIEL                    = 3,
-    MAX_ENCOUNTER
-};
-
-enum TheNightholdAchievements
-{
-    ACHIEVEMENT_CAGE_REMATCH        = 10678,
-};
-
-template<class AI, class T>
-inline AI* GetTheNightholdAI(T* obj)
-{
-    return GetInstanceAI<AI>(obj, TNScriptName);
-}
+#define NightholdScriptName "instance_the_nightnold"
 
 #endif

@@ -1,492 +1,644 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "SpellHistory.h"
-#include <G3D/Vector3.h>
 #include "violet_hold_assault.h"
-
-enum Spells
-{
-    // Millificient Manastorm
-    SPELL_ELEMENTIUM_SQUIRREL_BOMB              = 201240,
-    SPELL_THORIUM_ROCKET_CHICKEN                = 201392,
-    SPELL_OVERLOADED_ELEMENTIUM_SQUIRREL_BOMB   = 201432,
-    SPELL_REINFORCED_THORIUM_ROCKET_CHICKEN     = 201438,
-    SPELL_DELTA_FINGER_LASER_X                  = 201159,
-    SPELL_HYPER_ZAP_ULTIMATE_MARK               = 202310,
-    SPELL_MEGA_MINIATURIZATION                  = 201581,
-    SPELL_MILLIFICENT_RAGE                      = 201572,
-
-    // Squirrel Bomb
-    SPELL_EXPLOSION                             = 201291,
-    SPELL_DISARMING                             = 201265,
-    SPELL_OVERLOADED                            = 201434,
-
-    // Rocket Chicken
-    SPELL_ROCKET_CHICKEN_ROCKET                 = 201369,
-    SPELL_CHICKEN_SWARN_ROCKETS                 = 201356,
-    SPELL_CHICKEN_SWARN_ROCKETS_TRIGGER         = 201384,
-    SPELL_CHICKEN_SWARN_ROCKETS_TARGETING       = 201385,
-    SPELL_CHICKEN_SWARN_ROCKETS_TARGETING_2     = 201386,
-    SPELL_CHICKEN_SWARN_DMG                     = 201387,
-    SPELL_THORIUM_PLATING                       = 201441,
-
-    // Mechanical Bomb Squirrel
-    SPELL_BOMB_SQUIRREL_BOMB                    = 201302,
-};
-
-enum Events
-{
-    // Millificent
-    EVENT_ELEMENTIUM_SQUIRREL_BOMB  = 1,
-    EVENT_THORIUM_ROCKET_CHICKEN    = 2,
-    EVENT_DELTA_FINGER_LASER_X      = 3,
-    EVENT_END_COMBAT                = 4,
-
-    // Squirrel Bomb
-    EVENT_OVERLOADED                = 5,
-
-    // Mechanical Squirrel Bomb
-    EVENT_BOMB_SQUIRREL_BOMB        = 6,
-
-    // Thorium Rocket Chicken
-    EVENT_SWARN_ROCKETS             = 7,
-    EVENT_ROCKET_CHICKEN_ROCKET     = 8,
-};
-
-enum Adds
-{
-    NPC_THORIUM_ROCKET_CHICKEN              = 102103,
-    NPC_ELEMENTIUM_SQUIRREL_BOMB            = 102043,
-    NPC_MECHANICAL_BOMB_SQUIRELL            = 102137,
-    NPC_OVERLOADED_ELEMENTIUM_SQUIRELL_BOMB = 102136,
-    NPC_REINFORCED_THORIUM_ROCKET_CHICKEN   = 102139,
-};
 
 enum Says
 {
-    SAY_INTRO_1     = 0,
-    SAY_INTRO_2     = 1,
-    SAY_AGGRO       = 2,
-    SAY_SQUIRREL    = 3,
-    SAY_CHICKEN     = 4,
-    SAY_INSULT      = 5,
-    SAY_INSULT_2    = 6,
-    SAY_WIPE        = 7,
-    SAY_DEFEAT      = 8,
+    SAY_AGGRO = 2,
+    SAY_DEATH = 7,
 };
 
+enum Spells
+{
+    SPELL_FINGER_LASER = 201159, //Delta Finger Laser X-treme!!!
+    SPELL_ELEMENTIUM_BOMB = 201240,
+    SPELL_OVERLOADED_E_BOMB = 201432,
+    SPELL_ROCKET_CHICKEN = 201392,
+    SPELL_REINFORCED_ROCKET_CHICKEN = 201438,
+    SPELL_MILLIFICENTS_RAGE = 201572,
+    SPELL_MILLIFICENTS_ANGRY = 201491,
+
+    //Summons
+    SPELL_EXPLOSION = 201291,
+    SPELL_DISARMING = 201265,
+    SPELL_EJECT_ALL_PASSENGERS = 158747,
+    SPELL_SQUIRREL_SEARCH = 201305,
+    SPELL_SQUIRREL_CHARGE = 201302,
+    SPELL_OVERLOADED = 201434,
+    SPELL_OVERLOADED_SUM = 201436,
+
+    SPELL_CHICKEN_SWARM_ROCKETS = 201356,
+    SPELL_SWARM_ROCKETS_SEARCH = 201386,
+    SPELL_SWARM_ROCKETS_DMG = 201387,
+    SPELL_ROCKET_CHICKEN_ROCKET = 201369,
+    SPELL_THORIUM_PLATING = 201441,
+
+    //?
+    SPELL_MILLIFICENTS_IRE = 208114,
+};
+
+enum eEvents
+{
+    EVENT_FINGER_LASER = 1,
+    EVENT_ELEMENTIUM_BOMB = 2,
+    EVENT_ROCKET_CHICKEN = 3,
+
+    EVENT_1,
+    EVENT_2,
+};
+
+enum Misc
+{
+    DATA_ANGRY,
+};
+
+//101976
 class boss_millificent_manastorm : public CreatureScript
 {
-    public:
-        boss_millificent_manastorm() : CreatureScript("boss_millificent_manastorm")
-        {}
+public:
+    boss_millificent_manastorm() : CreatureScript("boss_millificent_manastorm") {}
 
-        struct boss_millificent_manastorm_AI : public BossAI
+    struct boss_millificent_manastormAI : public BossAI
+    {
+        boss_millificent_manastormAI(Creature* creature) : BossAI(creature, DATA_MILLIFICENT), enrage(false), timer(0), phase(0), event(false), end(false), check(false)
         {
-            boss_millificent_manastorm_AI(Creature* creature) : BossAI(creature, DATA_MANASTORM)
-            {}
+            me->SetReactState(REACT_PASSIVE);
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+            removeloot = false;
+            angrycomplete = false;
+        }
 
-            void Reset() override
+        bool enrage;
+        bool removeloot;
+        bool angrycomplete;
+
+        uint32 timer;
+        uint32 phase;
+        uint32 CheckTimer;
+        uint8 emoteRec;
+        bool event;
+        bool end;
+        bool check;
+        // Creature* image;
+        ObjectGuid imageGUID;
+
+        void Initialize()
+        {
+            CheckTimer = 2000;
+        }
+
+        uint32 GetData(uint32 type) const override
+        {
+            switch (type)
             {
-                _Reset();
+            case DATA_ANGRY:
+                return angrycomplete ? 1 : 0;
             }
 
-            void JustReachedHome() override
+            return 0;
+        }
+
+        void Reset() override
+        {
+            enrage = false;
+            angrycomplete = false;
+
+            timer = 0;
+            phase = 0;
+            event = false;
+            end = false;
+            check = false;
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+        {
+            ZoneTalk(SAY_AGGRO, nullptr);
+            events.RescheduleEvent(EVENT_FINGER_LASER, 6000); //47:53, 48:00, 48:09, 48:19, 48:27
+            events.RescheduleEvent(EVENT_ELEMENTIUM_BOMB, 7000); //47:54, 48:15, 48:33, 48:51
+            events.RescheduleEvent(EVENT_ROCKET_CHICKEN, 24000); //48:11, 48:30, 48:48
+            phase = 4;
+            timer = 5000;
+            event = true;
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            if (removeloot)
+                me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage)
+        {
+            if (me->HealthBelowPct(50) && !enrage)
             {
-                Talk(SAY_WIPE);
-                _JustReachedHome();
+                enrage = true;
+                if (!ObjectAccessor::GetCreature(*me, imageGUID))
+                    DoCast(me, SPELL_MILLIFICENTS_RAGE, true);
+                phase = 8;
+                timer = 1000;
+                event = true;
+
             }
 
-            void EnterCombat(Unit* /**/) override
+            if (me->HealthBelowPct(9) && !end)
             {
-                Talk(SAY_AGGRO);
-                _EnterCombat();
-                _enraged = false;
-                _ended = false;
-                events.ScheduleEvent(EVENT_ELEMENTIUM_SQUIRREL_BOMB, Seconds(10));
-                events.ScheduleEvent(EVENT_THORIUM_ROCKET_CHICKEN, Seconds(25));
-                events.ScheduleEvent(EVENT_DELTA_FINGER_LASER_X, Seconds(5));
-            }
-
-            void DamageTaken(Unit* /**/, uint32 & damage) override
-            {
-                if (me->HealthBelowPct(45) && !_enraged)
+                if (Creature* image = ObjectAccessor::GetCreature(*me, imageGUID))
                 {
-                    _enraged = true;
-                    DoCast(me, SPELL_MILLIFICENT_RAGE, true);
-                }
-                else if (me->HealthBelowPct(10) && !_ended)
-                {
-                    _ended = true;
-                    damage = 0;
-                    _killer = me->GetVictim();
-                    me->SetReactState(REACT_PASSIVE);
+                    end = true;
                     me->AttackStop();
-                    me->CastStop();
-                    me->AddUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
-                    Talk(SAY_DEFEAT);
-                    DoCast(me, SPELL_HYPER_ZAP_ULTIMATE_MARK);
-                    events.ScheduleEvent(EVENT_END_COMBAT, Seconds(2));
+                    // me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
+                    image->AI()->ZoneTalk(7, nullptr);
+                    DoCast(202310); // stun
+                    phase = 13;
+                    timer = 5000;
+                    event = true;
+
+                }
+
+                if (me->AI()->GetData(DATA_ANGRY) && end)
+                    instance->DoUpdateAchievementCriteria(CRITERIA_TYPE_BE_SPELL_TARGET, 208122);
+            }
+        }
+
+        void DoAction(int32 const action) override
+        {
+            if (action == ACTION_REMOVE_LOOT)
+                removeloot = true;
+
+            if (action == 1)
+            {
+                timer = 6000;
+                phase = 1;
+                if (Creature* image = me->SummonCreature(102040, 4627.0f, 4060.36f, 82.63f, 5.46f))
+                {
+                    image->CastSpell(image, 201239);
+                    imageGUID = image->GetGUID();
+                }
+                ZoneTalk(0, nullptr);
+                event = true;
+            }
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type != POINT_MOTION_TYPE)
+                return;
+
+            if (id == 2 && !check)
+            {
+                check = true;
+                DoCast(201581);
+                if (Creature* image = ObjectAccessor::GetCreature(*me, imageGUID))
+                    image->AI()->ZoneTalk(8, nullptr);
+                    //me->SummonGameObject(246430, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation(), 0, 0, 0, 0, DAY);
+            }
+        }
+
+        void ReceiveEmote(Player* player, uint32 textEmote) override
+        {
+            if (textEmote == TEXT_EMOTE_LAUGH && !angrycomplete)
+            {
+                ++emoteRec;
+                if (emoteRec >= 5)
+                {
+                    DoCast(player, SPELL_MILLIFICENTS_ANGRY, true);
+                    DoCast(player, SPELL_MILLIFICENTS_RAGE, true);
+                    angrycomplete = true;
+                }
+            }
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (spell->Id == 201581)
+            {
+                me->GetMotionMaster()->MovePoint(2, 4555.65f, 4014.96f, 83.67f);
+                phase = 15;
+                timer = 13000;
+                event = true;
+            }
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (event)
+            {
+                if (Creature* image = ObjectAccessor::GetCreature(*me, imageGUID))
+                {
+                    switch (phase)
+                    {
+                    case 1:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(0, nullptr);
+                            phase++;
+                            timer = 8000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 2:
+                        if (timer < diff) {
+                            ZoneTalk(1, nullptr);
+                            phase++;
+                            timer = 7000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 3:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(1, nullptr);
+                            phase = 0;
+                            timer = 8000;
+                            event = false;
+                            me->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+                            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                            me->SetReactState(REACT_AGGRESSIVE);
+                        }
+                        else timer -= diff;
+                        break;
+                    case 4:
+                        if (timer < diff) {
+                            ZoneTalk(3, nullptr);
+                            phase++;
+                            timer = 5000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 5:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(2, nullptr);
+                            phase++;
+                            timer = 13000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 6:
+                        if (timer < diff) {
+                            ZoneTalk(4, nullptr);  // Here comes the heat!
+                            phase++;
+                            timer = 5000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 7:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(3, nullptr);
+                            phase = 0;
+                            timer = 6000;
+                            event = false;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 8:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(4, nullptr);
+                            phase++;
+                            timer = 6000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 9:
+                        if (timer < diff) {
+                            ZoneTalk(5, nullptr);
+                            DoCast(me, SPELL_MILLIFICENTS_RAGE, true);
+                            phase++;
+                            timer = 5000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 10:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(5, nullptr);
+                            phase++;
+                            timer = 6000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 11:
+                        if (timer < diff) {
+                            ZoneTalk(6, nullptr);
+                            phase++;
+                            timer = 4000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 12:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(6, nullptr);
+                            phase = 0;
+                            timer = 6000;
+                            event = false;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 13:
+                        if (timer < diff) {
+                            ZoneTalk(7, nullptr);
+                            me->RemoveAurasDueToSpell(SPELL_MILLIFICENTS_RAGE);
+                            phase++;
+                            timer = 500;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 14:
+                        if (timer < diff) {
+                            me->GetMotionMaster()->MovePoint(2, 4596.99f, 4014.73f, 83.31f);
+                            phase = 0;
+                            timer = 5000;
+                            event = false;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 15:
+                        if (timer < diff) {
+                            image->AI()->ZoneTalk(9, nullptr);
+                            image->GetMotionMaster()->MovePoint(0, 4596.92f, 4015.52f, 83.31f);
+                            phase++;
+                            timer = 12000;
+                        }
+                        else timer -= diff;
+                        break;
+                    case 16:
+                        if (timer < diff) {
+                            image->SetOrientation(0.07f);
+                            image->AI()->ZoneTalk(10, nullptr);
+                            image->DespawnOrUnsummon(6000);
+                            instance->SetBossState(DATA_MILLIFICENT, DONE);
+                            me->SetVisible(false);
+                            phase = 0;
+                            timer = 5000;
+                            event = false;
+                        }
+                        else timer -= diff;
+                        break;
+                    }
                 }
             }
 
-            void ExecuteEvent(uint32 eventId) override
-            {
-                me->GetSpellHistory()->ResetAllCooldowns();
+            if (!UpdateVictim())
+                return;
 
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (end)
+                return;
+
+            if (CheckTimer <= diff)
+            {
+                if (me->IsInCombat() && me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC && !angrycomplete)
+                {
+                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                        if (Player* player = itr->GetSource())
+                            if (player->HasAura(176180) && !player->HasAura(201491))
+                            {
+                                angrycomplete = true;
+                                me->AddAura(201491, player);
+                                DoCast(me, SPELL_MILLIFICENTS_RAGE, true);
+                            }
+
+                }
+                CheckTimer = 2000;
+            }
+            else CheckTimer -= diff;
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
                 switch (eventId)
                 {
-                    case EVENT_ELEMENTIUM_SQUIRREL_BOMB:
-                    {
-                        Talk(SAY_SQUIRREL);
-
-                        if (_enraged)
-                            DoCast(SPELL_OVERLOADED_ELEMENTIUM_SQUIRREL_BOMB);
-                        else
-                            DoCast(SPELL_ELEMENTIUM_SQUIRREL_BOMB);
-
-                        events.ScheduleEvent(EVENT_ELEMENTIUM_SQUIRREL_BOMB, Seconds(15));
-                        break;
-                    }
-
-                    case EVENT_THORIUM_ROCKET_CHICKEN:
-                    {
-                        Talk(SAY_CHICKEN);
-
-                        if (_enraged)
-                            DoCast(SPELL_REINFORCED_THORIUM_ROCKET_CHICKEN);
-                        else
-                            DoCast(SPELL_THORIUM_ROCKET_CHICKEN);
-                        events.ScheduleEvent(EVENT_THORIUM_ROCKET_CHICKEN, Seconds(20));
-                        break;
-                    }
-
-                    case EVENT_DELTA_FINGER_LASER_X:
-                    {
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.f, true))
-                            DoCast(target, SPELL_DELTA_FINGER_LASER_X);
-                        events.ScheduleEvent(EVENT_DELTA_FINGER_LASER_X, Seconds(10));
-                        break;
-                    }
-
-                    case EVENT_END_COMBAT:
-                    {
-                        DoCast(me, SPELL_MEGA_MINIATURIZATION);
-                        instance->SetBossState(DATA_MANASTORM, DONE);
-                        me->DespawnOrUnsummon(Seconds(5));
-                        break;
-                    }
+                case EVENT_FINGER_LASER:
+                    if (Unit* pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
+                        DoCast(pTarget, SPELL_FINGER_LASER);
+                    events.RescheduleEvent(EVENT_FINGER_LASER, 7000);
+                    break;
+                case EVENT_ELEMENTIUM_BOMB:
+                    if (!me->HasAura(SPELL_MILLIFICENTS_RAGE))
+                        DoCast(SPELL_ELEMENTIUM_BOMB);
+                    else
+                        DoCast(SPELL_OVERLOADED_E_BOMB);
+                    events.RescheduleEvent(EVENT_ELEMENTIUM_BOMB, 18000);
+                    break;
+                case EVENT_ROCKET_CHICKEN:
+                    if (!me->HasAura(SPELL_MILLIFICENTS_RAGE))
+                        DoCast(SPELL_ROCKET_CHICKEN);
+                    else
+                        DoCast(SPELL_REINFORCED_ROCKET_CHICKEN);
+                    events.RescheduleEvent(EVENT_ROCKET_CHICKEN, 18000);
+                    break;
                 }
             }
-
-            private:
-                bool _enraged, _ended;
-                Unit* _killer;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new boss_millificent_manastorm_AI(creature);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new boss_millificent_manastormAI(creature);
+    }
 };
 
-class npc_vha_squirrel_bomb : public CreatureScript
+//102043, 102136
+class npc_millificent_elementium_squirrel_bomb : public CreatureScript
 {
-    public:
-        npc_vha_squirrel_bomb() : CreatureScript("npc_vha_squirrel_bomb")
-        {}
+public:
+    npc_millificent_elementium_squirrel_bomb() : CreatureScript("npc_millificent_elementium_squirrel_bomb") {}
 
-        struct npc_vha_squirrel_bomb_AI : public ScriptedAI
+    bool OnGossipHello(Player* player, Creature* me)
+    {
+        player->CastSpell(me, SPELL_DISARMING);
+        return true;
+    }
+
+    struct npc_millificent_elementium_squirrel_bombAI : public ScriptedAI
+    {
+        npc_millificent_elementium_squirrel_bombAI(Creature* creature) : ScriptedAI(creature), disarmed(false), diedTimer(0)
         {
-            npc_vha_squirrel_bomb_AI(Creature* creature) : ScriptedAI(creature)
-            {}
-
-            void IsSummonedBy(Unit* /**/) override
-            {
-                if (me->GetEntry() == NPC_OVERLOADED_ELEMENTIUM_SQUIRELL_BOMB)
-                    DoCast(me, SPELL_OVERLOADED, true);
-
-                DoCast(me, SPELL_EXPLOSION);
-                _events.ScheduleEvent(EVENT_OVERLOADED, Seconds(10));
-            }
-
-            void SpellHit(Unit* /**/, SpellInfo const* spell) override
-            {
-                if (!spell)
-                    return;
-
-                if (spell->Id == SPELL_DISARMING)
-                {
-                    me->CastStop();
-                    DoCast(me, SPELL_OVERLOADED);
-                    me->AddUnitFlag2(UNIT_FLAG2_FEIGN_DEATH);
-                    me->DespawnOrUnsummon(Seconds(7));
-                }
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                _events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = _events.ExecuteEvent())
-                {
-                    if (eventId == EVENT_OVERLOADED)
-                    {
-                        DoCast(me, SPELL_OVERLOADED);
-                        me->AddUnitFlag2(UNIT_FLAG2_FEIGN_DEATH);
-                        me->DespawnOrUnsummon(Seconds(6));
-                    }
-                }
-            }
-
-            private:
-                EventMap _events;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_vha_squirrel_bomb_AI(creature);
+            me->SetReactState(REACT_PASSIVE);
+            me->SetNpcFlags(UNIT_NPC_FLAG_SPELLCLICK);
         }
-};
 
-class npc_vha_mechanical_squirrel_bomb : public CreatureScript
-{
-    public:
-        npc_vha_mechanical_squirrel_bomb() : CreatureScript("npc_vha_mechanical_squirrel_bomb")
-        {}
+        bool disarmed;
+        uint16 diedTimer;
 
-        struct npc_vha_mechanical_squirrel_bomb_AI : public ScriptedAI
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
         {
-            npc_vha_mechanical_squirrel_bomb_AI(Creature* creature) : ScriptedAI(creature)
-            {}
+            DoCast(SPELL_EXPLOSION);
+            disarmed = false;
+            diedTimer = 10500;
 
-            void IsSummonedBy(Unit* /**/) override
+            if (me->GetEntry() == 102136)
+                DoCast(me, SPELL_OVERLOADED, true);
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_DISARMING)
             {
-                _events.ScheduleEvent(EVENT_BOMB_SQUIRREL_BOMB, Seconds(1));
+                me->RemoveAurasDueToSpell(SPELL_OVERLOADED);
+                me->InterruptNonMeleeSpells(false);
+                //DoCast(me, SPELL_EJECT_ALL_PASSENGERS, true);
+
+                diedTimer = 2000;
+                disarmed = true;
             }
+        }
 
-            void SpellHitTarget(Unit* /**/, SpellInfo const* spell) override
+        void UpdateAI(uint32 diff) override
+        {
+            if (diedTimer)
             {
-                if (!spell)
-                    return;
-
-                if (spell->Id == SPELL_BOMB_SQUIRREL_BOMB)
+                if (diedTimer <= diff)
                 {
-                    _events.Reset();
+                    if (!disarmed)
+                    {
+                        for (int8 i = 0; i < 3; i++)
+                            DoCast(me, SPELL_OVERLOADED_SUM, true);
+                    }
+                    diedTimer = 0;
                     me->Kill(me);
                 }
+                else
+                    diedTimer -= diff;
             }
-
-            void UpdateAI(uint32 diff) override
-            {
-                _events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = _events.ExecuteEvent())
-                {
-                    if (eventId == EVENT_BOMB_SQUIRREL_BOMB)
-                    {
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.f, true))
-                            DoCast(target, SPELL_BOMB_SQUIRREL_BOMB);
-                        else
-                            _events.ScheduleEvent(EVENT_BOMB_SQUIRREL_BOMB, Seconds(2));
-                    }
-                }
-            }
-
-            private:
-                EventMap _events;
-
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_vha_mechanical_squirrel_bomb_AI(creature);
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_millificent_elementium_squirrel_bombAI(creature);
+    }
 };
 
-class npc_vha_rocket_chicken : public CreatureScript
+//102103, 102139
+class npc_millificent_thorium_rocket_chicken : public CreatureScript
 {
-    public:
-        npc_vha_rocket_chicken() : CreatureScript("npc_vha_rocket_chicken")
-        {}
+public:
+    npc_millificent_thorium_rocket_chicken() : CreatureScript("npc_millificent_thorium_rocket_chicken") {}
 
-        struct npc_vha_rocket_chicken_AI : public ScriptedAI
+    struct npc_millificent_thorium_rocket_chickenAI : public ScriptedAI
+    {
+        npc_millificent_thorium_rocket_chickenAI(Creature* creature) : ScriptedAI(creature), rocketCastTimer(0)
         {
-            npc_vha_rocket_chicken_AI(Creature* creature) : ScriptedAI(creature)
-            {
-                me->SetReactState(REACT_PASSIVE);
-                me->AddUnitState(UNIT_STATE_ROOT);
-            }
-
-            void IsSummonedBy(Unit* /**/) override
-            {
-                if (IsHeroic())
-                    _events.ScheduleEvent(EVENT_SWARN_ROCKETS, Seconds(2));
-
-                _events.ScheduleEvent(EVENT_ROCKET_CHICKEN_ROCKET, Seconds(2));
-
-                if (me->GetEntry() == NPC_REINFORCED_THORIUM_ROCKET_CHICKEN)
-                    DoCast(me, SPELL_THORIUM_PLATING, true);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                _events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = _events.ExecuteEvent())
-                {
-                    if (eventId == EVENT_SWARN_ROCKETS)
-                    {
-                        DoCast(me, SPELL_CHICKEN_SWARN_ROCKETS_TRIGGER, true);
-                        _events.ScheduleEvent(EVENT_SWARN_ROCKETS, Seconds(2));
-                    }
-                    else if (eventId == EVENT_ROCKET_CHICKEN_ROCKET)
-                    {
-                        me->AttackStop();
-                        me->StopMoving();
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                        {
-                            me->SetFacingToObject(target, true);
-                            DoCast(target, SPELL_ROCKET_CHICKEN_ROCKET);
-                        }
-
-                        _events.ScheduleEvent(EVENT_ROCKET_CHICKEN_ROCKET, Seconds(3));
-                    }
-                }
-            }
-
-            private:
-                EventMap _events;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_vha_rocket_chicken_AI(creature);
+            me->SetReactState(REACT_PASSIVE);
         }
+
+        uint16 rocketCastTimer;
+
+        void Reset() override
+        {
+            rocketCastTimer = 2000;
+        }
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            DoZoneInCombat(me, 120.0f);
+            DoCast(me, SPELL_CHICKEN_SWARM_ROCKETS, true);
+
+            if (me->GetEntry() == 102139)
+                DoCast(me, SPELL_THORIUM_PLATING, true);
+        }
+
+        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_SWARM_ROCKETS_SEARCH)
+                DoCast(me, SPELL_SWARM_ROCKETS_DMG, true);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (rocketCastTimer <= diff)
+            {
+                if (Unit* pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0, 80.0f, true))
+                {
+                    me->SetFacingToObject(pTarget);
+                    DoCast(pTarget, SPELL_ROCKET_CHICKEN_ROCKET);
+                }
+                rocketCastTimer = 4000;
+            }
+            else
+                rocketCastTimer -= diff;
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_millificent_thorium_rocket_chickenAI(creature);
+    }
 };
 
-class spell_vha_rocket_chicken_rocket : public SpellScriptLoader
+//102137 
+class npc_millificent_mechanical_bomb_squirrel : public CreatureScript
 {
-    public:
-        spell_vha_rocket_chicken_rocket() : SpellScriptLoader("spell_vha_rocket_chicken_rocket")
-        {}
+public:
+    npc_millificent_mechanical_bomb_squirrel() : CreatureScript("npc_millificent_mechanical_bomb_squirrel") {}
 
-        class spell_rocket_chicken_rocket_SpellScript : public SpellScript
+    struct npc_millificent_mechanical_bomb_squirrelAI : public ScriptedAI
+    {
+        npc_millificent_mechanical_bomb_squirrelAI(Creature* creature) : ScriptedAI(creature)
         {
-            public:
-                PrepareSpellScript(spell_rocket_chicken_rocket_SpellScript);
-
-                void HandleBeforeCast()
-                {
-                    GetCaster()->AddUnitState(UNIT_STATE_ROOT);
-                    _src.x = GetCaster()->GetPositionX();
-                    _src.y = GetCaster()->GetPositionY();
-                }
-
-                void FilterTargets(SpellTargets & targets)
-                {
-                    if (targets.empty())
-                        return;
-
-                    Unit* caster = GetCaster();
-
-                    targets.remove_if([&] (WorldObject*& target)
-                    {
-                        return !caster->isInFront(target, 0.08726f);
-                    });
-                }
-
-                void HandleAfterHit()
-                {
-                    if (!GetCaster())
-                        return;
-
-                    GetCaster()->ClearUnitState(UNIT_STATE_ROOT);
-                }
-
-                void Register() override
-                {
-                    BeforeCast += SpellCastFn(spell_rocket_chicken_rocket_SpellScript::HandleBeforeCast);
-                    AfterHit += SpellHitFn(spell_rocket_chicken_rocket_SpellScript::HandleAfterHit);
-                    OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_rocket_chicken_rocket_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_CONE_ENEMY_104);
-                    OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_rocket_chicken_rocket_SpellScript::FilterTargets, EFFECT_2, TARGET_UNIT_CONE_ENEMY_104);
-                }
-
-                private:
-                    G3D::Vector2 _src;
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_rocket_chicken_rocket_SpellScript();
+            me->SetReactState(REACT_PASSIVE);
         }
-};
 
-class spell_vha_swarn_rockets : public SpellScriptLoader
-{
-    public:
-        spell_vha_swarn_rockets() : SpellScriptLoader("spell_vha_swarn_rockets")
-        {}
+        EventMap events;
 
-        class spell_swarn_rockets_SpellScript : public SpellScript
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
         {
-            public:
-                PrepareSpellScript(spell_swarn_rockets_SpellScript);
-
-                void HandleDummy(SpellEffIndex /**/)
-                {
-                    if (!GetCaster() || !GetHitUnit())
-                        return;
-
-                    Unit* caster = GetCaster();
-
-                    caster->CastSpell(GetHitUnit(), SPELL_CHICKEN_SWARN_DMG, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectHitTarget += SpellEffectFn(spell_swarn_rockets_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-                }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_swarn_rockets_SpellScript();
+            events.RescheduleEvent(EVENT_1, 100);
         }
+
+        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_SQUIRREL_SEARCH)
+                DoCast(target, SPELL_SQUIRREL_CHARGE, true);
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type != POINT_MOTION_TYPE)
+                return;
+
+            if (id == 1003)
+                events.RescheduleEvent(EVENT_2, 100);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_1:
+                    DoCast(me, SPELL_SQUIRREL_SEARCH, true);
+                    events.RescheduleEvent(EVENT_2, 3000);
+                    break;
+                case EVENT_2:
+                    me->Kill(me);
+                    break;
+                }
+            }
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_millificent_mechanical_bomb_squirrelAI(creature);
+    }
 };
 
 void AddSC_boss_millificient_manastorm()
 {
     new boss_millificent_manastorm();
-    new npc_vha_rocket_chicken();
-    new npc_vha_squirrel_bomb();
-    new npc_vha_mechanical_squirrel_bomb();
-    new spell_vha_rocket_chicken_rocket();
-    new spell_vha_swarn_rockets();
+    new npc_millificent_elementium_squirrel_bomb();
+    new npc_millificent_thorium_rocket_chicken();
+    new npc_millificent_mechanical_bomb_squirrel();
 }

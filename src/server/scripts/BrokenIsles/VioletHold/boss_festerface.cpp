@@ -1,368 +1,372 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "AreaTriggerTemplate.h"
-#include "AreaTriggerAI.h"
 #include "violet_hold_assault.h"
-
-enum Spells
-{
-    // Festerface
-    SPELL_CONGEALING_VOMIT          = 201598,
-    SPELL_CONGEALING_VOMIT_SUMMON   = 201569,
-    SPELL_YUM                       = 201715,
-    SPELL_UH_OH                     = 201729,
-
-    // Congealing Goo
-    SPELL_FETID_STENCH              = 201476,
-    SPELL_ICKY_GOO                  = 202266,
-    SPELL_RECONGEALING              = 201495,
-
-    // Black Bile
-    SPELL_NECROTIC_AURA             = 201753,
-};
-
-enum Events
-{
-    EVENT_CONGEALING_VOMIT   = 1,
-    EVENT_CHECK_NEAR_GOO     = 2,
-    EVENT_REGEN_ENERGY       = 3,
-
-    EVENT_FETID_STENCH       = 4,
-};
-
-enum Adds
-{
-    NPC_BLACK_BILE      = 102169,
-    NPC_CONGEALING_GOO  = 102158,
-};
 
 enum Says
 {
-    SAY_AGGRO               = 0,
-    SAY_CONGEALING          = 1,
-    SAY_YUM                 = 2,
-    SAY_KILL                = 3,
-    SAY_DEATH               = 4,
-    SAY_CONGEALING_WARN     = 5,
-
-    SAY_RECONGEALING_WARN   = 0,
+    SAY_AGGRO = 0,
+    SAY_VOMIT = 1,
+    SAY_YUM = 2,
+    // SAY_          = 3  //Taste better going in!
+    SAY_DEATH = 4,
 };
 
+enum Spells
+{
+    SPELL_FESTERFACE_AGGRO = 202000,
+    SPELL_CONGEALING_VOMIT = 201598,
+    SPELL_CONGEALING_VOMIT_VIS = 201624,
+    SPELL_CONGEALING_VOMIT_SUM = 201569,
+    SPELL_YUM = 201715,
+
+    //Summons
+    SPELL_GREEN_SLIME_COSMETICS = 205156,
+    SPELL_FETID_STENCH = 201476,
+    SPELL_RECONGEALING = 201495,
+    SPELL_RECONGEALING_SEARCH = 202265, //Search Festerface
+
+    //Heroic
+    SPELL_ENERGY_TRACKER = 207677,
+    SPELL_SUM_BLACK_BILE = 201729,
+};
+
+enum eEvents
+{
+    EVENT_CONGEALING_VOMIT = 1,
+};
+
+enum Misc
+{
+    DATA_ACHIEVEMENT,
+};
+
+enum Add
+{
+    NPC_BLACK_BILE = 102169,
+};
+
+//101995
 class boss_festerface : public CreatureScript
 {
-    public:
+public:
+    boss_festerface() : CreatureScript("boss_festerface") {}
 
-        boss_festerface() : CreatureScript("boss_festerface")
-        {}
-
-        struct boss_festerface_AI : public BossAI
+    struct boss_festerfaceAI : public BossAI
+    {
+        boss_festerfaceAI(Creature* creature) : BossAI(creature, DATA_FESTERFACE)
         {
-            boss_festerface_AI(Creature* creature) : BossAI(creature, DATA_FESTERFACE)
-            {}
+            me->SetReactState(REACT_PASSIVE);
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+            removeloot = false;
+            bilekill = false;
+        }
 
-            void Reset() override
+        bool removeloot;
+        bool bilekill;
+
+        void Reset() override
+        {
+            _Reset();
+            bilekill = false;
+            me->SetPower(POWER_ENERGY, 0);
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+            //39:33
+        {
+            Talk(SAY_AGGRO);
+            _EnterCombat();
+            bilekill = false;
+            DoCast(me, SPELL_FESTERFACE_AGGRO, true);
+
+            if (me->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                DoCast(me, SPELL_ENERGY_TRACKER, true);
+
+            events.RescheduleEvent(EVENT_CONGEALING_VOMIT, 4000); //39:37, 40:28, 41:19
+        }
+
+        void SummonedCreatureDies(Creature* summoned, Unit* /*who*/) override
+        {
+            if (summoned->GetEntry() == NPC_BLACK_BILE && me->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC)
+                bilekill = true;
+        }
+
+        uint32 GetData(uint32 type) const override
+        {
+            switch (type)
             {
-                _Reset();
+            case DATA_ACHIEVEMENT:
+                return bilekill ? 1 : 0;
             }
 
-            void EnterCombat(Unit* /**/) override
+            return 0;
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            Talk(SAY_DEATH);
+            _JustDied();
+
+            if (removeloot)
+                me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (spell->Id == SPELL_RECONGEALING_SEARCH)
             {
-                Talk(SAY_AGGRO);
-                _EnterCombat();
-                events.ScheduleEvent(EVENT_CONGEALING_VOMIT, Seconds(10));
-                events.ScheduleEvent(EVENT_CHECK_NEAR_GOO, Seconds(12));
-
-                if (IsHeroic())
-                {
-                    me->SetMaxPower(POWER_ENERGY, 100);
-                    events.ScheduleEvent(EVENT_REGEN_ENERGY, Seconds(1));
-                }
+                DoCast(caster, SPELL_YUM);
+                Talk(SAY_YUM);
             }
+        }
 
-            void JustDied(Unit* /**/) override
-            {
-                Talk(SAY_DEATH);
-                _JustDied();
-            }
+        void DoAction(int32 const action) override
+        {
+            if (action == ACTION_REMOVE_LOOT)
+                removeloot = true;
+        }
 
-            void EnterEvadeMode(EvadeReason reason) override
-            {
-                instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_NECROTIC_AURA);
-                CreatureAI::EnterEvadeMode(reason);
-            }
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
 
-            void JustSummoned(Creature* summon) override
-            {
-                if (!summon)
-                    return;
+            events.Update(diff);
 
-                if (summon->GetEntry() == NPC_BLACK_BILE)
-                {
-                    instance->DoCastSpellOnPlayers(SPELL_NECROTIC_AURA);
-                    summon->AddUnitState(UNIT_STATE_ROOT);
-                }
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
 
-                BossAI::JustSummoned(summon);
-            }
-
-            void SummonedCreatureDespawn(Creature* summon) override
-            {
-                if (!summon)
-                    return;
-
-                BossAI::SummonedCreatureDespawn(summon);
-
-                if (summon->GetEntry() == NPC_CONGEALING_GOO && IsHeroic())
-                    me->SetPower(POWER_ENERGY, me->GetPower(POWER_ENERGY) - 20);
-            }
-
-            void SummonedCreatureDies(Creature* summon, Unit* /**/) override
-            {
-                if (!summon)
-                    return;
-
-                if (summon->GetEntry() == NPC_BLACK_BILE)
-                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_NECROTIC_AURA);
-            }
-
-            void KilledUnit(Unit* victim) override
-            {
-                if (victim && victim->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_KILL);
-            }
-
-            void ExecuteEvent(uint32 eventId) override
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
-                    case EVENT_REGEN_ENERGY:
-                    {
-                        if (me->GetPower(POWER_ENERGY) >= 100)
-                            DoCast(me, SPELL_UH_OH);
-                        else
-                            me->ModifyPower(POWER_ENERGY, 2);
-
-                        events.ScheduleEvent(EVENT_REGEN_ENERGY, Seconds(1));
-                        break;
-                    }
-
-                    case EVENT_CONGEALING_VOMIT:
-                    {
-                        Talk(SAY_CONGEALING_WARN);
-                        Talk(SAY_CONGEALING);
-                        Creature* portalIntro = me->FindNearestCreature(NPC_TELETRANSPORTATION_PORTAL, 500.f, true);
-
-                        if (portalIntro)
-                        {
-                            me->SetReactState(REACT_PASSIVE);
-                            me->AttackStop();
-                            me->StopMoving();
-                            me->SetFacingToObject(portalIntro);
-                            DoCast(me, SPELL_CONGEALING_VOMIT);
-
-                        }
-
-                        events.ScheduleEvent(EVENT_CONGEALING_VOMIT, Seconds(50));
-                        break;
-                    }
-
-                    case EVENT_CHECK_NEAR_GOO:
-                    {
-                        Creature* goo = me->FindNearestCreature(NPC_CONGEALING_GOO, 5.f, true);
-
-                        if (goo && goo->HasAura(SPELL_RECONGEALING))
-                        {
-                            Talk(SAY_YUM);
-                            DoCast(goo, SPELL_YUM);
-                            goo->DespawnOrUnsummon(3000);
-                        }
-
-                        events.ScheduleEvent(EVENT_CHECK_NEAR_GOO, Seconds(2));
-                    }
-
-                    default : break;
+                case EVENT_CONGEALING_VOMIT:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
+                        DoCast(target, SPELL_CONGEALING_VOMIT);
+                    Talk(SAY_VOMIT);
+                    events.RescheduleEvent(EVENT_CONGEALING_VOMIT, 51000);
+                    break;
                 }
             }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new boss_festerface_AI(creature);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new boss_festerfaceAI(creature);
+    }
 };
 
-class npc_vha_congealing_goo : public CreatureScript
+//102158
+class npc_festerface_congealed_goo : public CreatureScript
 {
-    public:
-        npc_vha_congealing_goo() : CreatureScript("npc_vha_congealing_goo")
-        {}
+public:
+    npc_festerface_congealed_goo() : CreatureScript("npc_festerface_congealed_goo") {}
 
-        struct npc_vha_congealing_goo_AI : public ScriptedAI
+    struct npc_festerface_congealed_gooAI : public ScriptedAI
+    {
+        npc_festerface_congealed_gooAI(Creature* creature) : ScriptedAI(creature)
         {
-            npc_vha_congealing_goo_AI(Creature* creature) : ScriptedAI(creature)
-            {
-                me->AddUnitState(UNIT_STATE_ROOT);
-            }
-
-            void IsSummonedBy(Unit* /*summoner*/) override
-            {
-                DoCast(me, SPELL_FETID_STENCH, true);
-            }
-
-            void DamageTaken(Unit* /**/, uint32& damage) override
-            {
-                if (me->HealthBelowPctDamaged(5, damage))
-                {
-                    damage = 0;
-                    me->RemoveAllAuras();
-                    me->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-                    me->SetHealth(1);
-                    Talk(SAY_RECONGEALING_WARN);
-                    DoCast(me, SPELL_RECONGEALING);
-                }
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_vha_congealing_goo_AI(creature);
+            me->SetReactState(REACT_PASSIVE);
         }
+
+        void Reset() override
+        {
+            DoCast(me, SPELL_GREEN_SLIME_COSMETICS, true);
+            DoCast(me, SPELL_FETID_STENCH, true);
+            Talk(0); //warning
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage)
+        {
+            if (damage >= me->GetHealth())
+            {
+                if (!me->HasAura(SPELL_RECONGEALING))
+                {
+                    DoCast(me, SPELL_RECONGEALING, true);
+                }
+                damage = 0;
+            }
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            if (spell->Id == SPELL_YUM)
+                me->DespawnOrUnsummon();
+        }
+
+        void UpdateAI(uint32 diff) override {}
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_festerface_congealed_gooAI(creature);
+    }
 };
 
-class at_vha_icky_goo : public AreaTriggerEntityScript
-{
-    public:
-        at_vha_icky_goo() : AreaTriggerEntityScript("at_vha_icky_goo")
-        {}
-
-        struct at_vha_icky_goo_AI : public AreaTriggerAI
-        {
-            at_vha_icky_goo_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {}
-
-            void OnUnitEnter(Unit* unit) override
-            {
-                if (!unit)
-                    return;
-
-                if (unit->GetTypeId() == TYPEID_PLAYER)
-                {
-                    unit->CastSpell(unit, SPELL_ICKY_GOO, true);
-                }
-            }
-
-            void OnUnitExit(Unit* unit) override
-            {
-                if (!unit)
-                    return;
-
-                if (unit->GetTypeId() == TYPEID_PLAYER)
-                    unit->RemoveAurasDueToSpell(SPELL_ICKY_GOO);
-            }
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_vha_icky_goo_AI(at);
-        }
-};
-
+//201598
 class spell_festerface_congealing_vomit : public SpellScriptLoader
 {
-    public:
-        spell_festerface_congealing_vomit() : SpellScriptLoader("spell_festerface_congealing_vomit")
-        {}
+public:
+    spell_festerface_congealing_vomit() : SpellScriptLoader("spell_festerface_congealing_vomit") {}
 
-        class spell_congealing_vomit_SpellScript : public SpellScript
+    class spell_festerface_congealing_vomit_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_festerface_congealing_vomit_SpellScript);
+
+        uint8 castCount;
+
+        void HandleOnHit(SpellEffIndex /*effIndex*/)
         {
-            public:
-                PrepareSpellScript(spell_congealing_vomit_SpellScript);
+            Unit* caster = GetCaster();
+            if (!caster)
+                return;
 
-                void HandleDummy(SpellEffIndex /**/)
-                {
-                    if (!GetCaster())
-                        return;
+            castCount = GetSpellInfo()->GetEffect(EFFECT_1)->CalcValue();
 
-                    uint32 summonCount = GetSpellInfo()->GetEffect(EFFECT_1)->BasePoints;
-                    float dist = 5.f;
+            Position pos;
+            float dist = 0.0f;
+            float angle = 0.0f;
 
-                    for (uint32 i = 0; i < summonCount; ++i, dist += 15.f)
-                    {
-                        Position pos = GetCaster()->GetNearPosition(dist, 0);
-                        GetCaster()->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_CONGEALING_VOMIT_SUMMON, true);
-                    }
+            for (uint16 i = 0; i < 44; i++)
+            {
+                angle = frand(-0.3f, 0.3f);
+                caster->GetNearPosition(dist + i, angle);
+                caster->CastSpell(pos, SPELL_CONGEALING_VOMIT_VIS, true);
+            }
 
-                    GetCaster()->ToCreature()->SetReactState(REACT_AGGRESSIVE);
-                }
-
-                void Register() override
-                {
-                    OnEffectHitTarget += SpellEffectFn(spell_congealing_vomit_SpellScript::HandleDummy, EFFECT_1, SPELL_EFFECT_DUMMY);
-                }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_congealing_vomit_SpellScript();
+            for (uint8 i = 0; i < castCount; i++)
+            {
+                dist += 5.0f;
+                angle = frand(-0.3f, 0.3f);
+                caster->GetNearPosition(frand(dist, 30.0f), angle);
+                caster->CastSpell(pos, SPELL_CONGEALING_VOMIT_SUM, true);
+            }
         }
+
+        void Register() override
+        {
+            OnEffectLaunchTarget += SpellEffectFn(spell_festerface_congealing_vomit_SpellScript::HandleOnHit, EFFECT_1, SPELL_EFFECT_DUMMY);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_festerface_congealing_vomit_SpellScript();
+    }
 };
 
-class spell_vha_recongealing : public SpellScriptLoader
+//201495
+class spell_festerface_recongealing : public SpellScriptLoader
 {
-    public:
-        spell_vha_recongealing() : SpellScriptLoader("spell_vha_recongealing")
-        {}
+public:
+    spell_festerface_recongealing() : SpellScriptLoader("spell_festerface_recongealing") { }
 
-        class spell_recongealing_AuraScript : public AuraScript
+    class spell_festerface_recongealing_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_festerface_recongealing_AuraScript);
+
+        void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
         {
-            public:
-                PrepareAuraScript(spell_recongealing_AuraScript);
+            if (!GetCaster())
+                return;
 
-                void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
-                {
-                    if (!GetUnitOwner())
-                        return;
-
-                    GetUnitOwner()->SetFullHealth();
-                    GetUnitOwner()->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
-                    GetUnitOwner()->CastSpell(GetUnitOwner(), SPELL_FETID_STENCH, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectRemove += AuraEffectRemoveFn(spell_recongealing_AuraScript::HandleOnRemove, EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_recongealing_AuraScript();
+            GetCaster()->RemoveAurasDueToSpell(SPELL_FETID_STENCH);
+            GetCaster()->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            GetCaster()->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+            GetCaster()->SetUnitFlags(UNIT_FLAG_NOT_SELECTABLE);
+            GetCaster()->SetHealth(GetCaster()->GetMaxHealth());
         }
+
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (!GetCaster())
+                return;
+
+            GetCaster()->CastSpell(GetCaster(), SPELL_FETID_STENCH, true);
+            GetCaster()->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            GetCaster()->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
+            GetCaster()->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_PC);
+        }
+
+        void Register() override
+        {
+            OnEffectApply += AuraEffectApplyFn(spell_festerface_recongealing_AuraScript::OnApply, EFFECT_0, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
+            OnEffectRemove += AuraEffectRemoveFn(spell_festerface_recongealing_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_festerface_recongealing_AuraScript();
+    }
 };
 
+//207677
+class spell_festerface_energy_tracker : public SpellScriptLoader
+{
+public:
+    spell_festerface_energy_tracker() : SpellScriptLoader("spell_festerface_energy_tracker") { }
+
+    class spell_festerface_energy_tracker_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_festerface_energy_tracker_AuraScript);
+
+        uint8 PowerCount = 0;
+
+        void OnTick(AuraEffect const* aurEff)
+        {
+            Creature* caster = GetCaster()->ToCreature();
+            if (!caster || !caster->IsInCombat())
+                return;
+
+            PowerCount = caster->GetPower(POWER_ENERGY);
+
+            if (PowerCount < 100)
+                caster->SetPower(POWER_ENERGY, PowerCount + 2);
+            else if (!caster->HasUnitState(UNIT_STATE_CASTING))
+                caster->CastSpell(caster, SPELL_SUM_BLACK_BILE);
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_festerface_energy_tracker_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_festerface_energy_tracker_AuraScript();
+    }
+};
+
+class achievement_i_made_a_food : public AchievementCriteriaScript
+{
+public:
+    achievement_i_made_a_food() : AchievementCriteriaScript("achievement_i_made_a_food") { }
+
+    bool OnCheck(Player* /*player*/, Unit* target) override
+    {
+        if (!target)
+            return false;
+
+        if (Creature* fester = target->ToCreature())
+            if (fester->AI()->GetData(DATA_ACHIEVEMENT))
+                return true;
+
+        return false;
+    }
+};
 
 void AddSC_boss_festerface()
 {
     new boss_festerface();
-    new npc_vha_congealing_goo();
-    new at_vha_icky_goo();
+    new npc_festerface_congealed_goo();
     new spell_festerface_congealing_vomit();
-    new spell_vha_recongealing();
+    new spell_festerface_recongealing();
+    new spell_festerface_energy_tracker();
+    new achievement_i_made_a_food();
 }

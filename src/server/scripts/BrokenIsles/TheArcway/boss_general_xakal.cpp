@@ -1,628 +1,337 @@
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
-#include "AreaTriggerTemplate.h"
-#include "AreaTrigger.h"
-#include "SpellHistory.h"
-#include "AreaTriggerAI.h"
 #include "the_arcway.h"
-#include <G3D/Vector3.h>
-#include <G3D/Triangle.h>
-#include <G3D/Plane.h>
-#include <G3D/CollisionDetection.h>
-
-enum Spells
-{
-    // General Xakal
-    SPELL_FEL_FISSURE           = 197776,
-    SPELL_FEL_FISSURE_SUMMON    = 197765,
-    SPELL_FEL_FISSURE_RUNE      = 197542,
-    SPELL_FEL_FISSURE_SPIKE     = 197573,
-    SPELL_FEL_ERUPTION          = 197579,
-    SPELL_WICKED_SLAM           = 197810,
-    SPELL_SHADOW_SLASH          = 212030,
-    SPELL_SHADOW_SLASH_DMG      = 212071,
-    SPELL_WAKE_OF_SHADOW        = 220441,
-    SPELL_WAKE_OF_SHADOW_DMG    = 220443,
-    SPELL_SHATTER               = 197814,
-
-    // Dread Felbat
-    SPELL_BOMBARDMENT_MISSILE   = 197787,
-    SPELL_BOMBARDMENT_AURA      = 197786,
-    SPELL_THIRST_BLOOD          = 220533,
-};
-
-enum Events
-{
-    EVENT_FEL_FISSURE   = 1,
-    EVENT_WICKED_SLAM   = 2,
-    EVENT_SHADOW_SLASH  = 3,
-    EVENT_CALL_BATS     = 4,
-    EVENT_RESTORE_STATE = 5,
-    EVENT_BOMBARDMENT   = 6,
-
-    EVENT_THIRST_BLOOD  = 7,
-};
-
-enum Adds
-{
-    NPC_FISSURE         = 100342,
-    NPC_DREAD_FELBAT    = 100393,
-};
 
 enum Says
 {
-    SAY_INTRO       = 0,
-    SAY_AGGRO       = 1,
-    SAY_FEL_FISSURE = 2,
-    SAY_SHADOW_SLASH= 3,
-    SAY_FEL_BATS    = 4,
-    SAY_KILL        = 5,
-    SAY_WIPE        = 6,
-    SAY_DEAD        = 7,
+    SAY_AGGRO = 1,
+    SAY_FEL = 2,
+    SAY_SUM = 3,
+    SAY_WICKED = 4,
+    SAY_WICKED_TEXT = 5,
+    SAY_DEATH = 6,
 };
 
-enum Actions 
+//TO-DO: Весь треш на 703+
+enum Spells
 {
-    ACTION_RUNE_ACTIVATED   = 1,
-    ACTION_BAT_ATTACK       = 2,
+    SPELL_FEL_FISSURE = 197776,
+    SPELL_FEL_FISSURE_SUM = 197765,
+    SPELL_FEL_FISSURE_AT = 197542, //197579 dmg
+    SPELL_FEL_FISSURE_GO = 197573,
+    SPELL_SHADOW_SLASH = 212028,
+    SPELL_SHADOW_SLASH_AT = 212030,
+    SPELL_WICKED_SLAM = 197810,
+    SPELL_WAKE_OF_SHADOW = 220441, //220443 dmg
+
+    //Felbat
+    SPELL_BOMBARDMENT_AURA = 197786,
+    SPELL_BOMBARDMENT_DMG = 197787,
+    SPELL_THIRST_FOR_BLOOD = 220533,
 };
 
+enum eEvents
+{
+    EVENT_FEL_FISSURE = 1,
+    EVENT_SHADOW_SLASH = 2,
+    EVENT_WICKED_SLAM = 3,
+    EVENT_SUM_FELBAT = 4,
+    EVENT_1,
+    EVENT_2,
+};
 
-using Vector3d = G3D::Vector3;
-
-const Position BatCenterPos = { 3319.334f, 4522.911f, 633.228f };
-
+//98206
 class boss_general_xakal : public CreatureScript
 {
-    public:
-        boss_general_xakal() : CreatureScript("boss_general_xakal")
-        {}
+public:
+    boss_general_xakal() : CreatureScript("boss_general_xakal") {}
 
-        struct boss_general_xakal_AI : public BossAI
+    struct boss_general_xakalAI : public BossAI
+    {
+        boss_general_xakalAI(Creature* creature) : BossAI(creature, DATA_XAKAL) {}
+
+        uint8 shadowDist = 0;
+        uint16 shadowTimer = 0;
+        Position shadowPos;
+        float angle;
+
+        void Reset() override
         {
-            boss_general_xakal_AI(Creature* creature) : BossAI(creature, DATA_GENERAL_XAKAL)
-            {}
+            _Reset();
+        }
 
-            void JustSummoned(Creature* summon) override
+        void EnterCombat(Unit* /*who*/) override
+            //37:50(N) | 58:24(H)
+        {
+            Talk(SAY_AGGRO);
+            _EnterCombat();
+
+            events.RescheduleEvent(EVENT_FEL_FISSURE, 6000); //37:56
+            events.RescheduleEvent(EVENT_SHADOW_SLASH, 13000); //38:03
+            events.RescheduleEvent(EVENT_WICKED_SLAM, 40000); //38:30
+            events.RescheduleEvent(EVENT_SUM_FELBAT, 11000); //38:01, 38:23
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            Talk(SAY_DEATH);
+            _JustDied();
+        }
+
+        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        {
+            switch (spell->Id)
             {
-                if (summon->GetEntry() == NPC_FISSURE)
-                    summon->CastSpell(summon, SPELL_FEL_FISSURE_RUNE, true);
-                else if (summon->GetEntry() == NPC_DREAD_FELBAT)
-                    summon->GetMotionMaster()->MoveRandom(25.f);
-
-                BossAI::JustSummoned(summon);
+            case SPELL_FEL_FISSURE:
+                DoCast(target, SPELL_FEL_FISSURE_SUM, true);
+                break;
+            case SPELL_SHADOW_SLASH:
+                Position pos;
+                angle = me->GetRelativeAngle(target);
+                me->GetNearPosition(1.0f, angle);
+                DoCast(target, SPELL_SHADOW_SLASH_AT);
+                break;
             }
+        }
 
-            void EnterEvadeMode(EvadeReason why) override
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            events.Update(diff);
+
+            if (shadowTimer)
             {
-                me->RemoveAllAreaTriggers();
-                BossAI::EnterEvadeMode(why);
-            }
-
-            void JustDied(Unit* /**/) override
-            {
-                me->RemoveAllAreaTriggers();
-                Talk(SAY_DEAD);
-                _JustDied();
-            }
-
-            void KilledUnit(Unit* victim) override
-            {
-                if (victim && victim->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_KILL);
-            }
-
-            void JustReachedHome() override
-            {
-                Talk(SAY_WIPE);
-                _JustReachedHome();
-            }
-
-            void EnterCombat(Unit* /**/) override
-            {
-                Talk(SAY_AGGRO);
-                _EnterCombat();
-
-                for (uint8 i = 0; i < 20; ++i)
-                    DoSummon(NPC_DREAD_FELBAT, BatCenterPos, 5000, TEMPSUMMON_CORPSE_TIMED_DESPAWN);
-
-                events.ScheduleEvent(EVENT_FEL_FISSURE, Seconds(5));
-                events.ScheduleEvent(EVENT_WICKED_SLAM, Seconds(55));
-                events.ScheduleEvent(EVENT_SHADOW_SLASH, Seconds(13));
-                events.ScheduleEvent(EVENT_BOMBARDMENT, Seconds(10));
-                events.ScheduleEvent(EVENT_CALL_BATS, Seconds(30));
-            }
-
-            void ExecuteEvent(uint32 eventId) override
-            {
-                switch (eventId) 
+                if (shadowTimer <= diff)
                 {
-                    case EVENT_FEL_FISSURE:
-                    {
-                        Talk(SAY_FEL_FISSURE);
-                        DoCastAOE(SPELL_FEL_FISSURE);
-                        
-                        events.ScheduleEvent(EVENT_FEL_FISSURE, Seconds(11));
-                        break;
-                    }
+                    shadowDist += 5;
+                    shadowTimer = 500;
+                    Position pos;
+                    me->CastSpell(pos, SPELL_WAKE_OF_SHADOW, true);
+                    if (shadowDist > 60)
+                        shadowTimer = 0;
+                }
+                else
+                    shadowTimer -= diff;
+            }
 
-                    case EVENT_WICKED_SLAM:
-                    {
-                        DoCast(SPELL_WICKED_SLAM);
-                        events.ScheduleEvent(EVENT_WICKED_SLAM, Seconds(30));
-                        break;
-                    }
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
 
-                    case EVENT_SHADOW_SLASH:
-                    {
-                        Talk(SAY_SHADOW_SLASH);
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0,0, true))
-                        {
-                            me->SetReactState(REACT_PASSIVE);
-                            me->AttackStop();
-                            me->StopMoving();
-                            DoCast(target, SPELL_SHADOW_SLASH);
-                            events.ScheduleEvent(EVENT_RESTORE_STATE, Seconds(2));
-                        }
-
-                        events.ScheduleEvent(EVENT_SHADOW_SLASH, Seconds(11));
-                        break;
-                    }
-
-                    case EVENT_RESTORE_STATE:
-                    {
-                        me->SetReactState(REACT_AGGRESSIVE);
-                        break;
-                    }
-
-                    case EVENT_BOMBARDMENT:
-                    {
-                        uint32 bats = urand(1, 2);
-                        uint8 activatedBats = 0;
-
-                        for (auto & it : summons)
-                        {
-                            if (auto* bat = ObjectAccessor::GetCreature(*me, it))
-                            {
-                                if (bat->GetEntry() == NPC_DREAD_FELBAT)
-                                {
-                                    bat->CastSpell(bat, SPELL_BOMBARDMENT_AURA, true);
-                                    activatedBats++;
-
-                                    if (activatedBats >= bats)
-                                        break;
-                                }
-                            }
-                        }
-
-                        events.ScheduleEvent(EVENT_CALL_BATS, Seconds(15));
-                        break;
-                    }
-
-                    case EVENT_CALL_BATS:
-                    {
-                        Talk(SAY_FEL_BATS);
-                        uint8 activatedBats = 0;
-
-                        for (auto & it : summons)
-                        {
-                            if (auto* bat = ObjectAccessor::GetCreature(*me, it))
-                            {
-                                if (bat->GetEntry() == NPC_DREAD_FELBAT)
-                                {
-                                    bat->GetAI()->DoAction(ACTION_BAT_ATTACK);
-                                    activatedBats++;
-                                    if (activatedBats >= 2)
-                                        break;
-                                }
-                            }
-                        }
-                        events.ScheduleEvent(EVENT_CALL_BATS, Seconds(30));
-                        break;
-                    }
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_FEL_FISSURE:
+                    DoCast(SPELL_FEL_FISSURE);
+                    Talk(SAY_FEL);
+                    events.RescheduleEvent(EVENT_FEL_FISSURE, 14000);
+                    break;
+                case EVENT_SHADOW_SLASH:
+                    shadowDist = 0;
+                    shadowTimer = 500;
+                    DoCast(SPELL_SHADOW_SLASH);
+                    events.RescheduleEvent(EVENT_SHADOW_SLASH, 14000);
+                    break;
+                case EVENT_WICKED_SLAM:
+                    Talk(SAY_WICKED);
+                    Talk(SAY_WICKED_TEXT);
+                    DoCast(SPELL_WICKED_SLAM);
+                    events.RescheduleEvent(EVENT_WICKED_SLAM, 40000);
+                    break;
+                case EVENT_SUM_FELBAT:
+                {
+                    Talk(SAY_SUM);
+                    Position pos;
+                    me->GetRandomNearPosition(30.0f);
+                    me->SummonCreature(NPC_DREAD_FELBAT, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + 20.0f);
+                    events.RescheduleEvent(EVENT_SUM_FELBAT, 22000);
+                    break;
+                }
                 }
             }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new boss_general_xakal_AI(creature);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new boss_general_xakalAI(creature);
+    }
 };
 
-class npc_arc_fissure : public CreatureScript
+//100342
+class npc_xakal_fissure : public CreatureScript
 {
-    public:
-        npc_arc_fissure() : CreatureScript("npc_arc_fissure")
-        {}
+public:
+    npc_xakal_fissure() : CreatureScript("npc_xakal_fissure") {}
 
-        struct npc_arc_fissure_AI : public ScriptedAI
+    struct npc_xakal_fissureAI : public ScriptedAI
+    {
+        npc_xakal_fissureAI(Creature* creature) : ScriptedAI(creature)
         {
-            npc_arc_fissure_AI(Creature* creature) : ScriptedAI(creature)
-            {
-                _activated = false;
-            }
-
-            void CheckTargetNear()
-            {
-                for (auto & it : me->GetMap()->GetPlayers())
-                {
-                    if (/*auto* player = */it.GetSource())
-                    {
-                        DoCast(me, SPELL_FEL_ERUPTION, true);
-                        _timerCheck = 0;
-                        break;
-                    }
-                }
-            }
-
-            void DoAction(int32 action) override
-            {
-                if (action == ACTION_RUNE_ACTIVATED)
-                    _activated = true;
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!_activated)
-                    return;
-                
-                _timerCheck += diff;
-
-                if (_timerCheck >= 3500)
-                {
-                    _timerCheck = 0;
-                    CheckTargetNear();
-                }
-            }
-
-            private:
-                bool _activated;
-                uint32 _timerCheck;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_arc_fissure_AI(creature);
+            me->SetReactState(REACT_PASSIVE);
+            SetCombatMovement(false);
+            me->SetUnitFlags(UNIT_FLAG_STUNNED);
         }
+
+        bool active;
+
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            DoCast(me, SPELL_FEL_FISSURE_AT, true);
+        }
+
+        void UpdateAI(uint32 diff) override {}
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_xakal_fissureAI(creature);
+    }
 };
 
-class npc_arc_dread_felbat : public CreatureScript
+//100393
+class npc_xakal_dread_felbat : public CreatureScript
 {
-    public:
-        npc_arc_dread_felbat() : CreatureScript("npc_arc_dread_felbat")
-        {}
+public:
+    npc_xakal_dread_felbat() : CreatureScript("npc_xakal_dread_felbat") {}
 
-        struct npc_arc_dread_felbat_AI : public ScriptedAI
+    struct npc_xakal_dread_felbatAI : public ScriptedAI
+    {
+        npc_xakal_dread_felbatAI(Creature* creature) : ScriptedAI(creature)
         {
-            explicit npc_arc_dread_felbat_AI(Creature* creature) : ScriptedAI(creature)
-            {
-                _isInLand = false;
-                me->SetReactState(REACT_PASSIVE);
-            }
+            me->SetReactState(REACT_PASSIVE);
+        }
 
-            void MovementInform(uint32 type, uint32 /*id*/) override
-            {
-                if (type == CHASE_MOTION_TYPE && !_isInLand)
-                {
-                    _isInLand = true;
-                    me->SetCanFly(false);
-                    me->SetDisableGravity(false);
-                    _events.ScheduleEvent(EVENT_THIRST_BLOOD, Seconds(10));
-                }
-            }
+        EventMap events;
 
-            void DoAction(int32 action) override
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            DoZoneInCombat(me, 120.0f);
+            DoCast(me, SPELL_BOMBARDMENT_AURA, true);
+            events.RescheduleEvent(EVENT_1, 7000);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            events.Update(diff);
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+
+            if (uint32 eventId = events.ExecuteEvent())
             {
-                if (action == ACTION_BAT_ATTACK)
+                switch (eventId)
                 {
+                case EVENT_1:
                     me->SetReactState(REACT_AGGRESSIVE);
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                        me->GetMotionMaster()->MoveChase(target);
+                    events.RescheduleEvent(EVENT_2, 5000);
+                    break;
+                case EVENT_2:
+                    DoCastVictim(SPELL_THIRST_FOR_BLOOD);
+                    events.RescheduleEvent(EVENT_2, 5000);
+                    break;
                 }
             }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!UpdateVictim())
-                    return;
-                
-                _events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = _events.ExecuteEvent())
-                {
-                    if (eventId == EVENT_THIRST_BLOOD)
-                    {
-                        DoCastVictim(SPELL_THIRST_BLOOD);
-                        _events.ScheduleEvent(EVENT_THIRST_BLOOD, Seconds(15));
-                    }
-                }
-
-                if (_isInLand)
-                    DoMeleeAttackIfReady();
-            }
-
-            private:
-                EventMap _events;
-                bool _isInLand;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_arc_dread_felbat_AI(creature);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_xakal_dread_felbatAI(creature);
+    }
 };
 
-class spell_arc_bombardment : public SpellScriptLoader
+//197786
+class spell_xakal_bombardment : public SpellScriptLoader
 {
-    public:
-        spell_arc_bombardment() : SpellScriptLoader("spell_arc_bombardment")
-        {}
+public:
+    spell_xakal_bombardment() : SpellScriptLoader("spell_xakal_bombardment") { }
 
-        class spell_arc_bombardment_AuraScript : public AuraScript
+    class spell_xakal_bombardment_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_xakal_bombardment_AuraScript);
+
+        void OnPeriodic(AuraEffect const* aurEff)
         {
-            public:
-                PrepareAuraScript(spell_arc_bombardment_AuraScript);
+            Creature* caster = GetCaster()->ToCreature();
+            if (!caster)
+                return;
 
-                bool Load() override
-                {
-                    _counter = 0;
-                    return true;
-                }
-
-                void HandlePeriodic(AuraEffect const* /**/)
-                {
-                    _counter++;
-
-                    if (_counter < 5)
-                        return;
-
-                    if (Unit* target = GetCaster()->GetAI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                        GetCaster()->CastSpell(target, SPELL_BOMBARDMENT_MISSILE, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_arc_bombardment_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                }
-
-                private:
-                    uint8 _counter;
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_arc_bombardment_AuraScript();
+            if (Unit* target = caster->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true))
+                caster->CastSpell(target, SPELL_BOMBARDMENT_DMG, true);
         }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_xakal_bombardment_AuraScript::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_xakal_bombardment_AuraScript();
+    }
 };
 
-class spell_xakal_fel_fissure : public SpellScriptLoader
+// trash 211950
+uint32 RandomSpells[7] =
 {
-    public:
-        spell_xakal_fel_fissure() : SpellScriptLoader("spell_xakal_fel_fissure")
-        {}
-
-        class spell_xakal_fel_fissure_SpellScript : public SpellScript
-        {
-            public:
-                PrepareSpellScript(spell_xakal_fel_fissure_SpellScript);
-
-                void HandleDummy(SpellEffIndex /**/)
-                {
-                    if (!GetCaster() || !GetHitUnit())
-                        return;
-                    
-                    GetCaster()->CastSpell(GetHitUnit(), SPELL_FEL_FISSURE_SUMMON, true);
-                }
-
-                void Register()
-                {
-                    OnEffectHitTarget += SpellEffectFn(spell_xakal_fel_fissure_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-                }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_xakal_fel_fissure_SpellScript();
-        }
+    211995,
+    211959,
+    211999,
+    211956,
+    211958,
+    211994,
+    212008
 };
 
-class at_arc_fel_fissure : public AreaTriggerEntityScript
+class spell_throw_staff : public SpellScriptLoader
 {
-    public:
-        at_arc_fel_fissure() : AreaTriggerEntityScript("at_arc_fel_fissure")
-        {}
+public:
+    spell_throw_staff() : SpellScriptLoader("spell_throw_staff") {}
 
-        struct at_arc_fel_fissure_AI : public AreaTriggerAI
+    class spell_throw_staff_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_throw_staff_SpellScript);
+
+        void HandleOnCast()
         {
-            at_arc_fel_fissure_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {
-            }
+            if (!GetCaster())
+                return;
 
-            void OnInitialize() override
-            {
-                _borned = false;
-                _activated = false;
-                _timerBorn = 0;
-                _caster = at->GetCaster();
-            }
-
-            void OnUnitEnter(Unit* unit) override
-            {
-                if (!unit)
-                    return;
-                
-                if (unit->GetTypeId() != TYPEID_PLAYER)
-                    return;
-                
-                if (!_borned)
-                    return;
-
-                if (!_activated)
-                {
-                    _activated = true;
-                    _caster->CastSpell(_caster, SPELL_FEL_FISSURE_SPIKE, true);
-                    _caster->GetAI()->DoAction(ACTION_RUNE_ACTIVATED);
-                    _caster->CastSpell(_caster, SPELL_FEL_ERUPTION, true);
-                    at->Remove();
-                }
-            }
-
-            void OnUpdate(uint32 diff) override
-            {
-                if (_borned)
-                    return;
-
-                _timerBorn += diff;
-
-                if (_timerBorn >= 5 * IN_MILLISECONDS && !_borned)
-                    _borned = true;
-            }
-
-            private:
-                uint32 _timerBorn;
-                bool _activated;
-                bool _borned;
-                Unit* _caster;
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_fel_fissure_AI(at);
+            if (Unit* target = GetCaster()->SelectNearestPlayer(30.0f))
+                GetCaster()->CastSpell(target, RandomSpells[urand(0, 7)]);
         }
+
+        void Register() override
+        {
+            OnCast += SpellCastFn(spell_throw_staff_SpellScript::HandleOnCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_throw_staff_SpellScript();
+    }
 };
 
-class at_arc_wake_of_shadow : public AreaTriggerEntityScript
-{
-    public:
-        at_arc_wake_of_shadow() : AreaTriggerEntityScript("at_arc_wake_of_shadow")
-        {}
-
-        struct at_arc_wake_of_shadow_AI : public AreaTriggerAI
-        {
-            at_arc_wake_of_shadow_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {}
-
-            void OnUnitEnter(Unit* unit) override
-            {
-                if (!unit)
-                    return;
-                
-                if (unit->GetTypeId() != TYPEID_PLAYER)
-                    return;
-                
-                unit->CastSpell(unit, SPELL_WAKE_OF_SHADOW_DMG, true);
-            }
-
-            void OnUnitExit(Unit* target) override
-            {
-                if (!target)
-                    return;
-                
-                if (target->GetTypeId() != TYPEID_PLAYER)
-                    return;
-                
-                target->RemoveAurasDueToSpell(SPELL_WAKE_OF_SHADOW_DMG);
-            }
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_wake_of_shadow_AI(at);
-        }
-};
-
-class at_arc_shadow_slash : public AreaTriggerEntityScript
-{
-    public:
-        at_arc_shadow_slash() : AreaTriggerEntityScript("at_arc_shadow_slash")
-        {}
-
-        struct at_arc_shadow_slash_AI : public AreaTriggerAI
-        {
-            at_arc_shadow_slash_AI(AreaTrigger* at) : AreaTriggerAI(at)
-            {
-                _timerWay = 0;
-            }
-
-            void SetupSpline()
-            {
-                if (!at->GetCaster())
-                    return;
-
-                std::vector<G3D::Vector3> points;
-                float dist = 100.f;
-
-                G3D::Vector3 src = { at->GetPositionX(), at->GetPositionY(), at->GetPositionZ() };
-                G3D::Vector3 tgt;
-
-                tgt.x = src.x + (dist * cosf(at->GetOrientation()));
-                tgt.y = src.y + (dist * sinf(at->GetOrientation()));
-                tgt.z = src.z;
-
-                float dx = (tgt.x - src.x);
-                float dy = (tgt.y - src.y);
-
-                for (uint32 i = 0; i < 100; ++i)
-                {
-                    src.x += (dx/dist);
-                    src.y += (dy/dist);
-
-                    points.push_back(src);
-                }
-
-                at->InitSplines(points, at->GetDuration() * 0.8f);
-            }
-
-            void OnInitialize() override
-            {
-                SetupSpline();
-            }
-
-            void OnUpdate(uint32 diff) override
-            {
-                _timerWay += diff;
-
-                if (_timerWay >= 1000)
-                {
-                    _timerWay = 0;
-                    at->GetCaster()->GetSpellHistory()->ResetAllCooldowns();
-                    at->GetCaster()->CastSpell(at->GetPositionX(), at->GetPositionY(), at->GetPositionZ(), SPELL_WAKE_OF_SHADOW, true);
-                }
-            }
-
-            void OnUnitEnter(Unit* unit) override
-            {
-                if (!unit)
-                    return;
-                
-                if (unit->GetTypeId() != TYPEID_PLAYER)
-                    return;
-                
-                at->GetCaster()->CastSpell(unit, SPELL_SHADOW_SLASH_DMG, true);
-            }
-
-            private:
-                uint32 _timerWay;
-        };
-
-        AreaTriggerAI* GetAI(AreaTrigger* at) const override
-        {
-            return new at_arc_shadow_slash_AI(at);
-        }
-};
 
 void AddSC_boss_general_xakal()
 {
     new boss_general_xakal();
-    new npc_arc_fissure();
-    new npc_arc_dread_felbat();
-    new spell_xakal_fel_fissure();
-    new spell_arc_bombardment();
-    new at_arc_wake_of_shadow();
-    new at_arc_fel_fissure();
-    new at_arc_shadow_slash();
+    new npc_xakal_fissure();
+    new npc_xakal_dread_felbat();
+    new spell_xakal_bombardment();
+    new spell_throw_staff();
 }

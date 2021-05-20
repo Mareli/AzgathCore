@@ -1,292 +1,254 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "AreaTriggerTemplate.h"
-#include "AreaTriggerAI.h"
 #include "violet_hold_assault.h"
-
-enum Spells
-{
-    SPELL_VENOM_SPRAY               = 202414,
-    SPELL_WEB_GRAB                  = 202462,
-    SPELL_FEL_DETONATION            = 202473,
-    SPELL_TOXIC_BLOOD               = 210504,
-    SPELL_TOXIC_BLOOD_DMG           = 210505,
-
-    SPELL_CREEPING_SLAUGHTER        = 202306,
-    SPELL_CREEPING_SLAUGHTER_STUN   = 202309,
-};
-
-enum Events
-{
-    EVENT_VENOM_SPRAY       = 1,
-    EVENT_WEB_GRAB          = 2,
-    EVENT_FEL_DETONATION    = 3,
-    EVENT_TOXIC_BLOOD       = 4,
-    EVENT_PHASE_SPIDER      = 5,
-
-    // Phase Spider
-    EVENT_FOLLOW_TARGET     = 6,
-};
-
-enum Adds
-{
-    NPC_PHASE_SPIDER    = 102434,
-};
 
 enum Says
 {
-    SAY_AGGRO               = 0,
-    SAY_VENOM_SPRAY         = 1,
-    SAY_WEB_GRAB            = 2,
-    SAY_TOXIC_BLOOD         = 3,
-    SAY_CREEPING_SLAUGHTER  = 4,
-    SAY_SPIDER_KITING       = 5,
-    SAY_HIT_SPIDER          = 6,
-    SAY_KILL                = 7,
-    SAY_DEATH               = 8,
+    SAY_AGGRO = 0,
+    SAY_DEATH = 7,
 };
 
-enum Actions
+enum Spells
 {
-    ACTION_FIND_NEW_TARGET = 1,
+    SPELL_VENOM_SPRAY = 202414,
+    SPELL_WEB_GRAB = 202462,
+    SPELL_FEL_DETONATION = 202473,
+    SPELL_TOXIC_BLOOD = 210504,
+
+    //Spider
+    SPELL_CREEPING_SLAUGHTER = 202306,
 };
 
+enum eEvents
+{
+    EVENT_VENOM_SPRAY = 1,
+    EVENT_WEB_GRAB = 2,
+    EVENT_FEL_DETONATION = 3,
+    EVENT_PHASE_SPIDER = 4,
+    EVENT_TOXIC_BLOOD = 5,
+
+    EVENT_1,
+    EVENT_2,
+};
+
+//102387
 class boss_saelorn : public CreatureScript
 {
-    public:
-        boss_saelorn() : CreatureScript("boss_saelorn")
-        {}
+public:
+    boss_saelorn() : CreatureScript("boss_saelorn") {}
 
-        struct boss_saelorn_AI : public BossAI
+    struct boss_saelornAI : public BossAI
+    {
+        boss_saelornAI(Creature* creature) : BossAI(creature, DATA_SAELORN), timer(0), text(0)
         {
-            boss_saelorn_AI(Creature* creature) : BossAI(creature, DATA_SAELORN)
-            {}
+            me->SetReactState(REACT_PASSIVE);
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+            removeloot = false;
+        }
 
-            void Reset() override
+        bool removeloot;
+        uint32 timer;
+        uint32 text;
+
+        void Reset() override
+        {
+            _Reset();
+            timer = 13000;
+            text = 1;
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+        {
+            Talk(SAY_AGGRO);
+            _EnterCombat();
+
+            events.RescheduleEvent(EVENT_VENOM_SPRAY, 3000);
+            events.RescheduleEvent(EVENT_WEB_GRAB, 14000);
+            events.RescheduleEvent(EVENT_PHASE_SPIDER, 15000);
+
+            if (me->GetMap()->GetDifficultyID() != DIFFICULTY_NORMAL)
+                events.RescheduleEvent(EVENT_TOXIC_BLOOD, 10000);
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            Talk(SAY_DEATH);
+            _JustDied();
+
+            if (removeloot)
+                me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+        }
+
+        void DoAction(int32 const action) override
+        {
+            if (action == ACTION_REMOVE_LOOT)
+                removeloot = true;
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim())
+                return;
+
+            if (timer <= diff)
             {
-                _Reset();
+                if (text < 7)
+                {
+                    Talk(text);
+                    text++;
+                    timer = 13000;
+                }
             }
+            else timer -= diff;
 
-            void JustDied(Unit* /**/) override
-            {
-                Talk(SAY_DEATH);
-                _JustDied();
-            }
+            events.Update(diff);
 
-            void KilledUnit(Unit* victim) override
-            {
-                if (victim && victim->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_KILL);
-            }
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
 
-            void EnterCombat(Unit* /**/) override
-            {
-                Talk(SAY_AGGRO);
-                _EnterCombat();
-                events.ScheduleEvent(EVENT_PHASE_SPIDER, Seconds(18));
-                events.ScheduleEvent(EVENT_FEL_DETONATION, Seconds(20));
-                events.ScheduleEvent(EVENT_WEB_GRAB, Seconds(15));
-                events.ScheduleEvent(EVENT_VENOM_SPRAY, Seconds(6));
-
-                if (IsHeroic())
-                    events.ScheduleEvent(EVENT_TOXIC_BLOOD, Seconds(10));
-            }
-
-            void ExecuteEvent(uint32 eventId) override
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
-                    case EVENT_VENOM_SPRAY:
+                case EVENT_VENOM_SPRAY:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 35.0f, true))
+                        DoCast(target, SPELL_VENOM_SPRAY);
+                    events.RescheduleEvent(EVENT_VENOM_SPRAY, 27000);
+                    break;
+                case EVENT_WEB_GRAB:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_FARTHEST, 0, 50.0f, true))
+                        DoCast(target, SPELL_WEB_GRAB);
+                    events.RescheduleEvent(EVENT_WEB_GRAB, 27000);
+                    events.RescheduleEvent(EVENT_FEL_DETONATION, 500);
+                    break;
+                case EVENT_FEL_DETONATION:
+                    DoCast(SPELL_FEL_DETONATION);
+                    break;
+                case EVENT_PHASE_SPIDER:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 60.0f, true))
                     {
-                        Talk(SAY_VENOM_SPRAY);
-                        DoCastVictim(SPELL_VENOM_SPRAY);
-                        events.ScheduleEvent(EVENT_VENOM_SPRAY, Seconds(20));
-                        break;
+                        Position pos;
+                        target->GetRandomNearPosition(5.0f);
+                        me->SummonCreature(NPC_PHASE_SPIDER, pos);
                     }
-
-                    case EVENT_WEB_GRAB:
-                    {
-                        Talk(SAY_WEB_GRAB);
-                        DoCastVictim(SPELL_WEB_GRAB);
-                        events.ScheduleEvent(EVENT_WEB_GRAB, Seconds(urand(30,40)));
-                        break;
-                    }
-
-                    case EVENT_FEL_DETONATION:
-                    {
-                        DoCast(me, SPELL_FEL_DETONATION);
-                        events.ScheduleEvent(EVENT_FEL_DETONATION, Seconds(30));
-                        break;
-                    }
-
-                    case EVENT_TOXIC_BLOOD:
-                    {
-                        Talk(SAY_TOXIC_BLOOD);
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                            DoCast(target, SPELL_TOXIC_BLOOD);
-                        events.ScheduleEvent(EVENT_TOXIC_BLOOD, Seconds(15));
-                        break;
-                    }
-
-                    case EVENT_PHASE_SPIDER:
-                    {
-                        Position pos = me->GetRandomNearPosition(30);
-                        DoSummon(NPC_PHASE_SPIDER, pos, 0, TEMPSUMMON_MANUAL_DESPAWN);
-                        events.ScheduleEvent(EVENT_PHASE_SPIDER, Seconds(15));
-                        break;
-                    }
-
-                    default : break;
+                    break;
+                case EVENT_TOXIC_BLOOD:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
+                        DoCast(target, SPELL_TOXIC_BLOOD);
+                    events.RescheduleEvent(EVENT_TOXIC_BLOOD, 10000);
+                    break;
                 }
             }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new boss_saelorn_AI(creature);
+            DoMeleeAttackIfReady();
         }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new boss_saelornAI(creature);
+    }
 };
 
-class npc_vha_phase_spider : public CreatureScript
+//102434
+class npc_saelorn_phase_spider : public CreatureScript
 {
-    public:
-        npc_vha_phase_spider() : CreatureScript("npc_vha_phase_spider")
-        {}
+public:
+    npc_saelorn_phase_spider() : CreatureScript("npc_saelorn_phase_spider") {}
 
-        struct npc_vha_phase_spider_AI : public ScriptedAI
+    struct npc_saelorn_phase_spiderAI : public ScriptedAI
+    {
+        npc_saelorn_phase_spiderAI(Creature* creature) : ScriptedAI(creature)
         {
-            npc_vha_phase_spider_AI(Creature* creature) : ScriptedAI(creature)
-            {
-            }
-
-            void DoAction(int32 action) override
-            {
-                if (action == ACTION_FIND_NEW_TARGET)
-                {
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                        DoCast(target, SPELL_CREEPING_SLAUGHTER);
-                }
-            }
-
-            void IsSummonedBy(Unit* /**/) override
-            {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                    DoCast(target, SPELL_CREEPING_SLAUGHTER);
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return new npc_vha_phase_spider_AI(creature);
+            me->SetReactState(REACT_PASSIVE);
+            me->SetUnitFlags(UNIT_FLAG_NOT_SELECTABLE);
+            me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetUnitFlags(UNIT_FLAG_NOT_ATTACKABLE_1);
+            me->SetSpeed(MOVE_RUN, 0.8f);
+            me->SetSpeed(MOVE_WALK, 0.8f);
         }
-};
 
-class spell_vha_creeping_slaughter : public SpellScriptLoader
-{
-    public:
-        spell_vha_creeping_slaughter() : SpellScriptLoader("spell_vha_creeping_slaughter")
-        {}
+        EventMap events;
 
-        class spell_creeping_slaughter_AuraScript : public AuraScript
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
         {
-            public:
-                PrepareAuraScript(spell_creeping_slaughter_AuraScript);
+            events.RescheduleEvent(EVENT_1, 2000);
+            events.RescheduleEvent(EVENT_2, 2500);
+        }
 
-                void HandleOnRemove(AuraEffect const* /**/, AuraEffectHandleModes /**/)
+        bool checkPlayers()
+        {
+            std::list<HostileReference*> threatList = me->getThreatManager().getThreatList();
+            if (threatList.size() > 1)
+                return true;
+
+            return false;
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!UpdateVictim() && me->IsInCombat())
+                return;
+
+            events.Update(diff);
+
+            if (uint32 eventId = events.ExecuteEvent())
+            {
+                switch (eventId)
                 {
-                    if (!GetCaster() || !GetUnitOwner())
-                        return;
-
-                    GetCaster()->GetAI()->DoAction(ACTION_FIND_NEW_TARGET);
+                case EVENT_1:
+                {
+                    if (me->GetOwner())
+                        if (Unit* summoner = me->GetOwner())
+                        {
+                            me->AttackStop();
+                            if (Unit* target = summoner->GetAI()->SelectTarget(SELECT_TARGET_RANDOM, checkPlayers(), 60.0f, true, -SPELL_CREEPING_SLAUGHTER))
+                            {
+                                DoCast(target, SPELL_CREEPING_SLAUGHTER, true);
+                                AttackStart(target);
+                            }
+                            else if (Unit* target2 = summoner->GetAI()->SelectTarget(SELECT_TARGET_RANDOM, checkPlayers(), 60.0f, true))
+                                AttackStart(target2);
+                        }
+                    events.RescheduleEvent(EVENT_1, 16000);
+                    break;
                 }
-
-                void HandlePeriodic(AuraEffect const* /**/)
+                case EVENT_2:
                 {
-                    if (!GetUnitOwner() || !GetCaster())
-                        return;
-
-                    Unit* owner = GetUnitOwner();
-                    Unit* caster = GetCaster();
-
-                    if (owner->isInFront(caster, float(M_PI)/4.0f))
+                    if (me->HasUnitState(UNIT_STATE_CASTING))
+                        me->ClearUnitState(UNIT_STATE_CASTING);
+                    if (Unit* target = me->GetVictim())
                     {
-                        caster->GetMotionMaster()->Clear();
-                        caster->StopMoving();
-                    }
-                    else
-                    {
-                        if (!caster->IsWithinMeleeRange(owner))
-                            caster->GetMotionMaster()->MoveFollow(owner, 0, 0);
+                        if (target->isInFront(me))
+                        {
+                            if (!me->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED))
+                                me->AddUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED);
+                        }
                         else
-                            caster->GetAI()->AttackStart(owner);
+                        {
+                            if (me->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED))
+                                me->ClearUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED);
+                        }
                     }
+                    else if (!me->GetVictim() || !me->GetVictim()->IsAlive())
+                        events.RescheduleEvent(EVENT_1, 1000);
+                    events.RescheduleEvent(EVENT_2, 500);
+                    break;
                 }
-
-                void Register()
-                {
-                    OnEffectRemove += AuraEffectRemoveFn(spell_creeping_slaughter_AuraScript::HandleOnRemove, EFFECT_2, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_creeping_slaughter_AuraScript::HandlePeriodic, EFFECT_2, SPELL_AURA_PERIODIC_DUMMY);
                 }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_creeping_slaughter_AuraScript();
+            }
+            DoMeleeAttackIfReady();
         }
-};
+    };
 
-class spell_saelorn_toxic_blood : public SpellScriptLoader
-{
-    public:
-        spell_saelorn_toxic_blood() : SpellScriptLoader("spell_saelorn_toxic_blood")
-        {}
-
-        class spell_saelorn_toxic_blood_AuraScript : public AuraScript
-        {
-            public:
-                PrepareAuraScript(spell_saelorn_toxic_blood_AuraScript);
-
-                void HandlePeriodic(AuraEffect const* /**/)
-                {
-                    if (!GetUnitOwner() || !GetCaster())
-                        return;
-
-                    GetCaster()->CastSpell(GetUnitOwner(), SPELL_TOXIC_BLOOD_DMG, true);
-                }
-
-                void Register() override
-                {
-                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_saelorn_toxic_blood_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_saelorn_toxic_blood_AuraScript();
-        }
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_saelorn_phase_spiderAI(creature);
+    }
 };
 
 void AddSC_boss_saelorn()
 {
     new boss_saelorn();
-    new npc_vha_phase_spider();
-    new spell_vha_creeping_slaughter();
-    new spell_saelorn_toxic_blood();
+    new npc_saelorn_phase_spider();
 }

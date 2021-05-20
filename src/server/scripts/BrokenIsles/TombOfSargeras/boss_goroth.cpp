@@ -1,333 +1,647 @@
-/*
-* Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms of the GNU General Public License as published by the
-* Free Software Foundation; either version 2 of the License, or (at your
-* option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License along
-* with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
-#include "AreaTriggerTemplate.h"
-#include "ScriptedCreature.h"
-#include "ScriptMgr.h"
-#include "SpellAuras.h"
-#include "SpellMgr.h"
-#include "SpellScript.h"
 #include "tomb_of_sargeras.h"
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
+#include "AreaTrigger.h"
+#include "AreaTriggerTemplate.h"
 
 enum Spells
 {
-    SPELL_BURNING_ARMOR                 = 231363,
-    SPELL_BURNING_ERUPTION              = 231395, // Casted at SPELL_BURNING_ARMOR end
+    SPELL_GOROTH_ENERGIZE = 237333,
+    SPELL_BURNING_ARMOR = 231363,
+    SPELL_BURNING_ERUPTION = 231395,
+    SPELL_BURNING_ERUPTION_DUMMY = 233025,
+    SPELL_CRASHING_COMET_FILTER = 232249, //Caster Boss
+    SPELL_CRASHING_COMET_LFR_FILTER = 244548, //Caster Boss. Only LFR
+    SPELL_CRASHING_COMET_FILTER2 = 232254, //Caster Ember Stalker - 115892
+    SPELL_CRASHING_COMET_LFR_FILTER2 = 244580, //Caster Ember Stalker - 115892. Only LFR
+    SPELL_CRASHING_COMET_MISSILE = 230339,
+    SPELL_CRASHING_COMET_LFR_MISSILE = 244581,
+    SPELL_INFERNAL_SPIKE_FILTER = 233050,
+    SPELL_INFERNAL_SPIKE_SUMMON = 233055,
+    SPELL_INFERNAL_SPIKE_AT = 233019,
+    SPELL_INFERNAL_SPIKE_PROTECTION = 234475,
+    SPELL_SHATTERING_STAR_FILTER = 233269,
+    SPELL_SHATTERING_STAR_MARK = 233272,
+    SPELL_SHATTERING_STAR_AURA = 233289, //unk
+    SPELL_SHATTERING_STAR_SPEED = 233290,
+    SPELL_SHATTERING_STAR_HIT = 233274,
+    SPELL_SHATTERING_STAR_AT = 233279,
+    SPELL_SHATTERING_NOVA = 233283,
+    SPELL_STAR_BURN = 236329,
+    SPELL_INFERNAL_BURNING = 233062,
+    SPELL_INFERNAL_DETONATION = 233900, //Mythic
+    SPELL_RAIN_OF_BRIMSTONE_DUMMY = 233285, //Mythic
+    SPELL_RAIN_OF_BRIMSTONE_MISSILE = 238587, //Mythic
+    SPELL_RAIN_OF_BRIMSTONE_SUMMON = 233266, //Mythic
+    SPELL_RAIN_OF_BRIMSTONE_SPIKE_DESTROY = 238659, //Mythic
 
-    SPELL_CRASHING_COMET                = 232249,
-    SPELL_CRASHING_COMET_DAMAGE         = 230345,
+    //Lava Stalker
+    SPELL_FEL_PERIODIC_TRIGGER = 234386,
+    SPELL_FEL_ERUPTION_TELEGRAPH = 234366,
+    SPELL_FEL_ERUPTION_DUMMY = 234368,
+    SPELL_FEL_ERUPTION_MISSILE = 234387,
+    SPELL_FEL_ERUPTION_AT = 234330,
 
-    SPELL_INFERNAL_SPIKE_SUMMON         = 233055,
-    SPELL_INFERNAL_SPIKE                = 233019,
-    SPELL_INFERNAL_SPIKE_PROTECTION     = 234475,
+    //Brimstone Infernal
+    SPELL_FEL_FIRE = 241455,
+};
 
-    SPELL_SHATTERING_STAR               = 233272,
-    SPELL_SHATTERING_STAR_AT            = 233279,
-    SPELL_SHATTERING_STAR_DAMAGE        = 233281,
-    SPELL_SHATTERING_STAR_FINAL_DAMAGE  = 233283,
-
-    SPELL_INFERNAL_BURNING              = 233062,
-    SPELL_INFERNAL_BURNING_REMOVE_SPIKES= 233078,
+enum eEvents
+{
+    EVENT_BURNING_ARMOR = 1,
+    EVENT_CRASHING_COMET = 2,
+    EVENT_INFERNAL_SPIKE = 3,
+    EVENT_SHATTERING_STAR = 4,
+    EVENT_RAIN_OF_BRIMSTONE = 5,
 };
 
 enum Misc
 {
-    NPC_INFERNAL_SPIKE                  = 116976,
-
-    SPELLVISUAL_INFERNAL_SPIKE_DESTROY  = 66119,
-
-    AT_SHATTERING_STAR                  = 13412,
+    SPELLVISUAL_INFERNAL_SPIKE_DESTROY = 66119,
+    DATA_SPIKES_COUNTER,
 };
 
-struct boss_goroth : public BossAI
-{
-    boss_goroth(Creature* creature) : BossAI(creature, DATA_GOROTH) { }
+Position const centrPos = { 6101.30f, -795.72f, 2971.72f };
 
-    void EnterCombat(Unit* /*attacker*/) override
+enum Misc2
+{
+    ACTION_1 = 1,
+    ACTION_2,
+};
+//115844
+struct boss_goroth : BossAI
+{
+    explicit boss_goroth(Creature* creature) : BossAI(creature, DATA_GOROTH) {}
+
+    uint8 spiketouched = 0;
+    uint8 felRand = 0;
+    uint8 shatteringCounter = 0;
+    uint8 rainBrimstoneCounter = 0;
+    uint32 felEruptionTimer = 0;
+    uint32 shatteringTimer = 0;
+    uint32 rainBrimstoneTimer = 0;
+    ObjectGuid shatteringTargetGUID;
+
+    void Reset() override
+    {
+        _Reset();
+
+        spiketouched = 0;
+        shatteringCounter = 0;
+        rainBrimstoneCounter = 0;
+        shatteringTimer = 60000;
+        rainBrimstoneTimer = 60000;
+        me->RemoveAurasDueToSpell(SPELL_GOROTH_ENERGIZE);
+        me->SetMaxPower(POWER_ENERGY, 100);
+        me->SetPower(POWER_ENERGY, 0);
+        me->SetReactState(REACT_DEFENSIVE);
+        me->SummonCreature(NPC_EMBER_STALKER, 6194.41f, -842.93f, 3042.72f, 0.0f);
+
+        if (IsHeroicPlusRaid())
+        {
+            felRand = 0;
+            felEruptionTimer = 30000;
+        }
+    }
+
+    void EnterCombat(Unit* /*who*/) override
     {
         _EnterCombat();
 
-        events.ScheduleEvent(SPELL_BURNING_ARMOR, 16s);
-        events.ScheduleEvent(SPELL_CRASHING_COMET, 10s, 20s);
-        events.ScheduleEvent(SPELL_INFERNAL_SPIKE_SUMMON, 12s);
-        events.ScheduleEvent(SPELL_SHATTERING_STAR, 10s, 20s);
-        events.ScheduleEvent(SPELL_INFERNAL_BURNING, 55s);
+        DoCast(me, SPELL_GOROTH_ENERGIZE, true);
+        events.RescheduleEvent(EVENT_BURNING_ARMOR, 10000);
+        events.RescheduleEvent(EVENT_CRASHING_COMET, 8000);
+        events.RescheduleEvent(EVENT_INFERNAL_SPIKE, 4000);
+        events.RescheduleEvent(EVENT_SHATTERING_STAR, IsMythicRaid() ? 34000 : 24000);
+
+        if (IsMythicRaid())
+            events.RescheduleEvent(EVENT_RAIN_OF_BRIMSTONE, 12000);
+
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_INFERNAL_SPIKE_PROTECTION);
     }
 
-    void ExecuteEvent(uint32 eventId) override
+    void JustDied(Unit* /*killer*/) override
     {
-        switch (eventId)
-        {
-            case SPELL_BURNING_ARMOR:
-            {
-                if (Unit* target = SelectTarget(SELECT_TARGET_TOPAGGRO))
-                    DoCast(target, SPELL_BURNING_ARMOR);
+        _JustDied();
+        Talk(12);
 
-                events.Repeat(16s);
-                break;
-            }
-            case SPELL_CRASHING_COMET:
-            {
-                UnitList targetList;
-                SelectTargetList(targetList, 3, SELECT_TARGET_RANDOM, 200.0f, true);
-
-                for (Unit* target : targetList)
-                    DoCast(target, SPELL_CRASHING_COMET, true);
-
-                events.Repeat(10s, 20s);
-                break;
-            }
-            case SPELL_INFERNAL_SPIKE_SUMMON:
-            {
-                UnitList targetList;
-                SelectTargetList(targetList, 3, SELECT_TARGET_RANDOM, 200.0f, true);
-
-                for (Unit* target : targetList)
-                    DoCast(target, SPELL_INFERNAL_SPIKE_SUMMON);
-
-                events.Repeat(12s);
-                break;
-            }
-            case SPELL_SHATTERING_STAR:
-            {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 2))
-                {
-                    _shatteringStarTargetGUID = target->GetGUID();
-                    DoCast(target, SPELL_SHATTERING_STAR);
-                }
-
-                events.Repeat(10s, 20s);
-                break;
-            }
-            case SPELL_INFERNAL_BURNING:
-            {
-                DoCast(SPELL_INFERNAL_BURNING);
-                events.Repeat(55s);
-                break;
-            }
-            default:
-                break;
-        }
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_INFERNAL_SPIKE_PROTECTION);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_STAR_BURN);
     }
 
-    void JustSummoned(Creature* summon) override
+    void KilledUnit(Unit* who) override
     {
-        BossAI::JustSummoned(summon);
-
-        if (summon->GetEntry() == NPC_INFERNAL_SPIKE)
-            summon->CastSpell(summon, SPELL_INFERNAL_SPIKE, false);
-    }
-
-    ObjectGuid GetGUID(int32 /*id*/ = 0) const override
-    {
-        return _shatteringStarTargetGUID;
-    }
-
-private:
-    ObjectGuid _shatteringStarTargetGUID;
-};
-
-// 231363
-class spell_burning_armor : public AuraScript
-{
-    PrepareAuraScript(spell_burning_armor);
-
-    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        GetTarget()->CastSpell(nullptr, SPELL_BURNING_ERUPTION, true);
-    }
-
-    void Register() override
-    {
-        OnEffectRemove += AuraEffectRemoveFn(spell_burning_armor::HandleRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
-    }
-};
-
-// 232249
-class aura_crashing_comet : public AuraScript
-{
-    PrepareAuraScript(aura_crashing_comet);
-
-    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        if (Unit* caster = GetCaster())
-            caster->CastSpell(GetTarget(), SPELL_CRASHING_COMET_DAMAGE, true);
-    }
-
-    void Register() override
-    {
-        OnEffectRemove += AuraEffectRemoveFn(aura_crashing_comet::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
-    }
-};
-
-// 233024
-class spell_crashing_comet_damage : public SpellScript
-{
-    PrepareSpellScript(spell_crashing_comet_damage);
-
-    void HandleHit(SpellEffIndex /*effIndex*/)
-    {
-        if (Unit* target = GetHitUnit())
-        {
-            if (Creature* infernalSpike = target->ToCreature())
-            {
-                infernalSpike->SendPlaySpellVisual(infernalSpike->GetGUID(), SPELLVISUAL_INFERNAL_SPIKE_DESTROY);
-                infernalSpike->DespawnOrUnsummon();
-            }
-        }
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_crashing_comet_damage::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
-    }
-};
-
-// 233062
-class spell_infernal_burning : public SpellScript
-{
-    PrepareSpellScript(spell_infernal_burning);
-
-    void BeforeCastHandler()
-    {
-        Creature* caster = GetCaster()->ToCreature();
-        if (!caster)
+        if (!who->IsPlayer())
             return;
 
-        CreatureList infernalSpikes;
-        caster->GetCreatureListWithEntryInGrid(infernalSpikes, NPC_INFERNAL_SPIKE, 200.0f);
-
-        for (auto reference : caster->getThreatManager().getThreatList())
-            for (Creature* spike : infernalSpikes)
-                if (spike->IsInBetween(GetCaster(), reference->getTarget(), 2.0f))
-                    reference->getTarget()->AddAura(SPELL_INFERNAL_SPIKE_PROTECTION);
+        //Talk({ 7, 9, 10 });
     }
 
-    void AfterCastHandler()
+    void DoAction(int32 const action) override
     {
-        if (Creature* caster = GetCaster()->ToCreature())
-            for (auto reference : caster->getThreatManager().getThreatList())
-                reference->getTarget()->RemoveAurasDueToSpell(SPELL_INFERNAL_SPIKE_PROTECTION);
+        switch (action)
+        {
+        case ACTION_1:
+            if (auto player = ObjectAccessor::GetPlayer(*me, shatteringTargetGUID))
+                DoCast(player, SPELL_STAR_BURN, true);
+            break;
+        case ACTION_2:
+            ++spiketouched;
+            break;
+        }
     }
 
-    void Register() override
+    uint32 GetData(uint32 type) const override
     {
-        BeforeCast  += SpellCastFn(spell_infernal_burning::BeforeCastHandler);
-        AfterCast   += SpellCastFn(spell_infernal_burning::AfterCastHandler);
+        if (type == DATA_SPIKES_COUNTER)
+            return spiketouched;
+
+        return 0;
+    }
+
+    void OnRemoveAuraTarget(Unit* target, uint32 spellId, AuraRemoveMode mode)
+    {
+        if (!me->IsInCombat() || !target || mode != AURA_REMOVE_BY_EXPIRE)
+            return;
+
+        switch (spellId)
+        {
+        case SPELL_BURNING_ARMOR:
+            target->CastSpell(target, SPELL_BURNING_ERUPTION, true);
+            me->CastSpell(target, SPELL_BURNING_ERUPTION_DUMMY, true);
+            break;
+        }
+    }
+
+    void SpellFinishCast(const SpellInfo* spell)
+    {
+        switch (spell->Id)
+        {
+        case SPELL_INFERNAL_BURNING:
+        {
+            me->SetPower(POWER_ENERGY, 0);
+            EntryCheckPredicate pred(NPC_INFERNAL_SPIKE);
+            summons.DoAction(ACTION_1, pred);
+            break;
+        }
+        case SPELL_RAIN_OF_BRIMSTONE_DUMMY:
+        {
+            Position pos;
+            std::list<Position> randPosList;
+            bool badPos = false;
+            uint16 traiCount = 0;
+            while (randPosList.size() < 3)
+            {
+                badPos = false;
+               // centrPos.SimplePosXYRelocationByAngle(pos, frand(25.0f, 35.0f), frand(0.0f, 6.28f));
+                ++traiCount;
+
+                for (auto _pos : randPosList)
+                {
+                    if (pos.GetExactDist(&_pos) <= 10.0f)
+                    {
+                        badPos = true;
+                        break;
+                    }
+                }
+                if (!badPos || traiCount > 15)
+                    randPosList.push_back(pos);
+            }
+            for (auto _pos : randPosList)
+                me->CastSpell(_pos, SPELL_RAIN_OF_BRIMSTONE_MISSILE, true);
+            break;
+        }
+        }
+    }
+
+    void SpellHit(Unit* target, SpellInfo const* spell) override
+    {
+        switch (spell->Id)
+        {
+        case SPELL_SHATTERING_STAR_HIT:
+            if (me->IsInCombat())
+                DoCast(target, SPELL_SHATTERING_STAR_AT, true);
+            break;
+        }
+    }
+
+    void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+    {
+        switch (spell->Id)
+        {
+        case SPELL_INFERNAL_SPIKE_FILTER:
+            DoCast(target, SPELL_INFERNAL_SPIKE_SUMMON, true);
+            break;
+        case SPELL_SHATTERING_STAR_FILTER:
+            shatteringTargetGUID = target->GetGUID();
+            DoCast(target, SPELL_SHATTERING_STAR_MARK, true);
+            DoCast(target, SPELL_SHATTERING_STAR_SPEED, true);
+            break;
+        }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (felEruptionTimer)
+        {
+            if (felEruptionTimer <= diff)
+            {
+                felEruptionTimer = 30000;
+                uint8 felRandOld = felRand;
+
+                while (felRandOld == felRand)
+                {
+                    felRand = urand(2, 5);
+                }
+                //me->SummonCreatureGroupDespawn(felRandOld);
+                me->SummonCreatureGroup(felRand);
+            }
+            else
+                felEruptionTimer -= diff;
+        }
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+            case EVENT_BURNING_ARMOR:
+                me->CastSpell(me->GetVictim(),SPELL_BURNING_ARMOR);
+                events.RescheduleEvent(EVENT_BURNING_ARMOR, 24000);
+                break;
+            case EVENT_CRASHING_COMET:
+            {
+                if (IsLFR())
+                    DoCast(SPELL_CRASHING_COMET_LFR_FILTER);
+                else
+                    DoCast(SPELL_CRASHING_COMET_FILTER);
+                EntryCheckPredicate pred(NPC_EMBER_STALKER);
+                summons.DoAction(ACTION_1, pred);
+                events.RescheduleEvent(EVENT_CRASHING_COMET, 18000);
+                break;
+            }
+            case EVENT_INFERNAL_SPIKE:
+                DoCast(SPELL_INFERNAL_SPIKE_FILTER);
+                events.RescheduleEvent(EVENT_INFERNAL_SPIKE, 16000);
+                break;
+            case EVENT_SHATTERING_STAR:
+                if (++shatteringCounter == 4)
+                    shatteringTimer = IsMythicRaid() ? 30000 : 50000;
+                shatteringTargetGUID.Clear();
+                DoCast(SPELL_SHATTERING_STAR_FILTER);
+                events.RescheduleEvent(EVENT_SHATTERING_STAR, shatteringTimer);
+                break;
+            case EVENT_RAIN_OF_BRIMSTONE:
+                if (++rainBrimstoneCounter == 4)
+                {
+                    rainBrimstoneCounter = 0;
+                    rainBrimstoneTimer = 68000;
+                }
+                else
+                    rainBrimstoneTimer = 60000;
+                DoCast(SPELL_RAIN_OF_BRIMSTONE_DUMMY);
+                events.RescheduleEvent(EVENT_RAIN_OF_BRIMSTONE, rainBrimstoneTimer);
+                break;
+            }
+        }
+        DoMeleeAttackIfReady();
     }
 };
 
-// 233078
-class spell_infernal_burning_remove_spikes : public SpellScript
+//115892
+struct npc_goroth_ember_stalker : public ScriptedAI
 {
-    PrepareSpellScript(spell_infernal_burning_remove_spikes);
-
-    void HandleHit(SpellEffIndex /*effIndex*/)
+    npc_goroth_ember_stalker(Creature* creature) : ScriptedAI(creature)
     {
-        if (Unit* target = GetHitUnit())
+        me->SetReactState(REACT_PASSIVE);
+        me->SetDisplayId(11686);
+    }
+
+    void Reset() {}
+
+    void DoAction(int32 const action) override
+    {
+        if (IsLFR())
+            me->CastSpell(me, SPELL_CRASHING_COMET_LFR_FILTER2, true);
+        else
+            me->CastSpell(me, SPELL_CRASHING_COMET_FILTER2, true);
+    }
+
+    void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+    {
+        auto owner = me->GetOwner();
+        if (!owner)
+            return;
+
+        switch (spell->Id)
         {
-            if (Creature* infernalSpike = target->ToCreature())
+        case SPELL_CRASHING_COMET_LFR_FILTER2:
+            me->CastSpell(target, SPELL_CRASHING_COMET_LFR_MISSILE, true, nullptr, nullptr, owner->GetGUID());
+            break;
+        case SPELL_CRASHING_COMET_FILTER2:
+            me->CastSpell(target, SPELL_CRASHING_COMET_MISSILE, true, nullptr, nullptr, owner->GetGUID());
+            break;
+        }
+    }
+
+    void UpdateAI(uint32 diff) {}
+};
+
+//116976
+struct npc_goroth_infernal_spike : public ScriptedAI
+{
+    npc_goroth_infernal_spike(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    bool despawn = false;
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        me->CastSpell(me, SPELL_INFERNAL_SPIKE_AT, false);
+    }
+
+    void Reset() {}
+
+    void SpellHit(Unit* caster, SpellInfo const* spell) override
+    {
+        if (despawn || caster->GetEntry() != NPC_GOROTH)
+            return;
+
+        if (spell->Id == SPELL_BURNING_ERUPTION_DUMMY || spell->Id == SPELL_RAIN_OF_BRIMSTONE_SPIKE_DESTROY)
+            DoAction(true);
+    }
+
+    void OnAreaTriggerDespawn(uint32 spellId, Position pos, bool duration)
+    {
+        if (despawn)
+            return;
+
+        if (spellId == SPELL_INFERNAL_SPIKE_AT)
+            DoAction(true);
+    }
+
+    void DoAction(int32 const action) override
+    {
+        if (despawn)
+            return;
+
+        despawn = true;
+
+        if (IsMythicRaid())
+        {
+            if (auto owner = me->GetOwner())
+                owner->CastSpell(me, SPELL_INFERNAL_DETONATION, true);
+        }
+
+        //me->PlaySpellVisual(me->GetPosition(), SPELLVISUAL_INFERNAL_SPIKE_DESTROY, 0.0f, me->GetGUID(), false);
+        me->DespawnOrUnsummon(1000);
+    }
+
+    void UpdateAI(uint32 diff) {}
+};
+
+//117931
+struct npc_goroth_lava_stalker : public ScriptedAI
+{
+    npc_goroth_lava_stalker(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        me->CastSpell(me, SPELL_FEL_ERUPTION_TELEGRAPH, true);
+        me->CastSpell(me, SPELL_FEL_PERIODIC_TRIGGER, true);
+    }
+
+    void Reset() {}
+
+    void UpdateAI(uint32 diff) {}
+};
+
+//119950
+struct npc_goroth_brimstone_infernal : public ScriptedAI
+{
+    npc_goroth_brimstone_infernal(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+        instance = me->GetInstanceScript();
+    }
+
+    InstanceScript* instance;
+    uint32 felTimer = 0;
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        me->SetReactState(REACT_AGGRESSIVE);
+        felTimer = 12000; //Need correct time!
+    }
+
+    void Reset() {}
+
+    void EnterCombat(Unit* /*who*/)
+    {
+        instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+    }
+
+    void UpdateAI(uint32 diff)
+    {
+        if (!UpdateVictim())
+            return;
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (felTimer)
+        {
+            if (felTimer <= diff)
             {
-                infernalSpike->SendPlaySpellVisual(infernalSpike->GetGUID(), SPELLVISUAL_INFERNAL_SPIKE_DESTROY);
-                infernalSpike->DespawnOrUnsummon();
+                felTimer = 15000; //Need correct time!
+                DoCast(SPELL_FEL_FIRE);
             }
+            else
+                felTimer -= diff;
+        }
+        DoMeleeAttackIfReady();
+    }
+};
+
+//233024
+class spell_tos_goroth_crashing_comet : public SpellScript
+{
+    PrepareSpellScript(spell_tos_goroth_crashing_comet);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        std::list<WorldObject*> infernalSpikes;
+        for (auto target : targets)
+        {
+            if (target->GetEntry() == NPC_INFERNAL_SPIKE)
+                infernalSpikes.push_back(target);
+        }
+
+        for (auto infernalSpike : infernalSpikes)
+        {
+            if (auto spike = Creature::GetCreature(*GetCaster(), infernalSpike->GetGUID()))
+                spike->GetAI()->DoAction(true);
         }
     }
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_infernal_burning_remove_spikes::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_tos_goroth_crashing_comet::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENTRY);
     }
 };
 
-// 233274
-class spell_shattering_star_dummy : public SpellScript
+//238588
+class spell_tos_goroth_rain_of_brimstone : public SpellScript
 {
-    PrepareSpellScript(spell_shattering_star_dummy);
+    PrepareSpellScript(spell_tos_goroth_rain_of_brimstone);
 
-    void HandleHit(SpellEffIndex /*effIndex*/)
+    uint8 targetCount = 0;
+
+    void FilterTargets(std::list<WorldObject*>& targets)
     {
-        if (Creature* goroth = GetHitUnit()->ToCreature())
-            if (goroth->AI())
-                goroth->CastSpell(GetCaster(), SPELL_SHATTERING_STAR_AT, true);
+        targetCount = targets.size();
+    }
+
+    void HandleDamage(SpellEffIndex /*effectIndex*/)
+    {
+        if (targetCount)
+            SetHitDamage(GetHitDamage() / targetCount);
+    }
+
+    void Register()
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_tos_goroth_rain_of_brimstone::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+        OnEffectHitTarget += SpellEffectFn(spell_tos_goroth_rain_of_brimstone::HandleDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+    }
+};
+
+//237333
+class spell_tos_goroth_energy_tracker : public AuraScript
+{
+    PrepareAuraScript(spell_tos_goroth_energy_tracker);
+
+    uint8 powerTick = 0;
+
+    void OnTick(AuraEffect const* aurEff)
+    {
+        auto caster = GetCaster()->ToCreature();
+        if (!caster || !caster->IsInCombat())
+            return;
+
+        auto powerCount = caster->GetPower(POWER_ENERGY);
+        if (powerCount < 100)
+        {
+            if (powerTick < 8)
+            {
+                ++powerTick;
+
+                if (aurEff->GetTickNumber() == 1)
+                    caster->SetPower(POWER_ENERGY, powerCount + 1);
+                else
+                    caster->SetPower(POWER_ENERGY, powerCount + 2);
+            }
+            else
+            {
+                powerTick = 0;
+                caster->SetPower(POWER_ENERGY, powerCount + 1);
+            }
+        }
+        else if (!caster->HasUnitState(UNIT_STATE_CASTING))
+        {
+            caster->CastSpell(caster, SPELL_INFERNAL_BURNING, false);
+        }
     }
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_shattering_star_dummy::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_tos_goroth_energy_tracker::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 
-//AT : 13412
-//Spell : 233279
-struct at_goroth_shattering_star : AreaTriggerAI
+//234386
+class spell_tos_goroth_fel_periodic_trigger : public AuraScript
 {
-    at_goroth_shattering_star(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+    PrepareAuraScript(spell_tos_goroth_fel_periodic_trigger);
 
-    void OnInitialize() override
+    void OnTick(AuraEffect const* aurEff)
     {
-        if (Unit* caster = at->GetCaster())
-            if (Creature* creCaster = caster->ToCreature())
-                if (creCaster->IsAIEnabled)
-                    if (Unit* target = ObjectAccessor::GetUnit(*creCaster, creCaster->AI()->GetGUID()))
-                        at->SetDestination(*target, 1000);
+        PreventDefaultAction();
+
+        if (auto caster = GetCaster())
+        {
+            Position pos;
+            float angle = caster->GetRelativeAngle(centrPos.GetPositionX(), centrPos.GetPositionY()) + frand(-1.0f, 1.0f);
+            caster->GetNearPosition(frand(35.0f, 45.0f), angle);
+            caster->CastSpell(pos, SPELL_FEL_ERUPTION_MISSILE, true);
+        }
     }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_tos_goroth_fel_periodic_trigger::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
+};
+
+//13526
+struct at_goroth_fel_pool : AreaTriggerAI
+{
+    explicit at_goroth_fel_pool(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) {}
 
     void OnUnitEnter(Unit* unit) override
     {
         if (unit->GetEntry() == NPC_INFERNAL_SPIKE)
-        {
-            ++_infernalSpikeTouched;
-            unit->SendPlaySpellVisual(unit->GetGUID(), SPELLVISUAL_INFERNAL_SPIKE_DESTROY);
-            unit->ToCreature()->DespawnOrUnsummon();
-        }
-        else if (Unit* caster = at->GetCaster())
-        {
-            if (caster->IsValidAttackTarget(unit))
-                caster->CastSpell(unit, SPELL_SHATTERING_STAR_DAMAGE, true);
-        }
+            unit->GetAI()->DoAction(true);
     }
+};
 
-    void OnDestinationReached() override
+//36337
+class achievement_fel_turkey : public AchievementCriteriaScript
+{
+public:
+    achievement_fel_turkey() : AchievementCriteriaScript("achievement_fel_turkey") {}
+
+    bool OnCheck(Player* /*player*/, Unit* target) override
     {
-        if (Unit* caster = at->GetCaster())
-            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_SHATTERING_STAR_FINAL_DAMAGE))
-                if (SpellEffectInfo const* spellEffectInfo = spellInfo->GetEffect(caster->GetMap()->GetDifficultyID(), EFFECT_0))
-                    caster->CastCustomSpell(SPELL_SHATTERING_STAR_FINAL_DAMAGE, SPELLVALUE_BASE_POINT0, spellEffectInfo->BasePoints / std::max(_infernalSpikeTouched, uint8(1)), nullptr, TRIGGERED_FULL_MASK);
+        if (!target)
+            return false;
 
-        // TODO : Deal damage to target if _infernalSpikeTouched == 0
-        at->Remove();
+        if (auto boss = target->ToCreature())
+            if (boss->IsAIEnabled && boss->AI()->GetData(DATA_SPIKES_COUNTER) >= 30)
+                return true;
+
+        return false;
     }
-
-    uint8 _infernalSpikeTouched = 0;
 };
 
 void AddSC_boss_goroth()
 {
     RegisterCreatureAI(boss_goroth);
-
-    RegisterAuraScript(spell_burning_armor);
-    RegisterAuraScript(aura_crashing_comet);
-    RegisterSpellScript(spell_crashing_comet_damage);
-    RegisterSpellScript(spell_infernal_burning);
-    RegisterSpellScript(spell_infernal_burning_remove_spikes);
-    RegisterSpellScript(spell_shattering_star_dummy);
-
-    RegisterAreaTriggerAI(at_goroth_shattering_star);
+    RegisterCreatureAI(npc_goroth_ember_stalker);
+    RegisterCreatureAI(npc_goroth_infernal_spike);
+    RegisterCreatureAI(npc_goroth_lava_stalker);
+    RegisterCreatureAI(npc_goroth_brimstone_infernal);
+    RegisterSpellScript(spell_tos_goroth_crashing_comet);
+    RegisterSpellScript(spell_tos_goroth_rain_of_brimstone);
+    RegisterAuraScript(spell_tos_goroth_energy_tracker);
+    RegisterAuraScript(spell_tos_goroth_fel_periodic_trigger);
+    RegisterAreaTriggerAI(at_goroth_fel_pool);
+    new achievement_fel_turkey();
 }

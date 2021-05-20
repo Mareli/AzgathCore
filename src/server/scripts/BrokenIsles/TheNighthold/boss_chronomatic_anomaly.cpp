@@ -1,292 +1,368 @@
-/*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include "ObjectMgr.h"
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "SpellAuras.h"
-#include "SpellAuraEffects.h"
-#include "SpellScript.h"
-#include "SpellInfo.h"
-#include "Player.h"
-#include "AreaTrigger.h"
-#include "AreaTriggerAI.h"
-#include "AreaTriggerPackets.h"
-#include "MovementPackets.h"
-#include "Player.h"
-#include "MoveSplineInitArgs.h"
-#include "GridNotifiers.h"
 #include "thenighthold.h"
-#include "MoveSplineInit.h"
-#include "InstanceScript.h"
-#include "Unit.h"
-#include "ObjectAccessor.h"
-#include "MotionMaster.h"
+#include "SpellAuraDefines.h"
+#include "SpellAuraEffects.h"
+
+Position const anomalySumPos[12] =
+{
+    {236.42f, 3108.52f, -236.93f, 0.66f}, //108786
+    {277.72f, 3087.88f, -236.93f, 1.58f}, //108786
+    {315.29f, 3163.98f, -236.95f, 3.68f}, //108786
+    {232.46f, 3156.74f, -236.95f, 5.98f}, //108786
+    {228.15f, 3132.27f, -236.95f, 0.19f}, //108786
+    {248.43f, 3175.77f, -236.95f, 5.46f}, //108786
+    {254.49f, 3093.32f, -236.93f, 1.12f}, //108786
+    {271.78f, 3184.27f, -236.95f, 4.89f}, //108786
+    {296.25f, 3179.95f, -236.95f, 4.29f}, //108786
+    {303.50f, 3097.13f, -236.95f, 2.05f}, //108786
+    {319.47f, 3116.16f, -236.95f, 2.55f}, //108786
+    {323.78f, 3140.63f, -236.93f, 3.09f}  //108786
+};
+
+enum Says
+{
+    SAY_AGGRO = 0,
+    SAY_NORMAL_TIME = 1,
+    SAY_ADDITIONAL = 2,
+    SAY_SUM_ADD = 3,
+
+    SAY_TEMP_ORB = 4,
+    SAY_POWER = 5,
+    SAY_DEATH = 6,
+    SAY_TIME_SLOW = 7,
+    SAY_TIME_FAST = 9,
+};
 
 enum Spells
 {
-    // Burst Of Time
-    SPELL_BURST_OF_TIME_AREA                    = 219984,
-    SPELL_BURST_OF_TIME_SLOW                    = 214050,
-    SPELL_BURST_OF_TIME_NORMAL                  = 206613,
-    SPELL_BURST_OF_TIME_FAST                    = 214049,
-    SPELL_SPEED_SLOW                            = 207011,
-    SPELL_SPEED_NORMAL                          = 207012,
-    SPELL_SPEED_FAST                            = 207013,
-    // Time Release
-    SPELL_TIME_RELEASE_AREA                     = 206610,
-    SPELL_TIME_RELEASE_ABSORB                   = 206609,
-    SPELL_TIME_RELEASE_GREEN                    = 219964,
-    SPELL_TIME_RELEASE_YELLOW                   = 219965,
-    SPELL_TIME_RELEASE_RED                      = 219966,
-    SPELL_TIME_RELEASE_DAMAGE                   = 206608,
-    // Temporal Orb
-    SPELL_TEMPORAL_ORBS_PERIODIC                = 219815,
-    SPELL_TEMPORAL_ORB_AREATRIGGER_FIRST        = 227217,
-    SPELL_TEMPORAL_ORB_AREATRIGGER_SECOND       = 212874,
-    SPELL_TEMPORAL_ORB_DAMAGE                   = 205707,
-    // Chronometric Particles
-    SPELL_CHRONOMETRIC_PARTICLES                = 206607,
-    SPELL_CHRONOMETRIC_OVERLOAD                 = 207491,
-    // Time Bomb
-    SPELL_TIME_BOMB_AREA                        = 206618,
-    SPELL_TIME_BOMB_DEBUFF                      = 206617,
-    SPELL_TIME_BOMB_VISUAL                      = 212845,
-    SPELL_TIME_BOMB_DAMAGE                      = 206615,
-    // Waning Time Particle
-    SPELL_WANING_TIME_PARTICLE_SUMMON           = 206698,
-    SPELL_PASSAGE_OF_TIME                       = 205653,
-    SPELL_WARP_NIGHTWELL                        = 207228,
-    SPELL_CHRONOMATE                            = 219808,
-    SPELL_TEMPORAL_RIFT                         = 212072,
-    SPELL_FADE_OUT                              = 199615,
-    SPELL_TEMPORAL_RIFT_SUMMON                  = 212076,
-    // Fragmented Time Particle
-    SPELL_WARP_NIGHTWELL_SMALL                  = 228335,
-    // Temporal Rift
-    SPELL_TEMPORAL_RIFT_VISUAL                  = 212090,
-    // Power Overwhelming
-    SPELL_POWER_OVERWHELMING                    = 211927,
-    SPELL_POWER_OVERWHELMING_STACKS             = 219823,
-    // Temporal Smash
-    SPELL_TEMPORAL_SMASH_VISUAL                 = 212115,
-    SPELL_TEMPORAL_SMASH_DEBUFF                 = 222283,
+    SPELL_PASSAGE_OF_TIME = 205653,
+
+    SPELL_SPEED_SLOW = 207011,
+    SPELL_SPEED_NORMAL = 207012,
+    SPELL_SPEED_FAST = 207013,
+    SPELL_BURST_OF_TIME = 219984,
+    SPELL_BURST_OF_TIME_NORMAL = 206613,
+    SPELL_BURST_OF_TIME_SLOW = 214049,
+    SPELL_BURST_OF_TIME_FAST = 214050,
+    SPELL_POWER_OVERWHELMING = 211927,
+    SPELL_POWER_OVERWHELMING_MOD = 219823,
+    SPELL_CHRONOMETRIC_PARTICLES = 206607,
+    SPELL_CHRONOMETRIC_OVERLOAD = 207491,
+    SPELL_TIME_RELEASE_FILTER = 206610,
+    SPELL_TIME_RELEASE_ABSORB = 206609,
+    SPELL_TIME_RELEASE_DMG = 206608,
+    SPELL_TIME_RELEASE_GREEN = 219964,
+    SPELL_TIME_RELEASE_YELLOW = 219965,
+    SPELL_TIME_RELEASE_RED = 219966,
+    SPELL_TIME_BOMB_FILTER = 206618,
+    SPELL_TIME_BOMB_DMG = 206615,
+    SPELL_SUM_SLOW_ADD_FILTER = 206700,
+    SPELL_SUM_SLOW_ADD = 206698,
+    SPELL_TEMPORAL_ORB = 219815,
+    SPELL_TEMPORAL_ORB_AT = 212874,
+    SPELL_TEMPORAL_ORB_AT_2 = 227217,
+    SPELL_TEMPORAL_SMASH_MOD = 222283,
+
+    SPELL_WARP_NIGHTWELL_BIG = 207228,
+    SPELL_WARP_NIGHTWELL_SMALL = 228335,
+    SPELL_CHRONOMATE = 219808,
+    SPELL_TEMPORAL_RIFT = 212072,
+    SPELL_SUM_TEMPORAL_RIFT = 212076,
+    SPELL_TEMPORAL_RIFT_VIS = 212090,
 };
 
-enum EventPhases
+enum eEvents
 {
-    EVENT_PHASE_NORMAL_SLOW_FAST                = 1,
-    EVENT_PHASE_NORMAL_FAST_SLOW                = 2,
+    EVENT_BURST_OF_TIME = 1,
+    EVENT_CHRONOMETRIC_PARTICLES = 2,
+    EVENT_TIME_RELEASE = 3,
+    EVENT_TIME_BOMB = 4,
+    EVENT_SUM_SLOW_ADD = 5,
+    EVENT_TEMPORAL_ORB = 6,
+    EVENT_POWER_OVERWHELMING = 7,
+    //Mythic
+    EVENT_CHANGE_SPEED = 8
 };
 
-enum Events
+enum Misc
 {
-    // Chronomatic Anomaly
-    EVENT_BURST_OF_TIME                         = 1,
-    EVENT_TIME_RELEASE                          = 2,
-    EVENT_TEMPORAL_ORB_FIRST_WAVE               = 3,
-    EVENT_TEMPORAL_ORB_SECOND_WAVE              = 4,
-    EVENT_CHRONOMETRIC_PARTICLES                = 5,
-    EVENT_TIME_BOMB                             = 6,
-    EVENT_WANING_TIME_PARTICLE_SUMMON           = 7,
-    EVENT_POWER_OVERWHELMING                    = 8,
-    // Waning Time Particle
-    EVENT_WARP_NIGHTWELL                        = 9,
-    EVENT_CHRONOMATE                            = 10,
+    EVENT_1 = 1,
+    EVENT_2,
+    EVENT_3,
 };
 
-enum Actions
-{
-    ACTION_NEXT_SPEED                           = 1,
-};
-
-enum Yells
-{
-    SAY_AGGRO                                   = 0,
-    SAY_SPEED_NORMAL                            = 1,
-    SAY_WANING_TIME_PARTICLE                    = 3,
-    SAY_POWER_OVERWHELMING                      = 4,
-    SAY_SPEED_SLOW_FIRST                        = 5,
-    SAY_SPEED_SLOW_SECOND                       = 6,
-    SAY_SPEED_FAST_FIRST                        = 7,
-    SAY_SPEED_FAST_SECOND                       = 8,
-    SAY_DEATH                                   = 9
-};
-
-// 104415 - Chronomatic Anomaly
+//104415
 class boss_chronomatic_anomaly : public CreatureScript
 {
 public:
-    boss_chronomatic_anomaly() : CreatureScript("boss_chronomatic_anomaly") { }
+    boss_chronomatic_anomaly() : CreatureScript("boss_chronomatic_anomaly") {}
 
-    struct boss_chronomatic_anomalyAI : public BossAI
+    struct boss_chronomatic_anomalyAI : BossAI
     {
-        boss_chronomatic_anomalyAI(Creature* creature) : BossAI(creature, BOSS_CHRONOMATIC_ANOMALY) { }
+        boss_chronomatic_anomalyAI(Creature* creature) : BossAI(creature, DATA_ANOMALY) {}
 
-        void StartCyclePath()
-        {
-            Movement::MoveSplineInit init(me);
-            init.SetCyclic();
-            init.SetSmooth();
-            init.SetVelocity(4.0f);
-            init.MovebyPath(WaypointChronomaticAnomaly, 0);
-            init.Launch();
-        }
-
-        void DespawnAreaTriggers(uint32 spellId)
-        {
-            std::vector<AreaTrigger*> areaTriggers = me->GetAreaTriggers(spellId);
-            if (areaTriggers.empty())
-                return;
-
-            for (AreaTrigger* trigger : areaTriggers)
-                trigger->Remove();
-        }
-
-        void StartSlowSpeed()
-        {
-            events.RescheduleEvent(EVENT_TIME_RELEASE, 5000);
-            events.RescheduleEvent(EVENT_CHRONOMETRIC_PARTICLES, 1000);
-            events.RescheduleEvent(EVENT_BURST_OF_TIME, 13000);
-            events.RescheduleEvent(EVENT_WANING_TIME_PARTICLE_SUMMON, 50000);
-            events.RescheduleEvent(EVENT_TIME_BOMB, 20000);
-            events.RescheduleEvent(EVENT_TEMPORAL_ORB_FIRST_WAVE, 30000);
-            events.RescheduleEvent(EVENT_TEMPORAL_ORB_SECOND_WAVE, 31000);
-            events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 55000);
-            me->CastStop();
-            me->RemoveAura(SPELL_POWER_OVERWHELMING_STACKS);
-            Talk(SAY_SPEED_SLOW_FIRST);
-            Talk(SAY_SPEED_SLOW_SECOND);
-            DoCastSelf(SPELL_SPEED_SLOW, true);
-            instance->DoCastSpellOnPlayers(SPELL_SPEED_SLOW);
-            _wavesTimeReleaseCount = 2;
-            _wavesBurstOfTimeCount = 5;
-            _triggersCount = 0;
-        }
-
-        void StartNormalSpeed()
-        {
-            events.RescheduleEvent(EVENT_TIME_RELEASE, 5000);
-            events.RescheduleEvent(EVENT_CHRONOMETRIC_PARTICLES, 11000);
-            events.RescheduleEvent(EVENT_BURST_OF_TIME, 13000);
-            events.RescheduleEvent(EVENT_WANING_TIME_PARTICLE_SUMMON, 35000);
-            events.RescheduleEvent(EVENT_TIME_BOMB, 35000);
-            events.RescheduleEvent(EVENT_TEMPORAL_ORB_FIRST_WAVE, 48000);
-            events.RescheduleEvent(EVENT_TEMPORAL_ORB_SECOND_WAVE, 49000);
-            events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 55000);
-            me->CastStop();
-            me->RemoveAura(SPELL_POWER_OVERWHELMING_STACKS);
-            Talk(SAY_SPEED_NORMAL);
-            DoCastSelf(SPELL_SPEED_NORMAL, true);
-            instance->DoCastSpellOnPlayers(SPELL_SPEED_NORMAL);
-            _wavesTimeReleaseCount = 2;
-            _wavesBurstOfTimeCount = 6;
-            _triggersCount = 0;
-        }
-
-        void StartFastSpeed()
-        {
-            events.RescheduleEvent(EVENT_TIME_RELEASE, 10000);
-            events.RescheduleEvent(EVENT_CHRONOMETRIC_PARTICLES, 1000);
-            events.RescheduleEvent(EVENT_BURST_OF_TIME, 5000);
-            events.RescheduleEvent(EVENT_WANING_TIME_PARTICLE_SUMMON, 45000);
-            events.RescheduleEvent(EVENT_TIME_BOMB, 5000);
-            events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 55000);
-            me->CastStop();
-            me->RemoveAura(SPELL_POWER_OVERWHELMING_STACKS);
-            Talk(SAY_SPEED_FAST_FIRST);
-            Talk(SAY_SPEED_FAST_SECOND);
-            DoCastSelf(SPELL_SPEED_FAST, true);
-            instance->DoCastSpellOnPlayers(SPELL_SPEED_FAST);
-            _wavesTimeReleaseCount = 3;
-            _wavesBurstOfTimeCount = 12;
-            _triggersCount = 0;
-        }
+        std::list<Creature*> triggerList;
+        bool phaseOverwhelming = false;
+        uint8 timerBombCounter = 0;
+        uint8 timeReleaseCounter = 0;
+        uint8 temporalOrbCounter = 0;
+        uint8 speedCounter = 0;
+        uint32 anomalySpeed = 0;
+        uint32 burstTimer = 0;
+        uint32 burstSpell = 0;
 
         void Reset() override
         {
             _Reset();
-            StartCyclePath();
-            _wavesTimeReleaseCount = 0;
-            _wavesBurstOfTimeCount = 0;
-            _triggersCount = 0;
+            timerBombCounter = 0;
+            timeReleaseCounter = 0;
+            temporalOrbCounter = 0;
+            anomalySpeed = 0;
+            speedCounter = 0;
+            phaseOverwhelming = false;
+            me->SetReactState(REACT_DEFENSIVE);
+            me->RemoveAurasDueToSpell(SPELL_PASSAGE_OF_TIME);
+            RemoveAuras();
+
+            triggerList.clear();
+
+            for (const auto& anomalySumPo : anomalySumPos)
+            {
+                if (Creature* trigger = me->SummonCreature(NPC_SURAMAR_TRIG, anomalySumPo))
+                    triggerList.push_back(trigger);
+            }
+            me->SummonCreature(NPC_THE_NIGHTWELL, 276.35f, 3136.08f, -236.95f, 0.0f);
+            me->GetMotionMaster()->MovePath(9100413, true);
         }
 
         void EnterCombat(Unit* /*who*/) override
         {
-            _EnterCombat();
-            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
-            StartNormalSpeed();
-            events.SetPhase(EVENT_PHASE_NORMAL_SLOW_FAST);
             Talk(SAY_AGGRO);
-        }
+            _EnterCombat();
+            SetAnomalySpeed();
+            DoCast(me, SPELL_PASSAGE_OF_TIME, true);
+            instance->DoCastSpellOnPlayers(SPELL_PASSAGE_OF_TIME);
 
-        void EnterEvadeMode(EvadeReason /*why*/) override
-        {
-            _DespawnAtEvade();
-            summons.DespawnAll();
-            DespawnAreaTriggers(SPELL_TEMPORAL_ORB_AREATRIGGER_FIRST);
-            DespawnAreaTriggers(SPELL_TEMPORAL_ORB_AREATRIGGER_SECOND);
-            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+            if (IsMythicRaid())
+            {
+                burstTimer = 3000;
+                events.RescheduleEvent(EVENT_BURST_OF_TIME, 2000);
+                events.RescheduleEvent(EVENT_CHANGE_SPEED, 12000);
+            }
+            else if (IsHeroicRaid())
+            {
+                burstTimer = 4000;
+                events.RescheduleEvent(EVENT_BURST_OF_TIME, 8000);
+            }
+            else
+            {
+                burstTimer = 5000;
+                events.RescheduleEvent(EVENT_BURST_OF_TIME, 14000);
+            }
         }
 
         void JustDied(Unit* /*killer*/) override
         {
-            _JustDied();
-            DespawnAreaTriggers(SPELL_TEMPORAL_ORB_AREATRIGGER_FIRST);
-            DespawnAreaTriggers(SPELL_TEMPORAL_ORB_AREATRIGGER_SECOND);
-            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
             Talk(SAY_DEATH);
+            _JustDied();
+            RemoveAuras();
+            if (Creature* talysra = me->GetMap()->GetCreature(instance->GetGuidData(NPC_TALYSRA)))
+                talysra->AI()->DoAction(ACTION_MOVE_AFTER_SECOND);
         }
 
-        void DoAction(int32 /*action*/) override
+        void RemoveAuras()
         {
-            switch (events.GetPhaseMask())
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SPEED_SLOW);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SPEED_NORMAL);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SPEED_FAST);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_PASSAGE_OF_TIME);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_CHRONOMETRIC_PARTICLES);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_TIME_RELEASE_ABSORB);
+            instance->DoRemoveAurasDueToSpellOnPlayers(212099);
+            instance->DoRemoveAurasDueToSpellOnPlayers(226845);
+            instance->DoRemoveAurasDueToSpellOnPlayers(206617);
+        }
+
+        void SpellFinishCast(const SpellInfo* spell)
+        {
+            if (spell->Id == SPELL_POWER_OVERWHELMING)
+                phaseOverwhelming = true;
+        }
+
+        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        {
+            //Temporal Rift
+            if (spell->Id == 212109 && phaseOverwhelming)
             {
-                case EVENT_PHASE_NORMAL_SLOW_FAST:
-                    if (me->HasAura(SPELL_SPEED_SLOW))
-                        StartFastSpeed();
-                    else if (me->HasAura(SPELL_SPEED_NORMAL))
-                        StartSlowSpeed();
-                    else if (me->HasAura(SPELL_SPEED_FAST))
-                    {
-                        StartNormalSpeed();
-                        events.SetPhase(EVENT_PHASE_NORMAL_FAST_SLOW);
-                    }
-                    break;
-                case EVENT_PHASE_NORMAL_FAST_SLOW:
-                    if (me->HasAura(SPELL_SPEED_SLOW))
-                    {
-                        StartNormalSpeed();
-                        events.SetPhase(EVENT_PHASE_NORMAL_SLOW_FAST);
-                    }
-                    else if (me->HasAura(SPELL_SPEED_NORMAL))
-                        StartFastSpeed();
-                    else if (me->HasAura(SPELL_SPEED_FAST))
-                        StartSlowSpeed();
-                    break;
-                default:
-                    break;
+                phaseOverwhelming = false;
+                me->SetReactState(REACT_AGGRESSIVE);
+                caster->CastSpell(caster, 212115, true);
+                caster->CastSpell(me, SPELL_TEMPORAL_SMASH_MOD, true);
+                me->InterruptNonMeleeSpells(false);
+                me->RemoveAurasDueToSpell(SPELL_POWER_OVERWHELMING_MOD);
+
+                AddDelayedEvent(1000, [this]() -> void
+                {
+                    if (me->IsAlive() && me->IsInCombat())
+                        SetAnomalySpeed();
+                });
             }
         }
 
-        void JustSummoned(Creature* creature) override
+        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
         {
-            summons.Summon(creature);
+            if (spell->Id == SPELL_BURST_OF_TIME)
+                DoCast(target, burstSpell, true);
+        }
+
+        uint32 GetData(uint32 type) const override
+        {
+            switch (type)
+            {
+            case DATA_ANOMALY_SPEED:
+                return anomalySpeed;
+            case DATA_ANOMALY_OVERWHELMING:
+                return phaseOverwhelming;
+            }
+            return 0;
+        }
+
+        void SetAnomalySpeed(bool mythicFast = false)
+        {
+            events.Reset();
+            timerBombCounter = 0;
+            timeReleaseCounter = 0;
+            temporalOrbCounter = 0;
+
+            if (!mythicFast)
+            {
+                if (!IsMythicRaid())
+                {
+                    if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        anomalySpeed = SPELL_SPEED_SLOW;
+                    else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        anomalySpeed = SPELL_SPEED_FAST;
+                    else
+                        anomalySpeed = SPELL_SPEED_NORMAL;
+                }
+                else
+                {
+                    switch (speedCounter)
+                    {
+                    case 0:
+                    case 3:
+                        anomalySpeed = SPELL_SPEED_NORMAL;
+                        break;
+                    case 1:
+                    case 4:
+                    case 6:
+                        anomalySpeed = SPELL_SPEED_SLOW;
+                        break;
+                    case 2:
+                    case 5:
+                        anomalySpeed = SPELL_SPEED_FAST;
+                        break;
+                    }
+                    speedCounter++;
+
+                    if (speedCounter > 6)
+                        speedCounter = 3;
+                }
+            }
+            else
+            {
+                anomalySpeed = SPELL_SPEED_FAST;
+                events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 7000);
+                events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 22000);
+            }
+
+            events.RescheduleEvent(EVENT_CHRONOMETRIC_PARTICLES, 10000);
+
+            switch (anomalySpeed)
+            {
+            case SPELL_SPEED_SLOW:
+                burstSpell = SPELL_BURST_OF_TIME_SLOW;
+                if (IsMythicRaid())
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 14000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 16000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 28000);
+                    events.RescheduleEvent(EVENT_TEMPORAL_ORB, 8000);
+                    if (speedCounter > 3)
+                        events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 18000);
+                }
+                else if (IsHeroicRaid())
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 10000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 15000);
+                    events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 43000);
+                    events.RescheduleEvent(EVENT_TEMPORAL_ORB, 20000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 53000);
+                }
+                else
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 5000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 20000);
+                    events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 38000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 60000);
+                    events.RescheduleEvent(EVENT_TEMPORAL_ORB, 30000);
+                }
+                Talk(SAY_TIME_SLOW);
+                Talk(SAY_TIME_SLOW + 1);
+                break;
+            case SPELL_SPEED_NORMAL:
+                burstSpell = SPELL_BURST_OF_TIME_NORMAL;
+                if (IsMythicRaid())
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 10000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 5000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 20000);
+                }
+                else if (IsHeroicRaid())
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 8000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 28000);
+                    events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 23000);
+                    events.RescheduleEvent(EVENT_TEMPORAL_ORB, 38000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 53000);
+                }
+                else
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 8000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 35000);
+                    events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 28000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 60000);
+                    events.RescheduleEvent(EVENT_TEMPORAL_ORB, 48000);
+                }
+                Talk(SAY_NORMAL_TIME);
+                Talk(SAY_ADDITIONAL);
+                break;
+            case SPELL_SPEED_FAST:
+                burstSpell = SPELL_BURST_OF_TIME_FAST;
+                if (IsMythicRaid())
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 5000);
+                    if (speedCounter == 3 || speedCounter == 6)
+                        events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 23000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 30000);
+                }
+                else if (IsHeroicRaid())
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 5000);
+                    events.RescheduleEvent(EVENT_TIME_BOMB, 17000);
+                    events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 38000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 53000);
+                }
+                else
+                {
+                    events.RescheduleEvent(EVENT_TIME_RELEASE, 10000);
+                    events.RescheduleEvent(EVENT_SUM_SLOW_ADD, 28000);
+                    events.RescheduleEvent(EVENT_TEMPORAL_ORB, 15000);
+                    events.RescheduleEvent(EVENT_POWER_OVERWHELMING, 60000);
+                }
+                Talk(SAY_TIME_FAST);
+                Talk(SAY_ADDITIONAL);
+                break;
+            }
         }
 
         void UpdateAI(uint32 diff) override
@@ -299,133 +375,277 @@ public:
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
 
-            while (uint32 eventId = events.ExecuteEvent())
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
                 case EVENT_BURST_OF_TIME:
-                    if (_wavesBurstOfTimeCount)
-                    {
-                        DoCastAOE(SPELL_BURST_OF_TIME_AREA, true);
-
-                        if (me->HasAura(SPELL_SPEED_SLOW))
-                            events.ScheduleEvent(EVENT_BURST_OF_TIME, 6000);
-                        else if (me->HasAura(SPELL_SPEED_NORMAL))
-                            events.ScheduleEvent(EVENT_BURST_OF_TIME, 5000);
-                        else if (me->HasAura(SPELL_SPEED_FAST))
-                            events.ScheduleEvent(EVENT_BURST_OF_TIME, 4000);
-                        _wavesBurstOfTimeCount--;
-                    }
-                    break;
-                case EVENT_TIME_RELEASE:
-                    if (_wavesTimeReleaseCount)
-                    {
-                        DoCastAOE(SPELL_TIME_RELEASE_AREA, true);
-
-                        if (me->HasAura(SPELL_SPEED_SLOW))
-                            events.ScheduleEvent(EVENT_TIME_RELEASE, 23000);
-                        else if (me->HasAura(SPELL_SPEED_NORMAL))
-                            events.ScheduleEvent(EVENT_TIME_RELEASE, 15000);
-                        else if (me->HasAura(SPELL_SPEED_FAST))
-                            events.ScheduleEvent(EVENT_TIME_RELEASE, urand(10000, 15000));
-                        _wavesTimeReleaseCount--;
-                    }
-                    break;
-                case EVENT_TEMPORAL_ORB_FIRST_WAVE:
-                    for (uint8 i = 0; i < 36; i++)
-                        me->CastSpell(temporalOrbsSpawnPosition.GetPositionX(), temporalOrbsSpawnPosition.GetPositionY(), temporalOrbsSpawnPosition.GetPositionZ(), SPELL_TEMPORAL_ORB_AREATRIGGER_FIRST, true);
-                    for (auto at : me->GetAreaTriggers(SPELL_TEMPORAL_ORB_AREATRIGGER_FIRST))
-                    {
-//                        at->AI()->DoAction(_triggersCount);
-                        if (at->IsAreaTrigger())
-                            _triggersCount++;
-                    }
-                    DoCast(SPELL_TEMPORAL_ORBS_PERIODIC);
-                    break;
-                case EVENT_TEMPORAL_ORB_SECOND_WAVE:
-                    for (uint8 i = 0; i < 36; i++)
-                        me->CastSpell(temporalOrbsSpawnPosition.GetPositionX(), temporalOrbsSpawnPosition.GetPositionY(), temporalOrbsSpawnPosition.GetPositionZ(), SPELL_TEMPORAL_ORB_AREATRIGGER_SECOND, true);
-                    for (auto at : me->GetAreaTriggers(SPELL_TEMPORAL_ORB_AREATRIGGER_SECOND))
-                    {
- //                       at->AI()->DoAction(_triggersCount);
-                        if (at->IsAreaTrigger())
-                            _triggersCount++;
-                    }
+                    DoCast(me, SPELL_BURST_OF_TIME, true);
+                    events.RescheduleEvent(EVENT_BURST_OF_TIME, burstTimer);
                     break;
                 case EVENT_CHRONOMETRIC_PARTICLES:
                     DoCastVictim(SPELL_CHRONOMETRIC_PARTICLES);
-                    events.ScheduleEvent(EVENT_CHRONOMETRIC_PARTICLES, 6000);
+                    events.RescheduleEvent(EVENT_CHRONOMETRIC_PARTICLES, 6000);
+                    break;
+                case EVENT_TIME_RELEASE:
+                    DoCast(me, SPELL_TIME_RELEASE_FILTER, true);
+                    timeReleaseCounter++;
+                    if (timerBombCounter == 1)
+                    {
+                        if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_RELEASE, 2000);
+                            else if (IsHeroicRaid())
+                                events.RescheduleEvent(EVENT_TIME_RELEASE, 30000);
+                            else
+                                events.RescheduleEvent(EVENT_TIME_RELEASE, 16000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_RELEASE, 7000);
+                            else if (IsHeroicRaid())
+                                events.RescheduleEvent(EVENT_TIME_RELEASE, 5000);
+                        }
+                    }
                     break;
                 case EVENT_TIME_BOMB:
-                    DoCastAOE(SPELL_TIME_BOMB_AREA);
+                    DoCast(me, SPELL_TIME_BOMB_FILTER, true);
+                    timerBombCounter++;
+                    if (timerBombCounter == 1)
+                    {
+                        if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 12000);
+                            else if (IsHeroicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 5000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 2000);
+                            else if (IsHeroicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 20000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_FAST)
+                        {
+                            if (IsHeroicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 30000);
+                        }
+                    }
+                    else if (timerBombCounter == 2)
+                    {
+                        if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 5000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 7000);
+                        }
+                    }
+                    else if (timerBombCounter == 3)
+                    {
+                        if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 7000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 20000);
+                        }
+                    }
+                    else if (timerBombCounter == 4)
+                    {
+                        if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 2000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TIME_BOMB, 3000);
+                        }
+                    }
                     break;
-                case EVENT_WANING_TIME_PARTICLE_SUMMON:
+                case EVENT_SUM_SLOW_ADD:
                 {
-                    Talk(SAY_WANING_TIME_PARTICLE);
-                    uint8 randPos = urand(0, 1);
-                    me->CastSpell(waningTimeParticleSpawnPositions[randPos].GetPositionX(), waningTimeParticleSpawnPositions[randPos].GetPositionY(), waningTimeParticleSpawnPositions[randPos].GetPositionZ(), SPELL_WANING_TIME_PARTICLE_SUMMON, true);
+                    Talk(SAY_SUM_ADD);
+                    DoCast(me, SPELL_SUM_SLOW_ADD_FILTER, true);
+                    uint8 counter = 0;
+                    uint8 randCounter = urand(6, 7);
+                    Creature* firstTrigger = nullptr;
+
+                    for (auto const& creature : triggerList)
+                    {
+                        firstTrigger = creature;
+                        break;
+                    }
+
+
+                    for (auto const& creature : triggerList)
+                    {
+                        counter++;
+
+                        if (IsMythicRaid())
+                        {
+                            if (counter == 6 || counter == 7)
+                            {
+                                if (Creature* sum = ObjectAccessor::GetCreature(*me, creature->GetGUID()))
+                                    DoCast(sum, SPELL_SUM_SLOW_ADD, true);
+                            }
+                        }
+                        else
+                        {
+                            if (counter == randCounter)
+                            {
+                                if (Creature* sum = ObjectAccessor::GetCreature(*me, creature->GetGUID()))
+                                    DoCast(sum, SPELL_SUM_SLOW_ADD, true);
+                            }
+                        }
+                    }
+                    break;
+                }
+                case EVENT_TEMPORAL_ORB:
+                {
+                    Talk(SAY_TEMP_ORB);
+                    DoCast(SPELL_TEMPORAL_ORB);
+                    temporalOrbCounter++;
+                    if (temporalOrbCounter == 1)
+                    {
+                        if (anomalySpeed == SPELL_SPEED_NORMAL)
+                        {
+                            if (IsMythicRaid())
+                                events.RescheduleEvent(EVENT_TEMPORAL_ORB, 14000);
+                        }
+                        else if (anomalySpeed == SPELL_SPEED_SLOW)
+                        {
+                            if (IsHeroicPlusRaid())
+                                events.RescheduleEvent(EVENT_TEMPORAL_ORB, 15000);
+                        }
+                    }
                     break;
                 }
                 case EVENT_POWER_OVERWHELMING:
-                    if (auto nightwell = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATAGUID_THE_NIGHTWELL)))
-                        DoCast(nightwell, SPELL_POWER_OVERWHELMING);
-                    Talk(SAY_POWER_OVERWHELMING);
+                    events.Reset();
+                    me->AttackStop();
+                    DoCast(SPELL_POWER_OVERWHELMING);
+                    Talk(SAY_POWER);
                     break;
-                default:
+                case EVENT_CHANGE_SPEED:
+                    SetAnomalySpeed(true);
                     break;
                 }
             }
             DoMeleeAttackIfReady();
         }
-
-    private:
-        uint8 _wavesBurstOfTimeCount;
-        uint8 _wavesTimeReleaseCount;
-        int32 _triggersCount;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<boss_chronomatic_anomalyAI>(creature);
+        return new boss_chronomatic_anomalyAI(creature);
     }
 };
 
-// 104676 - Waning Time Particle
-class npc_waning_time_particle : public CreatureScript
+//104676
+class npc_anomaly_waning_time_particle : public CreatureScript
 {
 public:
-    npc_waning_time_particle() : CreatureScript("npc_waning_time_particle") { }
+    npc_anomaly_waning_time_particle() : CreatureScript("npc_anomaly_waning_time_particle") {}
 
-    struct npc_waning_time_particleAI : public ScriptedAI
+    struct npc_anomaly_waning_time_particleAI : public ScriptedAI
     {
-        npc_waning_time_particleAI(Creature* creature) : ScriptedAI(creature)
+        npc_anomaly_waning_time_particleAI(Creature* creature) : ScriptedAI(creature), despawn(false)
         {
-            _instance = creature->GetInstanceScript();
+            instance = me->GetInstanceScript();
+            me->SetDisplayId(68616);
+            me->SetReactState(REACT_PASSIVE);
+            me->AddUnitState(UNIT_STATE_ROOT);
+            me->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_GRIP, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_FEAR, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_ROOT, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_POLYMORPH, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_HORROR, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_SAPPED, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_CHARM, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_DISORIENTED, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_DISTRACT, true);
+            me->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_CONFUSE, true);
         }
+
+        InstanceScript* instance;
+        EventMap events;
+        bool despawn = false;
+        bool interruptActive = false;
+
+        void Reset() override {}
 
         void IsSummonedBy(Unit* summoner) override
         {
-            _ownerGuid = summoner->GetGUID();
-            me->SetControlled(true, UNIT_STATE_ROOT);
-            DoCastSelf(SPELL_PASSAGE_OF_TIME);
-            events.ScheduleEvent(EVENT_CHRONOMATE, 5000);
-            events.ScheduleEvent(EVENT_WARP_NIGHTWELL, 10000);
-            _instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me, 1);
+            instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
+            events.RescheduleEvent(EVENT_1, 2000);
         }
 
-        void JustDied(Unit* /*killer*/) override
+        void OnInterruptCast(Unit* caster, uint32 /*spellId*/, uint32 curSpellID, uint32 /*schoolMask*/)
         {
-            DoCastSelf(SPELL_TEMPORAL_RIFT, true);
-            DoCastSelf(SPELL_FADE_OUT, true);
-            _instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me, 1);
-
-            if (auto summoner = ObjectAccessor::GetCreature(*me, _ownerGuid))
+            if (curSpellID == SPELL_WARP_NIGHTWELL_BIG)
             {
-                summoner->CastSpell(me, SPELL_TEMPORAL_RIFT_SUMMON, true);
-                summoner->SummonCreature(NPC_FRAGMENTED_TIME_PARTICLE, me->GetPositionX(), me->GetPositionY() - 5, me->GetPositionZ(), 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
-                summoner->SummonCreature(NPC_FRAGMENTED_TIME_PARTICLE, me->GetPositionX() + 5, me->GetPositionY(), me->GetPositionZ(), 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
-                summoner->SummonCreature(NPC_FRAGMENTED_TIME_PARTICLE, me->GetPositionX(), me->GetPositionY() + 5, me->GetPositionZ(), 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
-                summoner->SummonCreature(NPC_FRAGMENTED_TIME_PARTICLE, me->GetPositionX() - 5, me->GetPositionY(), me->GetPositionZ(), 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
+                if (me->GetHealthPct() > 30)
+                {
+                    events.RescheduleEvent(EVENT_2, 1000);
+                    AttackStart(caster);
+                }
+            }
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage)
+        {
+            if (IsHeroicPlusRaid() && !interruptActive && me->GetHealthPct() <= 30)
+            {
+                interruptActive = true;
+                me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_INTERRUPT, true);
+                me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, true);
+            }
+
+            if (damage >= me->GetHealth())
+            {
+                damage = 0;
+                me->SetHealth(me->CountPctFromMaxHealth(5));
+
+                if (!despawn)
+                {
+                    despawn = true;
+                    events.Reset();
+                    me->InterruptNonMeleeSpells(false);
+                    me->AttackStop();
+                    me->SetUnitFlags(UNIT_FLAG_NON_ATTACKABLE);
+                    me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_PC);
+                    me->SetUnitFlags(UNIT_FLAG_IMMUNE_TO_NPC);
+                    DoCast(me, 199615, true); //Fade
+                    instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+
+                    if (Unit* owner = me->GetOwner())
+                    {
+                        me->CastSpell(me, SPELL_SUM_TEMPORAL_RIFT, true, nullptr, nullptr, owner->GetGUID());
+                        Position pos;
+                        float angle = 1.57f;
+                        for (uint8 i = 0; i < 4; i++)
+                        {
+                            me->GetNearPosition(6.0f, angle);
+                            owner->SummonCreature(NPC_FRAGMENTED_TIME, pos);
+                            angle += 1.57f;
+                        }
+                    }
+                    events.RescheduleEvent(EVENT_3, 3000);
+                }
             }
         }
 
@@ -436,69 +656,66 @@ public:
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
 
-            while (uint32 eventId = events.ExecuteEvent())
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
-                case EVENT_CHRONOMATE:
-                    if (auto target = SelectTarget(SELECT_TARGET_TOPAGGRO, 0, 0, true))
-                        DoCast(target, SPELL_CHRONOMATE);
-                    else if (auto target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                        DoCast(target, SPELL_CHRONOMATE);
-                    events.ScheduleEvent(EVENT_CHRONOMATE, 5000);
+                case EVENT_1:
+                    me->AttackStop();
+                    if (Creature* nightwell = me->FindNearestCreature(NPC_THE_NIGHTWELL, 100.0f))
+                        me->SetFacingToObject(nightwell);
+                    DoCast(SPELL_WARP_NIGHTWELL_BIG);
+                    events.RescheduleEvent(EVENT_1, 5000);
                     break;
-                case EVENT_WARP_NIGHTWELL:
-                    DoCastSelf(SPELL_WARP_NIGHTWELL);
-                    if (auto summoner = ObjectAccessor::GetCreature(*me, _ownerGuid))
-                    {
-                        if (summoner->HasAura(SPELL_SPEED_SLOW))
-                            events.ScheduleEvent(EVENT_WARP_NIGHTWELL, 10000);
-                        else if (summoner->HasAura(SPELL_SPEED_NORMAL))
-                            events.ScheduleEvent(EVENT_WARP_NIGHTWELL, 5000);
-                        else if (summoner->HasAura(SPELL_SPEED_FAST))
-                            events.ScheduleEvent(EVENT_WARP_NIGHTWELL, 1000);
-                    }
+                case EVENT_2:
+                    DoCastVictim(SPELL_CHRONOMATE);
                     break;
-                default:
+                case EVENT_3:
+                    me->DespawnOrUnsummon(100);
                     break;
                 }
             }
-            DoMeleeAttackIfReady();
         }
-
-    private:
-        ObjectGuid _ownerGuid;
-        InstanceScript* _instance;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<npc_waning_time_particleAI>(creature);
+        return new npc_anomaly_waning_time_particleAI(creature);
     }
 };
 
-// 114671 - Fragmented Time Particle
-class npc_fragmented_time_particle : public CreatureScript
+//114671
+class npc_anomaly_fragmented_time : public CreatureScript
 {
 public:
-    npc_fragmented_time_particle() : CreatureScript("npc_fragmented_time_particle") { }
+    npc_anomaly_fragmented_time() : CreatureScript("npc_anomaly_fragmented_time") {}
 
-    struct npc_fragmented_time_particleAI : public ScriptedAI
+    struct npc_anomaly_fragmented_timeAI : public ScriptedAI
     {
-        npc_fragmented_time_particleAI(Creature* creature) : ScriptedAI(creature) { }
-
-        void IsSummonedBy(Unit* /*summoner*/) override
+        npc_anomaly_fragmented_timeAI(Creature* creature) : ScriptedAI(creature)
         {
-            me->SetControlled(true, UNIT_STATE_ROOT);
-            DoCastSelf(SPELL_PASSAGE_OF_TIME);
-            events.ScheduleEvent(EVENT_CHRONOMATE, 5000);
-            events.ScheduleEvent(EVENT_WARP_NIGHTWELL, 10000);
+            me->SetReactState(REACT_PASSIVE);
+            me->AddUnitState(UNIT_STATE_ROOT);
+            me->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_GRIP, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_FEAR, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_ROOT, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_POLYMORPH, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_HORROR, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_SAPPED, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_CHARM, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_DISORIENTED, true);
+            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_DISTRACT, true);
+            me->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_CONFUSE, true);
         }
 
-        void JustDied(Unit* /*killer*/) override
+        EventMap events;
+
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner) override
         {
-            DoCastSelf(SPELL_TEMPORAL_RIFT, true);
-            DoCastSelf(SPELL_FADE_OUT, true);
+            events.RescheduleEvent(EVENT_1, 1000);
         }
 
         void UpdateAI(uint32 diff) override
@@ -508,228 +725,98 @@ public:
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
 
-            while (uint32 eventId = events.ExecuteEvent())
+            if (uint32 eventId = events.ExecuteEvent())
             {
                 switch (eventId)
                 {
-                case EVENT_CHRONOMATE:
-                    if (auto target = SelectTarget(SELECT_TARGET_TOPAGGRO, 0, 0, true))
-                        DoCast(target, SPELL_CHRONOMATE);
-                    else if (auto target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
-                        DoCast(target, SPELL_CHRONOMATE);
-                    events.ScheduleEvent(EVENT_CHRONOMATE, 5000);
-                    break;
-                case EVENT_WARP_NIGHTWELL:
-                    DoCastSelf(SPELL_WARP_NIGHTWELL_SMALL);
-                    events.ScheduleEvent(EVENT_WARP_NIGHTWELL, 10000);
-                    break;
-                default:
+                case EVENT_1:
+                    DoCast(SPELL_WARP_NIGHTWELL_SMALL);
+                    events.RescheduleEvent(EVENT_1, 5000);
                     break;
                 }
             }
-            DoMeleeAttackIfReady();
         }
     };
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<npc_fragmented_time_particleAI>(creature);
+        return new npc_anomaly_fragmented_timeAI(creature);
     }
 };
 
-// 106878 - Temporal Rift
-class npc_temporal_rift : public CreatureScript
+//106878
+class npc_anomaly_temporal_rift : public CreatureScript
 {
 public:
-    npc_temporal_rift() : CreatureScript("npc_temporal_rift") { }
+    npc_anomaly_temporal_rift() : CreatureScript("npc_anomaly_temporal_rift") {}
 
-    struct npc_temporal_riftAI : public ScriptedAI
+    struct npc_anomaly_temporal_riftAI : public ScriptedAI
     {
-        npc_temporal_riftAI(Creature* creature) : ScriptedAI(creature) { }
-
-        void IsSummonedBy(Unit* /*summoner*/) override
+        npc_anomaly_temporal_riftAI(Creature* creature) : ScriptedAI(creature)
         {
-            DoCastSelf(SPELL_TEMPORAL_RIFT_VISUAL);
+            me->SetReactState(REACT_PASSIVE);
+            click = false;
         }
 
-        void OnSpellClick(Unit* /*clicker*/, bool& /*result*/) override
+        bool click;
+
+        void Reset() override {}
+
+        void IsSummonedBy(Unit* summoner)
         {
-            me->DespawnOrUnsummon();
+            DoCast(me, SPELL_TEMPORAL_RIFT_VIS, true);
         }
+
+       /* void OnSpellClick(Unit* clicker)
+        {
+            if (!click && !clicker->HasAura(226845))
+            {
+                click = true;
+                clicker->CastSpell(clicker, 212099, true);
+                me->DespawnOrUnsummon(100);
+            }
+        }*/
+
+        void UpdateAI(uint32 diff) {}
     };
 
-    CreatureAI* GetAI(Creature* creature) const override
+    CreatureAI* GetAI(Creature* creature) const
     {
-        return GetTheNightholdAI<npc_temporal_riftAI>(creature);
+        return new npc_anomaly_temporal_riftAI(creature);
     }
 };
 
-// 219984 - Burst Of Time
-// 7.1.5
-class spell_chronomatic_anomaly_burst_of_time_area : public SpellScriptLoader
+//205653
+class spell_anomaly_passage_of_time : public SpellScriptLoader
 {
 public:
-    spell_chronomatic_anomaly_burst_of_time_area() : SpellScriptLoader("spell_chronomatic_anomaly_burst_of_time_area") { }
+    spell_anomaly_passage_of_time() : SpellScriptLoader("spell_anomaly_passage_of_time") {}
 
-    class spell_chronomatic_anomaly_burst_of_time_area_SpellScript : public SpellScript
+    class spell_anomaly_passage_of_time_AuraScript : public AuraScript
     {
-        PrepareSpellScript(spell_chronomatic_anomaly_burst_of_time_area_SpellScript);
+        PrepareAuraScript(spell_anomaly_passage_of_time_AuraScript);
 
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            return ValidateSpellInfo
-            ({
-                SPELL_SPEED_SLOW,
-                SPELL_SPEED_NORMAL,
-                SPELL_SPEED_FAST,
-                SPELL_BURST_OF_TIME_SLOW,
-                SPELL_BURST_OF_TIME_NORMAL,
-                SPELL_BURST_OF_TIME_FAST
-            });
-        }
+        uint32 tempData = 0;
 
-        void HandleAreaSelect(std::list<WorldObject*>& targets)
+        void OnTick(AuraEffect const* aurEff)
         {
-            targets.reverse();
-            if (targets.size() > 5)
-                targets.resize(5);
-        }
-
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target)
+            if (!GetCaster())
                 return;
 
-            if (caster->HasAura(SPELL_SPEED_SLOW))
-                caster->CastSpell(target, SPELL_BURST_OF_TIME_SLOW, true);
-            else if (caster->HasAura(SPELL_SPEED_NORMAL))
-                caster->CastSpell(target, SPELL_BURST_OF_TIME_NORMAL, true);
-            else if (caster->HasAura(SPELL_SPEED_FAST))
-                caster->CastSpell(target, SPELL_BURST_OF_TIME_FAST, true);
-        }
-
-        std::list<WorldObject*> targets;
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_chronomatic_anomaly_burst_of_time_area_SpellScript::HandleAreaSelect, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnEffectHitTarget += SpellEffectFn(spell_chronomatic_anomaly_burst_of_time_area_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_chronomatic_anomaly_burst_of_time_area_SpellScript();
-    }
-};
-
-// 206610 - Time Release
-// 7.1.5
-class spell_chronomatic_anomaly_time_release_area : public SpellScriptLoader
-{
-public:
-    spell_chronomatic_anomaly_time_release_area() : SpellScriptLoader("spell_chronomatic_anomaly_time_release_area") { }
-
-    class spell_chronomatic_anomaly_time_release_area_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_chronomatic_anomaly_time_release_area_SpellScript);
-
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            return ValidateSpellInfo
-            ({
-                SPELL_SPEED_SLOW,
-                SPELL_SPEED_NORMAL,
-                SPELL_SPEED_FAST,
-                SPELL_TIME_RELEASE_ABSORB,
-                SPELL_TIME_RELEASE_RED
-            });
-        }
-
-        void HandleAreaSelect(std::list<WorldObject*>& targets)
-        {
-            Unit* caster = GetCaster();
-            if (!caster)
-                return;
-
-            if (caster->HasAura(SPELL_SPEED_SLOW))
-                targets.remove(GetExplTargetWorldObject());
-            else if (caster->HasAura(SPELL_SPEED_NORMAL))
+            if (InstanceScript* instance = GetCaster()->GetInstanceScript())
             {
-                targets.reverse();
-                if (targets.size() > 4)
-                    targets.resize(4);
-            }
-            else if (caster->HasAura(SPELL_SPEED_FAST))
-            {
-                targets.reverse();
-                if (targets.size() > 2)
-                    targets.resize(2);
-            }
-        }
-
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target)
-                return;
-
-            if (caster->HasAura(SPELL_SPEED_SLOW))
-            {
-                caster->CastCustomSpell(SPELL_TIME_RELEASE_ABSORB, SPELLVALUE_BASE_POINT0, GetEffectValue() / 3, target, TRIGGERED_FULL_MASK);
-                target->CastCustomSpell(SPELL_TIME_RELEASE_RED, SPELLVALUE_BASE_POINT0, GetEffectValue() / 3, target, TRIGGERED_FULL_MASK);
-            }
-            else if (caster->HasAura(SPELL_SPEED_NORMAL))
-            {
-                caster->CastCustomSpell(SPELL_TIME_RELEASE_ABSORB, SPELLVALUE_BASE_POINT0, GetEffectValue() / 2, target, TRIGGERED_FULL_MASK);
-                target->CastCustomSpell(SPELL_TIME_RELEASE_RED, SPELLVALUE_BASE_POINT0, GetEffectValue() / 2, target, TRIGGERED_FULL_MASK);
-            }
-            else if (caster->HasAura(SPELL_SPEED_FAST))
-            {
-                caster->CastCustomSpell(SPELL_TIME_RELEASE_ABSORB, SPELLVALUE_BASE_POINT0, GetEffectValue(), target, TRIGGERED_FULL_MASK);
-                target->CastCustomSpell(SPELL_TIME_RELEASE_RED, SPELLVALUE_BASE_POINT0, GetEffectValue(), target, TRIGGERED_FULL_MASK);
-            }
-
-
-            if (caster->HasAura(SPELL_SPEED_SLOW))
-            {
-                if (Aura* timeReleaseAbsorb = target->GetAura(SPELL_TIME_RELEASE_ABSORB))
+                if (Creature* anomaly = instance->instance->GetCreature(instance->GetGuidData(DATA_ANOMALY)))
                 {
-                    if (Aura* timeReleaseRed = target->GetAura(SPELL_TIME_RELEASE_RED))
+                    if (anomaly->IsInCombat() && tempData != anomaly->GetAI()->GetData(DATA_ANOMALY_SPEED))
                     {
-                        timeReleaseAbsorb->SetMaxDuration(25000);
-                        timeReleaseAbsorb->SetDuration(25000);
-                        timeReleaseRed->SetMaxDuration(25000);
-                        timeReleaseRed->SetDuration(25000);
-                    }
-                }
-            }
-            else if (caster->HasAura(SPELL_SPEED_NORMAL))
-            {
-                if (Aura* timeReleaseAbsorb = target->GetAura(SPELL_TIME_RELEASE_ABSORB))
-                {
-                    if (Aura* timeReleaseRed = target->GetAura(SPELL_TIME_RELEASE_RED))
-                    {
-                        timeReleaseAbsorb->SetMaxDuration(20000);
-                        timeReleaseAbsorb->SetDuration(20000);
-                        timeReleaseRed->SetMaxDuration(20000);
-                        timeReleaseRed->SetDuration(20000);
-                    }
-                }
-            }
-            else if (caster->HasAura(SPELL_SPEED_FAST))
-            {
-                if (Aura* timeReleaseAbsorb = target->GetAura(SPELL_TIME_RELEASE_ABSORB))
-                {
-                    if (Aura* timeReleaseRed = target->GetAura(SPELL_TIME_RELEASE_RED))
-                    {
-                        timeReleaseAbsorb->SetMaxDuration(15000);
-                        timeReleaseAbsorb->SetDuration(15000);
-                        timeReleaseRed->SetMaxDuration(15000);
-                        timeReleaseRed->SetDuration(15000);
+                        tempData = anomaly->GetAI()->GetData(DATA_ANOMALY_SPEED);
+                        GetCaster()->CastSpell(GetCaster(), tempData, true);
+
+                        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(tempData))
+                        {
+                            if (AuraEffect* aurEffb = GetAura()->GetEffect(EFFECT_2))
+                                aurEffb->ChangeAmount(spellInfo->GetEffect(EFFECT_0)->BasePoints);
+                        }
                     }
                 }
             }
@@ -737,547 +824,451 @@ public:
 
         void Register() override
         {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_chronomatic_anomaly_time_release_area_SpellScript::HandleAreaSelect, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnEffectHitTarget += SpellEffectFn(spell_chronomatic_anomaly_time_release_area_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_anomaly_passage_of_time_AuraScript::OnTick, EFFECT_3, SPELL_AURA_PERIODIC_DUMMY);
         }
     };
 
-    SpellScript* GetSpellScript() const override
+    AuraScript* GetAuraScript() const override
     {
-        return new spell_chronomatic_anomaly_time_release_area_SpellScript();
+        return new spell_anomaly_passage_of_time_AuraScript();
     }
 };
 
-// 206609 - Time Release
-// 7.1.5
-class spell_chronomatic_anomaly_time_release_absorb : public SpellScriptLoader
+//219984
+class spell_anomaly_burst_of_time : public SpellScriptLoader
 {
 public:
-    spell_chronomatic_anomaly_time_release_absorb() : SpellScriptLoader("spell_chronomatic_anomaly_time_release_absorb") { }
+    spell_anomaly_burst_of_time() : SpellScriptLoader("spell_anomaly_burst_of_time") { }
 
-    class spell_chronomatic_anomaly_time_release_absorb_AuraScript : public AuraScript
+    class spell_anomaly_burst_of_time_SpellScript : public SpellScript
     {
-        PrepareAuraScript(spell_chronomatic_anomaly_time_release_absorb_AuraScript);
+        PrepareSpellScript(spell_anomaly_burst_of_time_SpellScript);
 
-        bool Validate(SpellInfo const* /*spellInfo*/) override
+        void FilterTargets(std::list<WorldObject*>& targets)
         {
-            return ValidateSpellInfo
-            ({
-                SPELL_TIME_RELEASE_GREEN,
-                SPELL_TIME_RELEASE_YELLOW,
-                SPELL_TIME_RELEASE_RED,
-                SPELL_TIME_RELEASE_DAMAGE
-            });
-        }
-
-        void HandleEffectApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
-        {
-            startAbsorb = aurEff->GetAmount();
-            curAbsorb = aurEff->GetAmount();
-        }
-
-        bool CheckProc(ProcEventInfo& eventInfo)
-        {
-            if (eventInfo.GetHealInfo() && eventInfo.GetHealInfo()->GetHeal())
-                return true;
-            return false;
-        }
-
-        void HandleEffectProc(AuraEffect const* /*aurEff*/, ProcEventInfo& eventInfo)
-        {
-            Unit* target = GetTarget();
-            if (!target)
+            if (!GetCaster())
                 return;
 
-            uint32 healAmount = eventInfo.GetHealInfo()->GetHeal();
-            if (curAbsorb > healAmount)
-                curAbsorb -= healAmount;
+            uint8 playerCount = GetCaster()->GetMap()->GetPlayersCountExceptGMs();
+            uint8 rCount;
+
+            if (playerCount > 25)
+                rCount = 5;
+            else if (playerCount > 15)
+                rCount = 4;
             else
-            {
-                Remove();
-                target->RemoveAura(SPELL_TIME_RELEASE_GREEN, ObjectGuid::Empty, 0, AURA_REMOVE_BY_EXPIRE);
-                target->RemoveAura(SPELL_TIME_RELEASE_YELLOW, ObjectGuid::Empty, 0, AURA_REMOVE_BY_EXPIRE);
-                target->RemoveAura(SPELL_TIME_RELEASE_RED, ObjectGuid::Empty, 0, AURA_REMOVE_BY_EXPIRE);
-                return;
-            }
+                rCount = 3;
 
-            uint32 countForYellow = startAbsorb / 3 * 2;
-            uint32 countForGreen = startAbsorb / 3;
-
-            if (curAbsorb <= countForYellow && curAbsorb >= countForGreen)
-            {
-                target->CastCustomSpell(SPELL_TIME_RELEASE_YELLOW, SPELLVALUE_BASE_POINT0, curAbsorb, target, TRIGGERED_FULL_MASK);
-
-                if (Aura* timeReleaseYellow = target->GetAura(SPELL_TIME_RELEASE_YELLOW))
-                {
-                    timeReleaseYellow->SetMaxDuration(GetAura()->GetDuration());
-                    timeReleaseYellow->SetDuration(GetAura()->GetDuration());
-                }
-            }
-            else if (curAbsorb <= countForGreen)
-            {
-                target->CastCustomSpell(SPELL_TIME_RELEASE_GREEN, SPELLVALUE_BASE_POINT0, curAbsorb, target, TRIGGERED_FULL_MASK);
-
-                if (Aura* timeReleaseGreen = target->GetAura(SPELL_TIME_RELEASE_GREEN))
-                {
-                    timeReleaseGreen->SetMaxDuration(GetAura()->GetDuration());
-                    timeReleaseGreen->SetDuration(GetAura()->GetDuration());
-                }
-            }
-            else if (curAbsorb)
-            {
-                target->CastCustomSpell(SPELL_TIME_RELEASE_RED, SPELLVALUE_BASE_POINT0, curAbsorb, target, TRIGGERED_FULL_MASK);
-
-                if (Aura* timeReleaseRed = target->GetAura(SPELL_TIME_RELEASE_RED))
-                {
-                    timeReleaseRed->SetMaxDuration(GetAura()->GetDuration());
-                    timeReleaseRed->SetDuration(GetAura()->GetDuration());
-                }
-            }
-        }
-
-        void HandleRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetTarget();
-            AuraRemoveMode removeMode = GetTargetApplication()->GetRemoveMode();
-            if (!caster || !target || removeMode != AURA_REMOVE_BY_EXPIRE)
-                return;
-
-            caster->CastCustomSpell(SPELL_TIME_RELEASE_DAMAGE, SPELLVALUE_BASE_POINT0, aurEff->GetAmount(), caster, TRIGGERED_FULL_MASK);
+            if (targets.size() > rCount)
+                Trinity::Containers::RandomResize(targets, rCount);
         }
 
         void Register() override
         {
-            OnEffectApply += AuraEffectApplyFn(spell_chronomatic_anomaly_time_release_absorb_AuraScript::HandleEffectApply, EFFECT_0, SPELL_AURA_SCHOOL_HEAL_ABSORB, AURA_EFFECT_HANDLE_REAL);
-            DoCheckProc += AuraCheckProcFn(spell_chronomatic_anomaly_time_release_absorb_AuraScript::CheckProc);
-            OnEffectProc += AuraEffectProcFn(spell_chronomatic_anomaly_time_release_absorb_AuraScript::HandleEffectProc, EFFECT_0, SPELL_AURA_SCHOOL_HEAL_ABSORB);
-            OnEffectRemove += AuraEffectRemoveFn(spell_chronomatic_anomaly_time_release_absorb_AuraScript::HandleRemove, EFFECT_0, SPELL_AURA_SCHOOL_HEAL_ABSORB, AURA_EFFECT_HANDLE_REAL);
-        }
-
-        uint32 startAbsorb;
-        uint32 curAbsorb;
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_chronomatic_anomaly_time_release_absorb_AuraScript();
-    }
-};
-
-// 206607 - Chronometric Particles
-// 7.1.5
-class spell_chronomatic_anomaly_chronometric_particles : public SpellScriptLoader
-{
-public:
-    spell_chronomatic_anomaly_chronometric_particles() : SpellScriptLoader("spell_chronomatic_anomaly_chronometric_particles") { }
-
-    class spell_chronomatic_anomaly_chronometric_particles_AuraScript : public AuraScript
-    {
-        PrepareAuraScript(spell_chronomatic_anomaly_chronometric_particles_AuraScript);
-
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            return ValidateSpellInfo
-            ({
-                SPELL_SPEED_SLOW,
-                SPELL_SPEED_NORMAL,
-                SPELL_SPEED_FAST,
-                SPELL_CHRONOMETRIC_OVERLOAD
-            });
-        }
-
-        void HandleEffectApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetTarget();
-            if (!caster || !target)
-                return;
-
-            if (GetAura()->GetStackAmount() > 9)
-                caster->CastSpell(target, SPELL_CHRONOMETRIC_OVERLOAD, true);
-
-            if (caster->HasAura(SPELL_SPEED_SLOW))
-            {
-                GetAura()->GetEffect(EFFECT_0)->SetPeriodicTimer(6000);
-                GetAura()->SetMaxDuration(60000);
-                GetAura()->SetDuration(60000);
-            }
-            else if (caster->HasAura(SPELL_SPEED_NORMAL))
-            {
-                GetAura()->GetEffect(EFFECT_0)->SetPeriodicTimer(2000);
-                GetAura()->SetMaxDuration(20000);
-                GetAura()->SetDuration(20000);
-            }
-            else if (caster->HasAura(SPELL_SPEED_FAST))
-            {
-                GetAura()->GetEffect(EFFECT_0)->SetPeriodicTimer(1000);
-                GetAura()->SetMaxDuration(10000);
-                GetAura()->SetDuration(10000);
-            }
-        }
-
-        void Register() override
-        {
-            OnEffectApply += AuraEffectApplyFn(spell_chronomatic_anomaly_chronometric_particles_AuraScript::HandleEffectApply, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_chronomatic_anomaly_chronometric_particles_AuraScript();
-    }
-};
-
-// 206618 - Time Bomb Area
-// 7.1.5
-class spell_chronomatic_anomaly_time_bomb_area : public SpellScriptLoader
-{
-public:
-    spell_chronomatic_anomaly_time_bomb_area() : SpellScriptLoader("spell_chronomatic_anomaly_time_bomb_area") { }
-
-    class spell_chronomatic_anomaly_time_bomb_area_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_chronomatic_anomaly_time_bomb_area_SpellScript);
-
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            return ValidateSpellInfo({ SPELL_TIME_BOMB_DEBUFF });
-        }
-
-        void HandleAreaSelect(std::list<WorldObject*>& targets)
-        {
-            targets.remove_if([](WorldObject* obj)
-            {
-                Player* player = obj->ToPlayer();
-                if (!player)
-                    return true;
-
-                if (player->GetRoleForGroup() == ROLE_TANK)
-                    return true;
-                return false;
-            });
-
-            uint8 bobmsCount = urand(2, 3);
-            targets.reverse();
-            if (targets.size() > bobmsCount)
-                targets.resize(bobmsCount);
-        }
-
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target)
-                return;
-
-            caster->CastSpell(target, SPELL_TIME_BOMB_DEBUFF);
-        }
-
-        void Register() override
-        {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_chronomatic_anomaly_time_bomb_area_SpellScript::HandleAreaSelect, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            OnEffectHitTarget += SpellEffectFn(spell_chronomatic_anomaly_time_bomb_area_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_anomaly_burst_of_time_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
         }
     };
 
     SpellScript* GetSpellScript() const override
     {
-        return new spell_chronomatic_anomaly_time_bomb_area_SpellScript();
+        return new spell_anomaly_burst_of_time_SpellScript();
     }
 };
 
-// 206617 - Time Bomb Periodic
-// 7.1.5
-class spell_chronomatic_anomaly_time_bomb_periodic : public SpellScriptLoader
+//206607
+class spell_anomaly_chronometric_particles : public SpellScriptLoader
 {
 public:
-    spell_chronomatic_anomaly_time_bomb_periodic() : SpellScriptLoader("spell_chronomatic_anomaly_time_bomb_periodic") { }
+    spell_anomaly_chronometric_particles() : SpellScriptLoader("spell_anomaly_chronometric_particles") {}
 
-    class spell_chronomatic_anomaly_time_bomb_periodic_AuraScript : public AuraScript
+    class spell_anomaly_chronometric_particles_AuraScript : public AuraScript
     {
-        PrepareAuraScript(spell_chronomatic_anomaly_time_bomb_periodic_AuraScript);
+        PrepareAuraScript(spell_anomaly_chronometric_particles_AuraScript);
 
-        bool Validate(SpellInfo const* /*spellInfo*/) override
+        void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
         {
-            return ValidateSpellInfo
-            ({
-                SPELL_SPEED_SLOW,
-                SPELL_SPEED_NORMAL,
-                SPELL_SPEED_FAST,
-                SPELL_TIME_BOMB_VISUAL,
-                SPELL_TIME_BOMB_DAMAGE
-            });
-        }
-
-        void HandleEffectApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetTarget();
-            if (!caster || !target)
+            if (!GetCaster() || !GetTarget())
                 return;
 
-            if (caster->HasAura(SPELL_SPEED_SLOW))
-            {
-                GetAura()->SetMaxDuration(60000);
-                GetAura()->SetDuration(60000);
-            }
-            else if (caster->HasAura(SPELL_SPEED_NORMAL))
-            {
-                GetAura()->SetMaxDuration(20000);
-                GetAura()->SetDuration(20000);
-            }
-            else if (caster->HasAura(SPELL_SPEED_FAST))
-            {
-                GetAura()->SetMaxDuration(8000);
-                GetAura()->SetDuration(8000);
-            }
-        }
-
-        void HandlePeriodic(AuraEffect const* /*aurEff*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetTarget();
-            if (!caster || !target)
-                return;
-
-            if (GetAura()->GetDuration() <= 5000 && !target->HasAura(SPELL_TIME_BOMB_VISUAL))
-                caster->CastSpell(target, SPELL_TIME_BOMB_VISUAL);
-        }
-
-        void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-        {
-            if (Unit* target = GetTarget())
-                target->CastSpell(target, SPELL_TIME_BOMB_DAMAGE, true);
+            if (Aura* aura = aurEff->GetBase())
+                if (aura->GetStackAmount() == GetSpellInfo()->GetEffect(EFFECT_1)->BasePoints)
+                    GetCaster()->CastSpell(GetTarget(), SPELL_CHRONOMETRIC_OVERLOAD, true);
         }
 
         void Register() override
         {
-            OnEffectApply += AuraEffectApplyFn(spell_chronomatic_anomaly_time_bomb_periodic_AuraScript::HandleEffectApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_chronomatic_anomaly_time_bomb_periodic_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-            OnEffectRemove += AuraEffectRemoveFn(spell_chronomatic_anomaly_time_bomb_periodic_AuraScript::HandleRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+            OnEffectApply += AuraEffectApplyFn(spell_anomaly_chronometric_particles_AuraScript::OnApply, EFFECT_1, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAPPLY);
         }
     };
 
     AuraScript* GetAuraScript() const override
     {
-        return new spell_chronomatic_anomaly_time_bomb_periodic_AuraScript();
+        return new spell_anomaly_chronometric_particles_AuraScript();
     }
 };
 
-// 206615 - Time Bomb Damage
-// 7.1.5
-class spell_chronomatic_anomaly_time_bomb_damage : public SpellScriptLoader
+//206610
+class spell_anomaly_time_release_filter : public SpellScriptLoader
 {
 public:
-    spell_chronomatic_anomaly_time_bomb_damage() : SpellScriptLoader("spell_chronomatic_anomaly_time_bomb_damage") { }
+    spell_anomaly_time_release_filter() : SpellScriptLoader("spell_anomaly_time_release_filter") { }
 
-    class spell_chronomatic_anomaly_time_bomb_damage_SpellScript : public SpellScript
+    class spell_anomaly_time_release_filter_SpellScript : public SpellScript
     {
-        PrepareSpellScript(spell_chronomatic_anomaly_time_bomb_damage_SpellScript);
+        PrepareSpellScript(spell_anomaly_time_release_filter_SpellScript);
 
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
+        uint8 count;
+
+        void FilterTargets(std::list<WorldObject*>& targets)
         {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target)
+            if (GetCaster())
+            {
+                if (GetCaster()->HasAura(SPELL_SPEED_NORMAL))
+                    count = 4;
+                else if (GetCaster()->HasAura(SPELL_SPEED_FAST))
+                    count = 2;
+                else
+                    count = 0;
+
+                if (count != 0 && targets.size() > count)
+                    Trinity::Containers::RandomResize(targets, count);
+            }
+        }
+
+
+        void Register() override
+        {
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_anomaly_time_release_filter_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_anomaly_time_release_filter_SpellScript();
+    }
+};
+
+//206609
+class spell_anomaly_time_release : public SpellScriptLoader
+{
+public:
+    spell_anomaly_time_release() : SpellScriptLoader("spell_anomaly_time_release") {}
+
+    class spell_anomaly_time_release_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_anomaly_time_release_AuraScript);
+
+        uint32 absorb = 0;
+
+        void Absorb(AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
+        {
+            if (GetTarget())
+            {
+                int32 newAbsorb = aurEff->GetAmount() - absorbAmount;
+
+                if (newAbsorb > absorb * 0.66)
+                {
+                    if (GetTarget()->HasAura(SPELL_TIME_RELEASE_RED))
+                    {
+                        if (AuraEffect* aurEffb = GetTarget()->GetAura(SPELL_TIME_RELEASE_RED)->GetEffect(0))
+                            aurEffb->SetAmount(newAbsorb);
+                    }
+                    else
+                        GetTarget()->CastCustomSpell(SPELL_TIME_RELEASE_RED, SPELLVALUE_BASE_POINT0, newAbsorb);
+                }
+                else if (newAbsorb > absorb * 0.33)
+                {
+                    if (GetTarget()->HasAura(SPELL_TIME_RELEASE_YELLOW))
+                    {
+                        if (AuraEffect* aurEffb = GetTarget()->GetAura(SPELL_TIME_RELEASE_YELLOW)->GetEffect(0))
+                            aurEffb->SetAmount(newAbsorb);
+                    }
+                    else
+                        GetTarget()->CastCustomSpell(SPELL_TIME_RELEASE_YELLOW, SPELLVALUE_BASE_POINT0, newAbsorb);
+                }
+                else
+                {
+                    if (GetTarget()->HasAura(SPELL_TIME_RELEASE_GREEN))
+                    {
+                        if (AuraEffect* aurEffb = GetTarget()->GetAura(SPELL_TIME_RELEASE_GREEN)->GetEffect(0))
+                            aurEffb->SetAmount(newAbsorb);
+                    }
+                    else
+                        GetTarget()->CastCustomSpell(SPELL_TIME_RELEASE_GREEN, SPELLVALUE_BASE_POINT0, newAbsorb);
+                }
+            }
+        }
+
+        void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (GetTarget() && !absorb)
+            {
+                absorb = aurEff->GetAmount();
+                GetTarget()->CastCustomSpell(SPELL_TIME_RELEASE_RED, SPELLVALUE_BASE_POINT0, absorb);
+            }
+        }
+
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (GetTarget())
+            {
+                GetTarget()->RemoveAurasDueToSpell(SPELL_TIME_RELEASE_GREEN);
+                GetTarget()->RemoveAurasDueToSpell(SPELL_TIME_RELEASE_RED);
+                GetTarget()->RemoveAurasDueToSpell(SPELL_TIME_RELEASE_YELLOW);
+
+ 
+            }
+        }
+
+        void Register() override
+        {
+            AfterEffectAbsorb += AuraEffectAbsorbFn(spell_anomaly_time_release_AuraScript::Absorb, EFFECT_0);
+            OnEffectApply += AuraEffectApplyFn(spell_anomaly_time_release_AuraScript::OnApply, EFFECT_0, SPELL_AURA_SCHOOL_HEAL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+            OnEffectRemove += AuraEffectRemoveFn(spell_anomaly_time_release_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_HEAL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_anomaly_time_release_AuraScript();
+    }
+};
+
+
+//206618
+class spell_anomaly_time_bomb_filter : public SpellScriptLoader
+{
+public:
+    spell_anomaly_time_bomb_filter() : SpellScriptLoader("spell_anomaly_time_bomb_filter") {}
+
+    class spell_anomaly_time_bomb_filter_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_anomaly_time_bomb_filter_SpellScript);
+
+        uint8 count;
+
+        void FilterTargets(std::list<WorldObject*>& targets)
+        {
+            if (GetCaster())
+            {
+                if (GetCaster()->GetVictim() && targets.size() > 1)
+                    targets.remove(GetCaster()->GetVictim());
+
+                if (GetCaster()->GetMap()->GetDifficultyID() == DIFFICULTY_MYTHIC_RAID)
+                    count = 2;
+                else
+                    count = 1;
+
+                if (targets.size() > count)
+                    Trinity::Containers::RandomResize(targets, count);
+            }
+        }
+
+        void Register() override
+        {
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_anomaly_time_bomb_filter_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_anomaly_time_bomb_filter_SpellScript();
+    }
+};
+
+//206617
+class spell_anomaly_time_bomb : public SpellScriptLoader
+{
+public:
+    spell_anomaly_time_bomb() : SpellScriptLoader("spell_anomaly_time_bomb") {}
+
+    class spell_anomaly_time_bomb_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_anomaly_time_bomb_AuraScript);
+
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
+                if (GetTarget())
+                    GetTarget()->CastSpell(GetTarget(), SPELL_TIME_BOMB_DMG, true);
+        }
+
+        void Register() override
+        {
+            OnEffectRemove += AuraEffectRemoveFn(spell_anomaly_time_bomb_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_anomaly_time_bomb_AuraScript();
+    }
+};
+
+//206615
+class spell_anomaly_time_bomb_dmg : public SpellScriptLoader
+{
+public:
+    spell_anomaly_time_bomb_dmg() : SpellScriptLoader("spell_anomaly_time_bomb_dmg") {}
+
+    class spell_anomaly_time_bomb_dmg_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_anomaly_time_bomb_dmg_SpellScript);
+
+        void HandleDamage(SpellEffIndex /*effIndex*/)
+        {
+            if (!GetCaster() || !GetHitUnit())
                 return;
 
-            int32 damage = GetHitDamage();
-            uint8 distance = caster->GetExactDist(target);
-            AddPct(damage, -distance);
+            float distance = GetCaster()->GetExactDist2d(GetHitUnit());
+            float radius = GetSpellInfo()->GetEffect(EFFECT_0)->CalcRadius(GetCaster());
+            uint32 perc = 30;
+            if (distance < 100.0f)
+                perc = 100 - (distance / radius) * 70;
+
+            uint32 damage = CalculatePct(GetHitDamage(), perc);
             SetHitDamage(damage);
         }
 
         void Register() override
         {
-            OnEffectHitTarget += SpellEffectFn(spell_chronomatic_anomaly_time_bomb_damage_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+            OnEffectHitTarget += SpellEffectFn(spell_anomaly_time_bomb_dmg_SpellScript::HandleDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
         }
     };
 
     SpellScript* GetSpellScript() const override
     {
-        return new spell_chronomatic_anomaly_time_bomb_damage_SpellScript();
+        return new spell_anomaly_time_bomb_dmg_SpellScript();
     }
 };
 
-// 212109 - Temporal Smash Jump
-// 7.1.5
-class spell_chronomatic_anomaly_temporal_smash : public SpellScriptLoader
+//219815
+class spell_anomaly_temporal_orb : public SpellScriptLoader
 {
 public:
-    spell_chronomatic_anomaly_temporal_smash() : SpellScriptLoader("spell_chronomatic_anomaly_temporal_smash") { }
+    spell_anomaly_temporal_orb() : SpellScriptLoader("spell_anomaly_temporal_orb") {}
 
-    class spell_chronomatic_anomaly_temporal_smash_SpellScript : public SpellScript
+    class spell_anomaly_temporal_orb_AuraScript : public AuraScript
     {
-        PrepareSpellScript(spell_chronomatic_anomaly_temporal_smash_SpellScript);
+        PrepareAuraScript(spell_anomaly_temporal_orb_AuraScript);
 
-        bool Validate(SpellInfo const* /*spellInfo*/) override
-        {
-            return ValidateSpellInfo({ SPELL_TEMPORAL_SMASH_VISUAL });
-        }
-
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes mode)
         {
             Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target)
+            if (!caster || !GetTarget() || !caster->IsAlive() || !caster->IsInCombat())
                 return;
 
-            if (WorldLocation const* dest = GetExplTargetDest())
+            if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
             {
-                int32 speedxy = caster->GetExactDist2d(dest);
-                int32 speedz = 25;
-                JumpArrivalCastArgs arrivalCast;
-                arrivalCast.SpellId = SPELL_TEMPORAL_SMASH_VISUAL;
-                arrivalCast.Target = target->GetGUID();
-                //arrivalCast.Triggered = true;
-                caster->GetMotionMaster()->MoveJump(*dest, speedxy, speedz, 0, false, &arrivalCast);
+                Position pos;
+                float angle = 3.14f;
+                for (uint8 i = 0; i < 36; i++)
+                {
+                    GetTarget()->GetNearPosition(20.0f, angle);
+                    caster->CastSpell(pos, SPELL_TEMPORAL_ORB_AT, true);
+
+                    GetTarget()->GetNearPosition(20.0f, angle + 0.08525f);
+
+                    uint32 spellID = SPELL_TEMPORAL_ORB_AT_2;
+                    AddDelayedEvent(2000, [caster, pos, spellID]() -> void
+                    {
+                        if (!caster)
+                            return;
+
+                        if (caster->IsAlive() && caster->IsInCombat())
+                            caster->CastSpell(pos, spellID, true);
+                    });
+                    angle += 0.1744f;
+                }
             }
         }
 
         void Register() override
         {
-            OnEffectHitTarget += SpellEffectFn(spell_chronomatic_anomaly_temporal_smash_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DASH);
+            OnEffectRemove += AuraEffectApplyFn(spell_anomaly_temporal_orb_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
         }
     };
 
-    SpellScript* GetSpellScript() const override
+    AuraScript* GetAuraScript() const override
     {
-        return new spell_chronomatic_anomaly_temporal_smash_SpellScript();
+        return new spell_anomaly_temporal_orb_AuraScript();
     }
 };
 
-// 212115 - Temporal Smash Dest
-// 7.1.5
-class spell_chronomatic_anomaly_temporal_smash_dest : public SpellScriptLoader
+//212109
+class spell_anomaly_temporal_smash : public SpellScriptLoader
 {
 public:
-    spell_chronomatic_anomaly_temporal_smash_dest() : SpellScriptLoader("spell_chronomatic_anomaly_temporal_smash_dest") { }
+    spell_anomaly_temporal_smash() : SpellScriptLoader("spell_anomaly_temporal_smash") {}
 
-    class spell_chronomatic_anomaly_temporal_smash_dest_SpellScript : public SpellScript
+    class spell_anomaly_temporal_smash_SpellScript : public SpellScript
     {
-        PrepareSpellScript(spell_chronomatic_anomaly_temporal_smash_dest_SpellScript);
+        PrepareSpellScript(spell_anomaly_temporal_smash_SpellScript);
 
-        bool Validate(SpellInfo const* /*spellInfo*/) override
+        SpellCastResult CheckRequirement()
         {
-            return ValidateSpellInfo({ SPELL_TEMPORAL_SMASH_DEBUFF });
-        }
-
-        void HandleHitTarget(SpellEffIndex /*effIndex*/)
-        {
-            Unit* caster = GetCaster();
-            Unit* target = GetHitUnit();
-            if (!caster || !target || !target->ToCreature())
-                return;
-
-            caster->CastSpell(target, SPELL_TEMPORAL_SMASH_DEBUFF, true);
-            target->ToCreature()->AI()->DoAction(ACTION_NEXT_SPEED);
-        }
-
-        void Register() override
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_chronomatic_anomaly_temporal_smash_dest_SpellScript::HandleHitTarget, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_chronomatic_anomaly_temporal_smash_dest_SpellScript();
-    }
-};
-
-// 11521 - Temporal Orb
-// 7.1.5
-class areatrigger_chronomatic_anomaly_temporal_orb : public AreaTriggerEntityScript
-{
-public:
-    areatrigger_chronomatic_anomaly_temporal_orb() : AreaTriggerEntityScript("areatrigger_chronomatic_anomaly_temporal_orb") { }
-
-    struct areatrigger_chronomatic_anomaly_temporal_orbAI : AreaTriggerAI
-    {
-        areatrigger_chronomatic_anomaly_temporal_orbAI(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
-
-        void OnInitialize() override
-        {
-            _posIndex = 0;
-            canStartPath = true;
-            _timer = 500;
-        }
-
-        void OnUnitEnter(Unit* unit) override
-        {
-            Unit* caster = at->GetCaster();;
-            Player* target = unit->ToPlayer();
-            if (!caster || !target)
-                return;
-
-            caster->CastSpell(target, SPELL_TEMPORAL_ORB_DAMAGE, true);
-        }
-
-        void OnUnitExit(Unit* unit) override
-        {
-            Player* target = unit->ToPlayer();
+            Unit* target = GetExplTargetUnit();
             if (!target)
-                return;
+                return SPELL_FAILED_BAD_TARGETS;
 
-            if (target->HasAura(SPELL_TEMPORAL_ORB_DAMAGE))
-                target->RemoveAura(SPELL_TEMPORAL_ORB_DAMAGE);
-        }
-
-        void OnDestinationReached() override
-        {
-            at->SetDuration(0);
-        }
-
-        void DoAction(int32 param)
-        {
-            _posIndex = param;
-        }
-
-        void OnUpdate(uint32 diff) override
-        {
-            if (_timer <= diff && canStartPath)
+            if (Creature* creature = target->ToCreature())
             {
-                Position temporalpos = temporalOrbsDestPositions[_posIndex].GetPosition();
-                std::vector<G3D::Vector3> SplinePoints;
-                SplinePoints.push_back(G3D::Vector3(at->GetPositionX(), at->GetPositionY(), at->GetPositionZ()));
-                SplinePoints.push_back(G3D::Vector3(at->GetPositionX(), at->GetPositionY(), at->GetPositionZ()));
-                SplinePoints.push_back(G3D::Vector3(temporalpos.m_positionX, temporalpos.m_positionY, temporalpos.m_positionZ));
-                SplinePoints.push_back(G3D::Vector3(temporalpos.m_positionX, temporalpos.m_positionY, temporalpos.m_positionZ));
-                at->InitSplines(SplinePoints, 15000);
-                canStartPath = false;
+                if (!creature || creature->GetEntry() != NPC_CHRONOMATIC_ANOMALY || !creature->GetAI()->GetData(DATA_ANOMALY_OVERWHELMING))
+                    return SPELL_FAILED_BAD_TARGETS;
             }
-            else
-                _timer -= diff;
+
+            return SPELL_CAST_OK;
         }
 
-    private:
-        uint8 _posIndex;
-        bool canStartPath = true;
-        uint32 _timer;
+        void Register() override
+        {
+            OnCheckCast += SpellCheckCastFn(spell_anomaly_temporal_smash_SpellScript::CheckRequirement);
+        }
     };
 
-    AreaTriggerAI* GetAI(AreaTrigger* areatrigger) const override
+    SpellScript* GetSpellScript() const override
     {
-        return new areatrigger_chronomatic_anomaly_temporal_orbAI(areatrigger);
+        return new spell_anomaly_temporal_smash_SpellScript();
+    }
+};
+
+//226845
+class spell_anomaly_temporal_charge_remove : public AuraScript
+{
+    PrepareAuraScript(spell_anomaly_temporal_charge_remove);
+
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (!GetTarget() || GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_DEATH)
+            return;
+
+        if (InstanceScript* instance = GetTarget()->GetInstanceScript())
+            if (Creature* anomaly = instance->instance->GetCreature(instance->GetGuidData(DATA_ANOMALY)))
+                if (instance->GetBossState(DATA_ANOMALY) == IN_PROGRESS)
+                    GetTarget()->CastSpell(GetTarget(), SPELL_SUM_TEMPORAL_RIFT, true, nullptr, nullptr, anomaly->GetGUID());
+    }
+
+    void Register() override
+    {
+        OnEffectRemove += AuraEffectRemoveFn(spell_anomaly_temporal_charge_remove::OnRemove, EFFECT_0, SPELL_AURA_OVERRIDE_SPELLS, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
 void AddSC_boss_chronomatic_anomaly()
 {
     new boss_chronomatic_anomaly();
-    new npc_waning_time_particle();
-    new npc_fragmented_time_particle();
-    new npc_temporal_rift();
-    new spell_chronomatic_anomaly_burst_of_time_area();
-    new spell_chronomatic_anomaly_time_release_area();
-    new spell_chronomatic_anomaly_time_release_absorb();
-    new spell_chronomatic_anomaly_chronometric_particles();
-    new spell_chronomatic_anomaly_time_bomb_area();
-    new spell_chronomatic_anomaly_time_bomb_periodic();
-    new spell_chronomatic_anomaly_time_bomb_damage();
-    new spell_chronomatic_anomaly_temporal_smash();
-    new spell_chronomatic_anomaly_temporal_smash_dest();
-    new areatrigger_chronomatic_anomaly_temporal_orb();
+    new npc_anomaly_waning_time_particle();
+    new npc_anomaly_fragmented_time();
+    new npc_anomaly_temporal_rift();
+    new spell_anomaly_passage_of_time();
+    new spell_anomaly_burst_of_time();
+    new spell_anomaly_chronometric_particles();
+    new spell_anomaly_time_release_filter();
+    new spell_anomaly_time_release();
+    new spell_anomaly_time_bomb_filter();
+    new spell_anomaly_time_bomb();
+    new spell_anomaly_time_bomb_dmg();
+    new spell_anomaly_temporal_orb();
+    new spell_anomaly_temporal_smash();
+    RegisterAuraScript(spell_anomaly_temporal_charge_remove);
 }

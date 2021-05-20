@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 AshamaneProject <https://github.com/AshamaneProject>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,6 +30,24 @@
 #include "ObjectAccessor.h"
 #include "MotionMaster.h"
 #include "CreatureAIImpl.h"
+#include "CreatureAI.h"
+
+// DON'T DELETE THIS ONES WITHOUT LETTING ME KNOW! blank functions atm, further implementation
+void AddDelayedEvent(uint64 timeOffset, std::function<void()>&& function)
+{ 
+}
+
+void KillAllDelayedEvents()
+{
+}
+
+void AddDelayedCombat(uint64 timeOffset, std::function<void()>&& function)
+{
+}
+
+void KillAllDelayedCombats()
+{
+}
 
 enum Spells
 {
@@ -69,6 +87,11 @@ enum Events
     // Chaotoid
     EVENT_RELEASE_THE_VOID              = 8,
     EVENT_COMPRESS_THE_VOID_GRIP        = 9
+};
+
+enum Misc
+{
+    DATA_TORM_THE_BRUTE = 1,
 };
 
 // 115914 - Torm the Brute
@@ -155,7 +178,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<npc_torm_the_bruteAI>(creature);
+        return new npc_torm_the_bruteAI(creature);
     }
 };
 
@@ -223,7 +246,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<npc_fulminantAI>(creature);
+        return new npc_fulminantAI(creature);
     }
 };
 
@@ -289,7 +312,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<npc_pulsauronAI>(creature);
+        return new npc_pulsauronAI(creature);
     }
 };
 
@@ -347,7 +370,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetTheNightholdAI<npc_chaotoidAI>(creature);
+        return new npc_chaotoidAI(creature);
     }
 };
 
