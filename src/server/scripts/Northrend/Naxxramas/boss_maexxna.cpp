@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -221,7 +221,7 @@ public:
             if (Unit* victim = ObjectAccessor::GetUnit(*me, victimGUID))
             {
                 visibleTimer = (me->GetDistance2d(victim)/WEB_WRAP_MOVE_SPEED + 0.5f) * IN_MILLISECONDS;
-                victim->CastSpell(victim, SPELL_WEB_WRAP, true, NULL, NULL, me->GetGUID());
+                victim->CastSpell(victim, SPELL_WEB_WRAP, true, nullptr, nullptr, me->GetGUID());
             }
         }
 

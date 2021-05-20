@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -347,7 +347,7 @@ class spell_ulduar_rubble_summon : public SpellScriptLoader
                 ObjectGuid originalCaster = caster->GetInstanceScript() ? caster->GetInstanceScript()->GetGuidData(BOSS_KOLOGARN) : ObjectGuid::Empty;
                 uint32 spellId = GetEffectValue();
                 for (uint8 i = 0; i < 5; ++i)
-                    caster->CastSpell(caster, spellId, true, NULL, NULL, originalCaster);
+                    caster->CastSpell(caster, spellId, true, nullptr, nullptr, originalCaster);
             }
 
             void Register() override

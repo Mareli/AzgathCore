@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,6 +28,7 @@
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 #include "violet_hold.h"
+#include "Unit.h"
 
 /*
  * TODO:
@@ -368,7 +369,7 @@ class npc_sinclari_vh : public CreatureScript
                 }
             }
 
-            void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
+            bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
             {
                 if (menuId == GOSSIP_MENU_START_ENCOUNTER && gossipListId == 0)
                 {
@@ -382,6 +383,8 @@ class npc_sinclari_vh : public CreatureScript
                     me->CastSpell(player, SPELL_TELEPORT_PLAYER, true);
                     player->PlayerTalkClass->SendCloseGossip();
                 }
+
+                return true;
             }
 
             void DoAction(int32 actionId) override
@@ -576,26 +579,30 @@ class npc_azure_saboteur : public CreatureScript
 
             void Reset() override
             {
-                _scheduler.CancelAll();
-                _scheduler.Schedule(Seconds(2), [this](TaskContext /*task*/)
+                _scheduler.Reset();
+                me->GetScheduler().Schedule(2s, [this](TaskContext /*context*/)
                 {
                     StartMovement();
                 });
+
+                _repeat = 0;
             }
 
             void MovementInform(uint32 type, uint32 pointId) override
             {
                 if (type == EFFECT_MOTION_TYPE && pointId == POINT_INTRO)
                 {
-                    _scheduler.Schedule(Seconds(0), [this](TaskContext task)
+                    me->GetScheduler().Schedule(1s, [this](TaskContext /*context*/)
                     {
                         me->CastSpell(me, SPELL_SHIELD_DISRUPTION, false);
-
-                        if (task.GetRepeatCounter() < 2)
-                            task.Repeat(Seconds(1));
+                        ++_repeat;
+                        if (_repeat < 2)
+                        {
+                            StartMovement();
+                        }
                         else
                         {
-                            task.Schedule(Seconds(2), [this](TaskContext /*task*/)
+                            me->GetScheduler().Schedule(1s, [this](TaskContext /*context*/)
                             {
                                 _instance->SetData(DATA_START_BOSS_ENCOUNTER, 1);
                                 me->CastSpell(me, SPELL_TELEPORT_VISUAL, false);
@@ -613,9 +620,10 @@ class npc_azure_saboteur : public CreatureScript
 
         private:
             InstanceScript* _instance;
-            TaskScheduler _scheduler;
+            EventMap _scheduler;
 
             uint32 _bossId;
+            uint8 _repeat;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -822,9 +830,9 @@ class npc_violet_hold_teleportation_portal_intro : public CreatureScript
         }
 };
 
-struct violet_hold_trashAI : public npc_escortAI
+struct violet_hold_trashAI : public EscortAI
 {
-    violet_hold_trashAI(Creature* creature) : npc_escortAI(creature)
+    violet_hold_trashAI(Creature* creature) : EscortAI(creature)
     {
         _instance = creature->GetInstanceScript();
 
@@ -908,7 +916,7 @@ struct violet_hold_trashAI : public npc_escortAI
 
     void EnterCombat(Unit* who) override
     {
-        npc_escortAI::EnterCombat(who);
+        EscortAI::EnterCombat(who);
         ScheduledTasks();
     }
 
@@ -921,7 +929,7 @@ struct violet_hold_trashAI : public npc_escortAI
             return;
 
         _scheduler.Update(diff,
-            std::bind(&npc_escortAI::DoMeleeAttackIfReady, this));
+            std::bind(&EscortAI::DoMeleeAttackIfReady, this));
     }
 
     virtual void ScheduledTasks() { }

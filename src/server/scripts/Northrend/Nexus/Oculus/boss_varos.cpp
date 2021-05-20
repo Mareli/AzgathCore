@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -312,99 +312,9 @@ class spell_varos_centrifuge_shield : public SpellScriptLoader
         }
 };
 
-class spell_varos_energize_core_area_enemy : public SpellScriptLoader
-{
-    public:
-        spell_varos_energize_core_area_enemy() : SpellScriptLoader("spell_varos_energize_core_area_enemy") { }
-
-        class spell_varos_energize_core_area_enemySpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_varos_energize_core_area_enemySpellScript);
-
-            void FilterTargets(std::list<WorldObject*>& targets)
-            {
-                Creature* varos = GetCaster()->ToCreature();
-                if (!varos)
-                    return;
-
-                if (varos->GetEntry() != NPC_VAROS)
-                    return;
-
-                float orientation = ENSURE_AI(boss_varos::boss_varosAI, varos->AI())->GetCoreEnergizeOrientation();
-
-                for (std::list<WorldObject*>::iterator itr = targets.begin(); itr != targets.end();)
-                {
-                    float angle = varos->GetAngle((*itr)->GetPositionX(), (*itr)->GetPositionY());
-                    float diff = std::fabs(orientation - angle);
-
-                    if (diff > 1.0f)
-                        itr = targets.erase(itr);
-                    else
-                        ++itr;
-                }
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_varos_energize_core_area_enemySpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_varos_energize_core_area_enemySpellScript();
-        }
-};
-
-class spell_varos_energize_core_area_entry : public SpellScriptLoader
-{
-    public:
-        spell_varos_energize_core_area_entry() : SpellScriptLoader("spell_varos_energize_core_area_entry") { }
-
-        class spell_varos_energize_core_area_entrySpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_varos_energize_core_area_entrySpellScript);
-
-            void FilterTargets(std::list<WorldObject*>& targets)
-            {
-                Creature* varos = GetCaster()->ToCreature();
-                if (!varos)
-                    return;
-
-                if (varos->GetEntry() != NPC_VAROS)
-                    return;
-
-                float orientation = ENSURE_AI(boss_varos::boss_varosAI, varos->AI())->GetCoreEnergizeOrientation();
-
-                for (std::list<WorldObject*>::iterator itr = targets.begin(); itr != targets.end();)
-                {
-                    float angle = varos->GetAngle((*itr)->GetPositionX(), (*itr)->GetPositionY());
-                    float diff = std::fabs(orientation - angle);
-
-                    if (diff > 1.0f)
-                        itr = targets.erase(itr);
-                    else
-                        ++itr;
-                }
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_varos_energize_core_area_entrySpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_varos_energize_core_area_entrySpellScript();
-        }
-};
-
 void AddSC_boss_varos()
 {
     new boss_varos();
     new npc_azure_ring_captain();
     new spell_varos_centrifuge_shield();
-    new spell_varos_energize_core_area_enemy();
-    new spell_varos_energize_core_area_entry();
 }

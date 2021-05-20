@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -347,7 +347,7 @@ public:
         boss_malygosAI(Creature* creature) : BossAI(creature, DATA_MALYGOS_EVENT)
         {
             Initialize();
-            _despawned = false; // We determine if Malygos will be realocated to spawning position on reset triggered by boss despawn on evade
+            _despawned = instance->GetBossState(DATA_MALYGOS_EVENT) == FAIL;
             _flySpeed = me->GetSpeed(MOVE_FLIGHT); // Get initial fly speed, otherwise on each wipe fly speed would add up if we get it
             _phase = PHASE_NOT_STARTED;
         }
@@ -391,6 +391,7 @@ public:
             SetPhase(PHASE_NOT_STARTED, true);
             me->SetReactState(REACT_PASSIVE);
             instance->DoStopCriteriaTimer(CRITERIA_TIMED_TYPE_EVENT, ACHIEV_TIMED_START_EVENT);
+            instance->SetBossState(DATA_MALYGOS_EVENT, NOT_STARTED);
         }
 
         uint32 GetData(uint32 data) const override
@@ -631,8 +632,6 @@ public:
                 else if (_phase == PHASE_THREE)
                     summons.DespawnAll();
             }
-
-            instance->SetBossState(DATA_MALYGOS_EVENT, NOT_STARTED);
         }
 
         void KilledUnit(Unit* victim) override
@@ -1198,7 +1197,7 @@ public:
                 else if (unit->GetTypeId() == TYPEID_PLAYER)
                     me->SetDisableGravity(true);
             }
-            else if (!apply)
+            else
             {
                 if (unit->GetTypeId() != TYPEID_PLAYER)
                 {
@@ -1214,7 +1213,7 @@ public:
                     me->SetCanFly(false);
                 }
 
-                me->setFaction(FACTION_FRIENDLY);
+                me->SetFaction(FACTION_FRIENDLY);
                 me->RemoveAllAuras();
             }
         }
@@ -1301,7 +1300,7 @@ public:
                 if (unit->GetTypeId() == TYPEID_UNIT)
                     unit->CastSpell(unit, SPELL_TELEPORT_VISUAL_ONLY);
             }
-            else if (!apply)
+            else
             {
                 me->StopMoving();
                 me->SetDisableGravity(false);
@@ -1985,7 +1984,7 @@ class spell_scion_of_eternity_arcane_barrage : public SpellScriptLoader
 
             bool Load() override
             {
-                return GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->GetInstanceScript() != NULL;
+                return GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->GetInstanceScript() != nullptr;
             }
 
             void FilterMeleeHoverDiskPassangers(std::list<WorldObject*>& targets)
@@ -2154,7 +2153,7 @@ class spell_alexstrasza_bunny_destroy_platform_event : public SpellScriptLoader
 
             void HandleScript(SpellEffIndex /*effIndex*/)
             {
-                GetCaster()->CastSpell((Unit*)NULL, SPELL_SUMMON_RED_DRAGON_BUDDY_F_CAST);
+                GetCaster()->CastSpell(nullptr, SPELL_SUMMON_RED_DRAGON_BUDDY_F_CAST);
             }
 
             void Register() override
@@ -2283,7 +2282,7 @@ class spell_malygos_surge_of_power_warning_selector_25 : public SpellScriptLoade
 
             void ExecuteMainSpell()
             {
-                GetCaster()->ToCreature()->CastSpell((Unit*)NULL, SPELL_SURGE_OF_POWER_PHASE_3_25);
+                GetCaster()->ToCreature()->CastSpell(nullptr, SPELL_SURGE_OF_POWER_PHASE_3_25);
             }
 
             void Register() override

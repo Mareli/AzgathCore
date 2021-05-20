@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,10 +43,10 @@ enum Yells
 enum Events
 {
     EVENT_BOULDER_TOSS                          = 1,
-    EVENT_GROUND_SPIKE,
-    EVENT_GROUND_SLAM,
-    EVENT_STOMP,
-    EVENT_SHATTER
+    EVENT_GROUND_SPIKE                          = 2,
+    EVENT_GROUND_SLAM                           = 3,
+    EVENT_STOMP                                 = 4,
+    EVENT_SHATTER                               = 5
 };
 
 class boss_krystallus : public CreatureScript
@@ -156,7 +156,7 @@ class spell_krystallus_shatter : public SpellScriptLoader
                 if (Unit* target = GetHitUnit())
                 {
                     target->RemoveAurasDueToSpell(SPELL_STONED);
-                    target->CastSpell((Unit*)NULL, SPELL_SHATTER_EFFECT, true);
+                    target->CastSpell(nullptr, SPELL_SHATTER_EFFECT, true);
                 }
             }
 

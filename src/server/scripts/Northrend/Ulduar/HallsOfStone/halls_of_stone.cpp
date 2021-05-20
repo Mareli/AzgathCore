@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -294,9 +294,9 @@ public:
         return true;
     }
 
-    struct npc_brann_hosAI : public npc_escortAI
+    struct npc_brann_hosAI : public EscortAI
     {
-        npc_brann_hosAI(Creature* creature) : npc_escortAI(creature)
+        npc_brann_hosAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             instance = creature->GetInstanceScript();
@@ -578,7 +578,7 @@ public:
                         me->SetStandState(UNIT_STAND_STATE_STAND);
                         instance->HandleGameObject(instance->GetGuidData(DATA_GO_SKY_FLOOR), true);
                         if (Creature* temp = ObjectAccessor::GetCreature(*me, uiControllerGUID))
-                            temp->DealDamage(temp, temp->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                            temp->DealDamage(temp, temp->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
                         bIsBattle = true;
                         SetEscortPaused(false);
                         JumpToNextStep(6500);

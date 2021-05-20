@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -881,20 +881,26 @@ public:
     {
         PrepareAuraScript(spell_kelthuzad_chains_AuraScript);
 
-        void HandleApply(AuraEffect const* aurEff, AuraEffectHandleModes mode)
+        void HandleApply(AuraEffect const* /*eff*/, AuraEffectHandleModes /*mode*/)
         {
-            aurEff->HandleAuraModScale(GetTargetApplication(), mode, true);
+            Unit* target = GetTarget();
+            float scale = target->GetObjectScale();
+            ApplyPercentModFloatVar(scale, 200.0f, true);
+            target->SetObjectScale(scale);
         }
 
-        void HandleRemove(AuraEffect const* aurEff, AuraEffectHandleModes mode)
+        void HandleRemove(AuraEffect const* /*eff*/, AuraEffectHandleModes /*mode*/)
         {
-            aurEff->HandleAuraModScale(GetTargetApplication(), mode, false);
+            Unit* target = GetTarget();
+            float scale = target->GetObjectScale();
+            ApplyPercentModFloatVar(scale, 200.0f, false);
+            target->SetObjectScale(scale);
         }
 
         void Register() override
         {
-            AfterEffectApply += AuraEffectApplyFn(spell_kelthuzad_chains_AuraScript::HandleApply, EFFECT_1, SPELL_AURA_MOD_DAMAGE_PERCENT_DONE, AURA_EFFECT_HANDLE_REAL);
-            AfterEffectRemove += AuraEffectApplyFn(spell_kelthuzad_chains_AuraScript::HandleRemove, EFFECT_1, SPELL_AURA_MOD_DAMAGE_PERCENT_DONE, AURA_EFFECT_HANDLE_REAL);
+            AfterEffectApply += AuraEffectApplyFn(spell_kelthuzad_chains_AuraScript::HandleApply, EFFECT_0, SPELL_AURA_AOE_CHARM, AURA_EFFECT_HANDLE_REAL);
+            AfterEffectRemove += AuraEffectApplyFn(spell_kelthuzad_chains_AuraScript::HandleRemove, EFFECT_0, SPELL_AURA_AOE_CHARM, AURA_EFFECT_HANDLE_REAL);
         }
     };
 
@@ -926,7 +932,7 @@ public:
             if (int32 mana = int32(target->GetMaxPower(POWER_MANA) / 10))
             {
                 mana = target->ModifyPower(POWER_MANA, -mana);
-                target->CastCustomSpell(SPELL_MANA_DETONATION_DAMAGE, SPELLVALUE_BASE_POINT0, -mana * 10, target, true, NULL, aurEff);
+                target->CastCustomSpell(SPELL_MANA_DETONATION_DAMAGE, SPELLVALUE_BASE_POINT0, -mana * 10, target, true, nullptr, aurEff);
             }
         }
 

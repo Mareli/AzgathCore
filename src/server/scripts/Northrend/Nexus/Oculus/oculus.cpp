@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -145,7 +145,7 @@ class npc_verdisa_beglaristrasz_eternos : public CreatureScript
                 player->DestroyItemCount(itemId, 1, true, false);
             }
 
-            void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
+            bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
             {
                 switch (menuId)
                 {
@@ -160,7 +160,7 @@ class npc_verdisa_beglaristrasz_eternos : public CreatureScript
                             StoreEssence(player, ITEM_EMERALD_ESSENCE);
                             break;
                         }
-                        return;
+                        return true;
                     case GOSSIP_MENU_ETERNOS:
                         if (gossipListId >= 1 && gossipListId <= 3)
                         {
@@ -172,7 +172,7 @@ class npc_verdisa_beglaristrasz_eternos : public CreatureScript
                             StoreEssence(player, ITEM_AMBER_ESSENCE);
                             break;
                         }
-                        return;
+                        return true;
                     case GOSSIP_MENU_BELGARISTRASZ:
                         if (gossipListId <= 2)
                         {
@@ -184,11 +184,13 @@ class npc_verdisa_beglaristrasz_eternos : public CreatureScript
                             StoreEssence(player, ITEM_RUBY_ESSENCE);
                             break;
                         }
-                        return;
+                        return true;
                     default:
-                        return;
+                        return true;
                 }
                 CloseGossipMenuFor(player);
+
+                return true;
             }
 
             void MovementInform(uint32 /*type*/, uint32 id) override

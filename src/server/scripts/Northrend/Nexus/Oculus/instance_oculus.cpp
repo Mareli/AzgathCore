@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -249,7 +249,7 @@ class instance_oculus : public InstanceMapScript
                         return KILL_NO_CONSTRUCT;
                     else if (CentrifugueConstructCounter == 1)
                         return KILL_ONE_CONSTRUCT;
-                    else if (CentrifugueConstructCounter > 1)
+                    else
                         return KILL_MORE_CONSTRUCT;
                 }
 

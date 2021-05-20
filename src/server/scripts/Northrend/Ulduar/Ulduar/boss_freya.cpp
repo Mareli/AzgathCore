@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
+ * Copyright 2021 AzgathCore
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -226,7 +226,7 @@ class npc_iron_roots : public CreatureScript
                 SetCombatMovement(false);
 
                 me->ApplySpellImmune(0, IMMUNITY_ID, 49560, true); // Death Grip
-                me->setFaction(14);
+                me->SetFaction(14);
                 me->SetReactState(REACT_PASSIVE);
             }
 
@@ -603,14 +603,14 @@ class boss_freya : public CreatureScript
                     /* 25N */    {62955, 62956, 62957, 62958}
                 };
 
-                me->CastSpell((Unit*)NULL, summonSpell[me->GetMap()->GetDifficultyID() - DIFFICULTY_10_N][elderCount], true);
+                me->CastSpell(nullptr, summonSpell[me->GetMap()->GetDifficultyID() - DIFFICULTY_10_N][elderCount], true);
 
                 Talk(SAY_DEATH);
                 me->SetReactState(REACT_PASSIVE);
                 _JustDied();
                 me->RemoveAllAuras();
                 me->AttackStop();
-                me->setFaction(35);
+                me->SetFaction(35);
                 me->DeleteThreatList();
                 me->CombatStop(true);
                 me->DespawnOrUnsummon(7500);
@@ -833,7 +833,7 @@ class boss_elder_stonebark : public CreatureScript
                 if (me->HasAura(SPELL_PETRIFIED_BARK))
                 {
                     int32 reflect = damage;
-                    who->CastCustomSpell(who, SPELL_PETRIFIED_BARK_DMG, &reflect, NULL, NULL, true);
+                    who->CastCustomSpell(who, SPELL_PETRIFIED_BARK_DMG, &reflect, nullptr, true);
                     damage = 0;
                 }
             }
