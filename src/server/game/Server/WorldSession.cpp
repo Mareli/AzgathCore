@@ -49,6 +49,9 @@
 #include "RBAC.h"
 #include "Realm.h"
 #include "ScriptMgr.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "SocialMgr.h"
 #include "WardenWin.h"
 #include "World.h"
@@ -300,6 +303,12 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
 #endif                                                      // !TRINITY_DEBUG
 
     sScriptMgr->OnPacketSend(this, *packet);
+
+#ifdef ELUNA
+    if (!sEluna->OnPacketSend(this, *packet))
+        return;
+#endif
+
     if(packet->GetOpcode() != SMSG_ON_MONSTER_MOVE)
         TC_LOG_TRACE("network.opcode", "S->C: %s %s", GetPlayerInfo().c_str(), GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str());
     m_Socket[conIdx]->SendPacket(*packet);
@@ -374,6 +383,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                     else if (_player->IsInWorld() && AntiDOS.EvaluateOpcode(*packet, currentTime))
                     {
                         sScriptMgr->OnPacketReceive(this, *packet);
+#ifdef ELUNA
+                        if (!sEluna->OnPacketReceive(this, *packet))
+                            break;
+#endif
                         opHandle->Call(this, *packet);
                     }
                     // lag can cause STATUS_LOGGEDIN opcodes to arrive after the player started a transfer
@@ -386,6 +399,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                     {
                         // not expected _player or must checked in packet hanlder
                         sScriptMgr->OnPacketReceive(this, *packet);
+#ifdef ELUNA
+                        if (!sEluna->OnPacketReceive(this, *packet))
+                            break;
+#endif
                         opHandle->Call(this, *packet);
                     }
                     break;
@@ -397,6 +414,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                     else if (AntiDOS.EvaluateOpcode(*packet, currentTime))
                     {
                         sScriptMgr->OnPacketReceive(this, *packet);
+#ifdef ELUNA
+                        if (!sEluna->OnPacketReceive(this, *packet))
+                            break;
+#endif
                         opHandle->Call(this, *packet);
                     }
                     break;
@@ -416,6 +437,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                     if (AntiDOS.EvaluateOpcode(*packet, currentTime))
                     {
                         sScriptMgr->OnPacketReceive(this, *packet);
+#ifdef ELUNA
+                        if (!sEluna->OnPacketReceive(this, *packet))
+                            break;
+#endif
                         opHandle->Call(this, *packet);
                     }
                     break;
