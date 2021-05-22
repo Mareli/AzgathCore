@@ -42,6 +42,9 @@
 #include "ReputationMgr.h"
 #include "ScriptMgr.h"
 #include "SpellInfo.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "SpellMgr.h"
 #include "Trainer.h"
 #include "WorldPacket.h"
@@ -176,6 +179,9 @@ void WorldSession::HandleGossipHelloOpcode(WorldPackets::NPC::Hello& packet)
 
     _player->PlayerTalkClass->ClearMenus();
     if (!sScriptMgr->OnGossipHello(_player, unit))
+#ifdef ELUNA
+        if (!sEluna->OnGossipHello(_player, unit))
+#endif
     {
         if (!unit->AI()->GossipHello(_player))
         {
