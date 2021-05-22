@@ -75,7 +75,7 @@ RealmID = 1
 #        Example:     "@prefix@/share/AzgathCore"
 #        Default:     "."
 
-DataDir = ".\ClientData"
+DataDir = "../data"
 
 #
 #    LogsDir
@@ -84,7 +84,7 @@ DataDir = ".\ClientData"
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ".\Data\Logs"
+LogsDir = "../logs"
 
 #
 #    LoginDatabaseInfo
@@ -109,10 +109,10 @@ LogsDir = ".\Data\Logs"
 #    Don't open port on firewall to external connections (it belongs to mysql, not to wow server).
 #    The username you choose must have permisions to create/alter/rename tables.
 
-LoginDatabaseInfo     = "127.0.0.1;3306;root;admin;sl_auth"
-WorldDatabaseInfo     = "127.0.0.1;3306;root;admin;sl_world"
-CharacterDatabaseInfo = "127.0.0.1;3306;root;admin;sl_characters"
-HotfixDatabaseInfo    = "127.0.0.1;3306;root;admin;sl_hotfixes"
+LoginDatabaseInfo     = "127.0.0.1;3306;root;root;az_auth"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;root;az_world"
+CharacterDatabaseInfo = "127.0.0.1;3306;root;root;az_chars"
+HotfixDatabaseInfo    = "127.0.0.1;3306;root;root;az_hotfixes"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -215,7 +215,7 @@ BuildDirectory  = ""
 #        Example:     "../AzgathCore"
 #        Default:     ""
 
-SourceDirectory  = ".\Updater\"
+SourceDirectory  = ""
 
 #
 #    MySQLExecutable
@@ -226,7 +226,7 @@ SourceDirectory  = ".\Updater\"
 #                     "/usr/bin/mysql"
 #        Default:     ""
 
-MySQLExecutable = ".\Data\MySQL\bin\mysql.exe"
+MySQLExecutable = ""
 
 #
 #    IPLocationFile
@@ -3822,6 +3822,33 @@ BlackMarket.MaxAuctions = 12
 BlackMarket.UpdatePeriod = 24
 
 #
+#
+###################################################################################################
+
+###################################################################################################
+#  ELUNA SETTINGS
+#
+#   Eluna.Enabled
+#       Description: Enable or disable Eluna LuaEngine
+#       Default:    true  - (enabled)
+#                   false - (disabled)
+#
+#   Eluna.TraceBack
+#       Description: Sets whether to use debug.traceback function on a lua error or not.
+#                    Notice that you can redefine the function.
+#       Default:    false - (use default error output)
+#                   true  - (use debug.traceback function)
+#
+#   Eluna.ScriptPath
+#       Description: Sets the location of the script folder to load scripts from
+#                    The path can be relative or absolute.
+#       Default:    "lua_scripts"
+#
+
+Eluna.Enabled = true
+Eluna.TraceBack = false
+Eluna.ScriptPath = "lua_scripts"
+
 #
 ###################################################################################################
 
