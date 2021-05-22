@@ -35,9 +35,6 @@
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "WorldPacket.h"
-#ifdef ELUNA
-#include "LuaEngine.h"
-#endif
 
 class AELootCreatureCheck
 {
@@ -262,9 +259,6 @@ void WorldSession::HandleLootMoneyOpcode(WorldPackets::Loot::LootMoney& /*packet
             SendPacket(packet.Write());
         }
 
-#ifdef ELUNA
-        sEluna->OnLootMoney(player, loot->gold);
-#endif
         loot->gold = 0;
 
         // Delete the money loot record from the DB
