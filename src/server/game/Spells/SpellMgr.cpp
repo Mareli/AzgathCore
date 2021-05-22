@@ -2845,7 +2845,7 @@ void SpellMgr::LoadSpellInfoCorrections()
         215307   // Web of Pain
     }, [](SpellInfo* spellInfo)
     {
-        spellInfo->AttributesEx6 |= SPELL_ATTR6_NO_DONE_PCT_DAMAGE_MODS;
+            spellInfo->AttributesEx6 |= SPELL_ATTR6_IGNORE_CASTER_DAMAGE_MODIFIERS;
     });
 
     // Ring of Frost
