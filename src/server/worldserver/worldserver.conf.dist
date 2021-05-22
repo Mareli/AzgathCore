@@ -75,7 +75,7 @@ RealmID = 1
 #        Example:     "@prefix@/share/AzgathCore"
 #        Default:     "."
 
-DataDir = ".\ClientData"
+DataDir = "../data"
 
 #
 #    LogsDir
@@ -84,7 +84,7 @@ DataDir = ".\ClientData"
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ".\Data\Logs"
+LogsDir = "../logs"
 
 #
 #    LoginDatabaseInfo
@@ -109,10 +109,10 @@ LogsDir = ".\Data\Logs"
 #    Don't open port on firewall to external connections (it belongs to mysql, not to wow server).
 #    The username you choose must have permisions to create/alter/rename tables.
 
-LoginDatabaseInfo     = "127.0.0.1;3306;root;admin;sl_auth"
-WorldDatabaseInfo     = "127.0.0.1;3306;root;admin;sl_world"
-CharacterDatabaseInfo = "127.0.0.1;3306;root;admin;sl_characters"
-HotfixDatabaseInfo    = "127.0.0.1;3306;root;admin;sl_hotfixes"
+LoginDatabaseInfo     = "127.0.0.1;3306;root;admin;az_auth"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;admin;az_world"
+CharacterDatabaseInfo = "127.0.0.1;3306;root;admin;az_chars"
+HotfixDatabaseInfo    = "127.0.0.1;3306;root;admin;az_hotfixes"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -215,7 +215,7 @@ BuildDirectory  = ""
 #        Example:     "../AzgathCore"
 #        Default:     ""
 
-SourceDirectory  = ".\Updater\"
+SourceDirectory  = ""
 
 #
 #    MySQLExecutable
@@ -226,7 +226,7 @@ SourceDirectory  = ".\Updater\"
 #                     "/usr/bin/mysql"
 #        Default:     ""
 
-MySQLExecutable = ".\Data\MySQL\bin\mysql.exe"
+MySQLExecutable = ""
 
 #
 #    IPLocationFile
@@ -1329,7 +1329,7 @@ FeatureSystem.ClubFinder.Enabled = 1
 #                     4  - (Enable world only)
 #                     0  - (All Disabled)
 
-Updates.EnableDatabases = 15
+Updates.EnableDatabases = 0
 
 #
 #    Updates.AutoSetup
