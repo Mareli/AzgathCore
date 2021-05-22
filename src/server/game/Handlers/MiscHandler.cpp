@@ -48,6 +48,9 @@
 #include "RestMgr.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "SpellPackets.h"
 #include "WhoListStorage.h"
 #include "WhoPackets.h"
@@ -100,6 +103,10 @@ void WorldSession::HandleRepopRequest(WorldPackets::Misc::RepopRequest& /*packet
                     return;
                 }
             }
+
+#ifdef ELUNA
+    sEluna->OnRepop(GetPlayer());
+#endif
 
     //this is spirit release confirm?
     GetPlayer()->BuildPlayerRepop();
