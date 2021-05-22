@@ -95,6 +95,9 @@
 #include "WardenCheckMgr.h"
 #include "WaypointMovementGenerator.h"
 #include "WeatherMgr.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "WorldQuestMgr.h"
 #include "WhoListStorage.h"
 #include "WorldSession.h"
@@ -1554,6 +1557,12 @@ void World::SetInitialWorldSettings()
         exit(1);
     }
 
+#ifdef ELUNA
+    ///- Initialize Lua Engine
+    TC_LOG_INFO("server.loading", "Initialize Eluna Lua Engine...");
+    Eluna::Initialize();
+#endif
+
     ///- Initialize PlayerDump
     TC_LOG_INFO("server.loading", "Initialize PlayerDump...");
     PlayerDump::InitializeColumnDefinition();
@@ -2275,6 +2284,13 @@ void World::SetInitialWorldSettings()
     // load battle pay
     TC_LOG_INFO("server.loading", "Loading battlepay data...");
     sBattlePayDataStore->Initialize();
+
+#ifdef ELUNA
+    ///- Run eluna scripts.
+    // in multithread foreach: run scripts
+    sEluna->RunScripts();
+    sEluna->OnConfigLoad(false); // Must be done after Eluna is initialized and scripts have run.
+#endif
 
     // Preload all cells, if required for the base maps
     if (sWorld->getBoolConfig(CONFIG_BASEMAP_LOAD_GRIDS))
