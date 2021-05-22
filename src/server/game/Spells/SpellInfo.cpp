@@ -481,7 +481,7 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster /*= nullptr*/, int32 const* 
     }
 
     bool canScale = true;
-    if (_spellInfo->HasAttribute(SPELL_ATTR6_NO_DONE_PCT_DAMAGE_MODS) && !castItemId)
+    if (_spellInfo->HasAttribute(SPELL_ATTR6_IGNORE_CASTER_DAMAGE_MODIFIERS) && !castItemId)
         canScale = false;
 
     // base amount modification based on spell lvl vs caster lvl
