@@ -63,6 +63,9 @@
 #include "SystemPackets.h"
 #include "Util.h"
 #include "World.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include <sstream>
 
 class LoginQueryHolder : public CharacterDatabaseQueryHolder
