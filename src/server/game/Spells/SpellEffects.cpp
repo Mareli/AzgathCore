@@ -63,6 +63,9 @@
 #include "PhasingHandler.h"
 #include "Player.h"
 #include "ReputationMgr.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "SkillExtraItems.h"
@@ -648,6 +651,14 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
         sScriptMgr->OnDummyEffect(m_caster, m_spellInfo->Id, effIndex, unitTarget->ToCreature());
     else if (itemTarget)
         sScriptMgr->OnDummyEffect(m_caster, m_spellInfo->Id, effIndex, itemTarget);
+#ifdef ELUNA
+    if (gameObjTarget)
+        sEluna->OnDummyEffect(m_caster, m_spellInfo->Id, effIndex, gameObjTarget);
+    else if (unitTarget && unitTarget->GetTypeId() == TYPEID_UNIT)
+        sEluna->OnDummyEffect(m_caster, m_spellInfo->Id, effIndex, unitTarget->ToCreature());
+    else if (itemTarget)
+        sEluna->OnDummyEffect(m_caster, m_spellInfo->Id, effIndex, itemTarget);
+#endif
 }
 
 void Spell::EffectTriggerSpell(SpellEffIndex effIndex)
@@ -1768,6 +1779,12 @@ void Spell::SendLoot(ObjectGuid guid, LootType loottype)
         if (sScriptMgr->OnGossipHello(player, gameObjTarget))
             return;
 
+#ifdef ELUNA
+        if (sEluna->OnGossipHello(player, gameObjTarget))
+            return;
+        if (sEluna->OnGameObjectUse(player, gameObjTarget))
+            return;
+#endif
         if (gameObjTarget->AI()->GossipHello(player))
             return;
 
