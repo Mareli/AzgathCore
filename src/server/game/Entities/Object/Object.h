@@ -54,6 +54,9 @@ class UpdateData;
 class WorldObject;
 class WorldPacket;
 class ZoneScript;
+#ifdef ELUNA
+class ElunaEventProcessor;
+#endif
 struct PositionFullTerrainStatus;
 struct QuaternionData;
 
@@ -600,6 +603,10 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         bool IsWorldObject() const;
 
         uint32  LastUsedScriptID;
+
+#ifdef ELUNA
+        ElunaEventProcessor* elunaEvents;
+#endif
 
         // Transports
         Transport* GetTransport() const { return m_transport; }
