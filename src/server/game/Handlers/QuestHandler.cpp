@@ -33,6 +33,9 @@
 #include "QuestPackets.h"
 #include "ReputationMgr.h"
 #include "ScriptMgr.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "UnitAI.h"
 #include "World.h"
 #include "WorldPacket.h"
@@ -93,6 +96,11 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPackets::Quest::QuestGiverHe
 
     if (sScriptMgr->OnGossipHello(_player, creature))
         return;
+
+#ifdef ELUNA
+    if (sEluna->OnGossipHello(_player, creature))
+        return;
+#endif
 
     if (creature->GetAI()->GossipHello(_player))
         return;
