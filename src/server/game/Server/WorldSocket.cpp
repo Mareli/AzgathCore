@@ -32,6 +32,9 @@
 #include "ScriptMgr.h"
 #include "SessionKeyGenerator.h"
 #include "Util.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
