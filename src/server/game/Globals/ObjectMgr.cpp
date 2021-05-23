@@ -3747,7 +3747,7 @@ void ObjectMgr::LoadPlayerInfo()
     {
         struct RaceStats
         {
-            int16 raceStats[MAX_STATS];
+            std::array<int16, MAX_STATS> StatModifier = { };
         };
 
         std::map<uint8, RaceStats> raceStatStore;
@@ -3776,7 +3776,7 @@ void ObjectMgr::LoadPlayerInfo()
             RaceStats raceStats;
 
             for (int i = 0; i < MAX_STATS; i++)
-                raceStats.raceStats[i] = fields[i + 1].GetInt16();
+                raceStats.StatModifier[i] = fields[i + 1].GetInt16();
 
             raceStatStore[current_race] = raceStats;
 
@@ -3826,7 +3826,7 @@ void ObjectMgr::LoadPlayerInfo()
 
                     PlayerLevelInfo& levelInfo = info->levelInfo[current_level - 1];
                     for (int i = 0; i < MAX_STATS; i++)
-                        levelInfo.stats[i] = fields[i + 2].GetUInt16() + itr->second.raceStats[i];
+                        levelInfo.stats[i] = fields[i + 2].GetUInt16() + itr->second.StatModifier[i];
                 }
             }
 
