@@ -9,8 +9,8 @@
  #define _SOURCE_DIRECTORY          R"(@CMAKE_SOURCE_DIR@)"
  #define _BUILD_DIRECTORY           R"(@BUILDDIR@)"
  #define _MYSQL_EXECUTABLE          R"(@MYSQL_EXECUTABLE@)"
- #define _FULL_DATABASE             "AZ_902_world_2021_05_23.sql"
- #define _HOTFIXES_DATABASE         "AZ_902_hotfixes_2021_05_23.sql"
+ #define _FULL_DATABASE             "AZDB_902_world_2021_05_23.sql"
+ #define _HOTFIXES_DATABASE         "AZDB_902_hotfixes_2021_05_23.sql"
  #define VER_COMPANYNAME_STR        "AzgathCore Developers"
  #define VER_LEGALCOPYRIGHT_STR     "(c)2021 AzgathCore"
  #define VER_FILEVERSION            0,0,0
