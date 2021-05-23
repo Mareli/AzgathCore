@@ -41,7 +41,7 @@ website at [Azgath.eu](https://www.azgath.eu).
 + Boost ≥ 1.72.0
 + CMake ≥ 3.19.1
 + OpenSSL ≥ 1.1.1J
-* [Server Software Downloads](https://www.azgath.eu/SoftwareServers/)
++ Server software dependency [Downloads](https://www.azgath.eu/SoftwareServers/)
 
 ## Install
 
