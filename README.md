@@ -8,8 +8,6 @@
 
 ## Build Status
 
-## Build Status
-
 lunagath
 :------------:
 [![Build status](https://ci.appveyor.com/api/projects/status/54d0u1fxe50ad80o/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcoresl/branch/master)
