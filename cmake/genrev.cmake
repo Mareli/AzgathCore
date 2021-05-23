@@ -17,7 +17,7 @@ if(NOT BUILDDIR)
 endif()
 
 if(WITHOUT_GIT)
-  set(rev_date "2021-05-11 20:30:00 +0000")
+  set(rev_date "2021-05-23 06:34:00 +0000")
   set(rev_hash "unknown")
   set(rev_branch "Archived")
 else()
@@ -56,8 +56,8 @@ else()
     # No valid ways available to find/set the revision/hash, so let's force some defaults
     message(STATUS "
     Could not find a proper repository signature (hash) - you may need to pull tags with git fetch -t
-    Continuing anyway - note that the versionstring will be set to \"unknown 2021-05-11 20:30:00 (Archived)\"")
-    set(rev_date "2021-05-11 20:30:00 +0000")
+    Continuing anyway - note that the versionstring will be set to \"unknown 2021-05-23 06:34:00 (Archived)\"")
+    set(rev_date "2021-05-23 06:34:00 +0000")
     set(rev_hash "unknown")
     set(rev_branch "Archived")
   else()
