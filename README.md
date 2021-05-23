@@ -32,6 +32,7 @@ website at [Azgath.eu](https://www.azgath.eu).
 ## Requirements
 
 ## + Windows :
++ Platform: Windows
 + Processor with SSE2 support
 + Git Extensions
 + MS Visual Studio ≥ 16.4 (2019) (Windows only)
