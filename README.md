@@ -34,11 +34,13 @@ website at [Azgath.eu](https://www.azgath.eu).
 ## + Windows :
 + Processor with SSE2 support
 + Boost ≥ 1.72.0
++ Visual Studio 2019 Community
++ CMake ≥ 3.19.1
++ Git Extensions
 + MySQL ≥ 5.7.34
-+ MariaDB 10.5.10
-+ OpenSSL ≥ v1.1.1i
-+ CMake ≥ 3.19.1 (latest stable recommended)
-+ MS Visual Studio (Community) ≥ 16.4 (2019) (Desktop) (Not previews)
++ MariaDB ≥ 10.5
++ OpenSSL ≥ 1.1.1J
++ Microsoft Visual C++ 2008 Redistributable Package (x64)
 * [Downloads](https://www.azgath.eu/SoftwareServers/)
 
 ## Install
