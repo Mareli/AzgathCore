@@ -34,10 +34,10 @@ website at [Azgath.eu](https://www.azgath.eu).
 ## + Windows :
 + Processor with SSE2 support
 + Boost ≥ 1.72.0
-+ MySQL ≥ 5.7.31
-+ MariaDB 10.5
-+ OpenSSL ≥ v1.1.1g
-+ CMake ≥ 3.18.1 (latest stable recommended)
++ MySQL ≥ 5.7.34
++ MariaDB 10.5.10
++ OpenSSL ≥ v1.1.1i
++ CMake ≥ 3.19.1 (latest stable recommended)
 + MS Visual Studio (Community) ≥ 16.4 (2019) (Desktop) (Not previews)
 * [Downloads](https://www.azgath.eu/SoftwareServers/)
 
