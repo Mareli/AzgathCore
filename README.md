@@ -37,7 +37,7 @@ website at [Azgath.eu](https://www.azgath.eu).
 + Git Extensions
 + MS Visual Studio ≥ 16.4 (2019) (Windows only)
 + MySQL ≥ 5.7.34
-+ MariaDB ≥ 10.5
++ MariaDB ≥ 10.5.8
 + Boost ≥ 1.72.0
 + CMake ≥ 3.19.1
 + OpenSSL ≥ 1.1.1J
