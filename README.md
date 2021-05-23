@@ -8,9 +8,9 @@
 
 ## Build Status
 
-master | 8.3.7
-:------------: | :------------:
-[![Build status](https://ci.appveyor.com/api/projects/status/54d0u1fxe50ad80o/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcoresl/branch/master) | [![Build status](https://ci.appveyor.com/api/projects/status/54d0u1fxe50ad80o/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcoresl/branch/master)
+master
+:------------:
+[![Build status](https://ci.appveyor.com/api/projects/status/54d0u1fxe50ad80o/branch/master?svg=true)](https://ci.appveyor.com/project/AzgathCore/azgathcoresl/branch/master)
 
 ## Introduction
 
