@@ -503,7 +503,7 @@ namespace LuaCreature
     int GetCurrentWaypointId(lua_State* L, Creature* creature)
     {
 #if defined(TRINITY)
-        Eluna::Push(L, creature->GetCurrentWaypointInfo().first);
+        Eluna::Push(L, creature->GetTarget());
 #elif defined(AZEROTHCORE)
         Eluna::Push(L, creature->GetCurrentWaypointID());
 #else
