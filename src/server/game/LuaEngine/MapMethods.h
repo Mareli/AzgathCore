@@ -136,7 +136,7 @@ namespace LuaMap
     int GetDifficulty(lua_State* L, Map* map)
     {
 #ifndef CLASSIC
-        Eluna::Push(L, map->GetDifficulty());
+        Eluna::Push(L, map->GetDifficultyID());
 #else
         Eluna::Push(L, (Difficulty)0);
 #endif
@@ -218,12 +218,10 @@ namespace LuaMap
                 Eluna::Push(L, eObjectAccessor()GetPlayer(map, guid));
                 break;
             case HIGHGUID_TRANSPORT:
-            case HIGHGUID_MO_TRANSPORT:
             case HIGHGUID_GAMEOBJECT:
                 Eluna::Push(L, map->GetGameObject(guid));
                 break;
             case HIGHGUID_VEHICLE:
-            case HIGHGUID_UNIT:
                 Eluna::Push(L, map->GetCreature(guid));
                 break;
             case HIGHGUID_PET:
