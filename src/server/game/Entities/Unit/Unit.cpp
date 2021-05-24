@@ -7065,9 +7065,6 @@ void Unit::EnergizeBySpell(Unit* victim, uint32 spellId, int32 damage, Powers po
 
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId, GetMap()->GetDifficultyID());
     victim->getHostileRefManager().threatAssist(this, float(damage) * 0.5f, spellInfo);
-
-    victim->getThreatManager().ForwardThreatForAssistingMe(this, float(damage) / 2, spellInfo, true);
-    SendEnergizeSpellLog(victim, spellId, damage, overEnergize, powerType);
 }
 
 uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uint32 pdamage, DamageEffectType damagetype, SpellEffectInfo const* effect, uint32 stack) const
