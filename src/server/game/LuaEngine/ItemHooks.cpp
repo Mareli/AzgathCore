@@ -72,7 +72,6 @@ bool Eluna::OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targets)
     WorldPacket data(SMSG_INVENTORY_CHANGE_FAILURE, 18);
     data << uint8(59); // EQUIP_ERR_NONE / EQUIP_ERR_CANT_BE_DISENCHANTED
     data << guid;
-    data << ObjectGuid(uint64(0));
     data << uint8(0);
 #ifdef CMANGOS
     pPlayer->GetSession()->SendPacket(data);
