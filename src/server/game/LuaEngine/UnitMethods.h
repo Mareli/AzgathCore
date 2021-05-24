@@ -747,7 +747,7 @@ namespace LuaUnit
         if (spellschool >= MAX_SPELL_SCHOOL)
             return 1;
 
-        Eluna::Push(L, unit->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + spellschool));
+        Eluna::Push(L, unit->isAttackingPlayer());
         return 1;
     }
     
@@ -1577,7 +1577,7 @@ namespace LuaUnit
         {
             player->GiveLevel(newlevel);
             player->InitTalentForLevel();
-            player->SetUInt32Value(PLAYER_XP, 0);
+            player->GiveXP(PLAYER_FLAGS_NO_XP_GAIN, 0);
         }
         else
             unit->SetLevel(newlevel);
