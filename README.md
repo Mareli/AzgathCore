@@ -27,7 +27,7 @@ If you wish to contribute ideas or code please visit our site linked below or
 make pull requests to our [Github repository](https://github.com/AzgathCore/AzgathCore).
 
 For further information on the AzgathCore project, please visit our project
-website at [Azgath.eu](https://www.azgath.eu).
+website at [Azgath.eu](https://www.azgath.eu)
 
 ## Requirements
 
