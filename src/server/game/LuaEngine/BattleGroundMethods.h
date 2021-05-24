@@ -91,7 +91,7 @@ namespace LuaBattleGround
 #ifdef CATA
         Eluna::Push(L, bg->GetRemainingTime());
 #else
-        Eluna::Push(L, bg->GetEndTime());
+        Eluna::Push(L, bg->GetElapsedTime());
 #endif
         return 1;
     }
