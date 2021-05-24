@@ -851,10 +851,6 @@ template<> unsigned long Eluna::CHECKVAL<unsigned long>(lua_State* luastate, int
 {
     return static_cast<unsigned long>(CHECKVAL<unsigned long long>(luastate, narg));
 }
-template<> ObjectGuid Eluna::CHECKVAL<ObjectGuid>(lua_State* luastate, int narg)
-{
-    return ObjectGuid(uint64((CHECKVAL<unsigned long long>(luastate, narg))));
-}
 
 template<> Object* Eluna::CHECKOBJ<Object>(lua_State* luastate, int narg, bool error)
 {
