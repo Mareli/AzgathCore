@@ -203,7 +203,7 @@ namespace LuaItem
      */
     int IsWeaponVellum(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->IsWeaponVellum());
+        Eluna::Push(L, item->IsRangedWeapon());
         return 1;
     }
 
@@ -214,7 +214,7 @@ namespace LuaItem
      */
     int IsArmorVellum(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->IsArmorVellum());
+        Eluna::Push(L, item->IsAzeriteEmpoweredItem());
         return 1;
     }
 #endif
@@ -269,7 +269,7 @@ namespace LuaItem
             ObjectMgr::GetLocaleString(il->Name, static_cast<LocaleConstant>(locale), name);
 
 #ifndef CLASSIC
-        if (int32 itemRandPropId = item->GetItemRandomPropertyId())
+        if (int32 itemRandPropId = item->GetItemRandomBonusListId())
         {
 #if defined(CATA) || defined (MISTS)
             char* suffix = NULL;
@@ -282,7 +282,7 @@ namespace LuaItem
 #endif
             if (itemRandPropId < 0)
             {
-                const ItemRandomSuffixEntry* itemRandEntry = sItemRandomSuffixStore.LookupEntry(-item->GetItemRandomPropertyId());
+                const ItemRandomSuffixEntry* itemRandEntry = sItemRandomSuffixStore.LookupEntry(-item->GetItemRandomBonusListId());
                 if (itemRandEntry)
 #ifdef TRINITY
                     suffix = &itemRandEntry->Name;
@@ -292,7 +292,7 @@ namespace LuaItem
             }
             else
             {
-                const ItemRandomPropertiesEntry* itemRandEntry = sItemRandomPropertiesStore.LookupEntry(item->GetItemRandomPropertyId());
+                const ItemRandomPropertiesEntry* itemRandEntry = sItemRandomPropertiesStore.LookupEntry(item->GetItemRandomBonusListId());
                 if (itemRandEntry)
 #ifdef TRINITY
                     suffix = &itemRandEntry->Name;
@@ -322,9 +322,9 @@ namespace LuaItem
             item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_3) << ":" <<
             item->GetEnchantmentId(BONUS_ENCHANTMENT_SLOT) << ":" <<
 #endif
-            item->GetItemRandomPropertyId() << ":" << item->GetItemSuffixFactor() << ":" <<
+            item->GetItemRandomBonusListId() << ":" << item->GetItemSuffixFactor() << ":" <<
 #ifdef TRINITY
-            (uint32)item->GetOwner()->GetLevel() << "|h[" << name << "]|h|r";
+            (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
 #else
             (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
 #endif
