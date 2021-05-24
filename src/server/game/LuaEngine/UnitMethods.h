@@ -72,7 +72,7 @@ namespace LuaUnit
         Eluna::Push(L, unit->isInRoots() || unit->HasUnitMovementFlag(MOVEMENTFLAG_ROOT));
 #endif
 #ifdef TRINITY
-        Eluna::Push(L, unit->IsRooted() || unit->HasUnitMovementFlag(MOVEMENTFLAG_ROOT));
+        Eluna::Push(L, unit->IsUnit() || unit->HasUnitMovementFlag(MOVEMENTFLAG_ROOT));
 #endif
 #ifdef CMANGOS
         Eluna::Push(L, unit->isInRoots() || unit->IsRooted());
@@ -621,7 +621,7 @@ namespace LuaUnit
      */
     int GetMountId(lua_State* L, Unit* unit)
     {
-        Eluna::Push(L, unit->GetMountID());
+        Eluna::Push(L, unit->GetMountDisplayId());
         return 1;
     }
     
@@ -665,7 +665,7 @@ namespace LuaUnit
 #if defined AZEROTHCORE
         Eluna::Push(L, unit->GetCharmGUID());
 #elif defined TRINITY
-        Eluna::Push(L, unit->GetCharmedGUID());
+        Eluna::Push(L, unit->GetCharmerGUID());
 #else
         Eluna::Push(L, unit->GetCharmGuid());
 #endif
@@ -837,7 +837,7 @@ namespace LuaUnit
     int GetLevel(lua_State* L, Unit* unit)
     {
 #ifdef TRINITY
-        Eluna::Push(L, unit->GetLevel());
+        Eluna::Push(L, unit->getLevel());
 #else
         Eluna::Push(L, unit->getLevel());
 #endif
@@ -1031,7 +1031,7 @@ namespace LuaUnit
     int GetGender(lua_State* L, Unit* unit)
     {
 #ifdef TRINITY
-        Eluna::Push(L, unit->GetGender());
+        Eluna::Push(L, unit->getGender());
 #else
         Eluna::Push(L, unit->getGender());
 #endif
@@ -1046,7 +1046,7 @@ namespace LuaUnit
     int GetRace(lua_State* L, Unit* unit)
     {
 #ifdef TRINITY
-        Eluna::Push(L, unit->GetRace());
+        Eluna::Push(L, unit->getRace());
 #else
         Eluna::Push(L, unit->getRace());
 #endif
@@ -1061,7 +1061,7 @@ namespace LuaUnit
     int GetClass(lua_State* L, Unit* unit)
     {
 #ifdef TRINITY
-        Eluna::Push(L, unit->GetClass());
+        Eluna::Push(L, unit->getClass());
 #else
         Eluna::Push(L, unit->getClass());
 #endif
@@ -1076,7 +1076,7 @@ namespace LuaUnit
     int GetRaceMask(lua_State* L, Unit* unit)
     {
 #ifdef TRINITY
-        Eluna::Push(L, unit->GetRaceMask());
+        Eluna::Push(L, unit->getRaceMask());
 #else
         Eluna::Push(L, unit->getRaceMask());
 #endif
@@ -1091,7 +1091,7 @@ namespace LuaUnit
     int GetClassMask(lua_State* L, Unit* unit)
     {
 #ifdef TRINITY
-        Eluna::Push(L, unit->GetClassMask());
+        Eluna::Push(L, unit->getClassMask());
 #else
         Eluna::Push(L, unit->getClassMask());
 #endif
@@ -1156,7 +1156,7 @@ namespace LuaUnit
             return luaL_argerror(L, 2, "valid LocaleConstant expected");
 
 #ifdef TRINITY
-        const ChrClassesEntry* entry = sChrClassesStore.LookupEntry(unit->GetClass());
+        const ChrClassesEntry* entry = sChrClassesStore.LookupEntry(unit->getClass());
 #else
         const ChrClassesEntry* entry = sChrClassesStore.LookupEntry(unit->getClass());
 #endif
@@ -1199,7 +1199,7 @@ namespace LuaUnit
             return luaL_argerror(L, 2, "valid LocaleConstant expected");
 
 #ifdef TRINITY
-        const ChrRacesEntry* entry = sChrRacesStore.LookupEntry(unit->GetRace());
+        const ChrRacesEntry* entry = sChrRacesStore.LookupEntry(unit->getRace());
 #else
         const ChrRacesEntry* entry = sChrRacesStore.LookupEntry(unit->getRace());
 #endif
@@ -1992,7 +1992,7 @@ namespace LuaUnit
     int ClearThreatList(lua_State* /*L*/, Unit* unit)
     {
 #ifdef TRINITY
-        unit->GetThreatManager().ClearAllThreat();
+        unit->getThreatManager().clearReferences();
 #elif AZEROTHCORE
         unit->getThreatManager().clearReferences();
 #else
@@ -2938,7 +2938,7 @@ namespace LuaUnit
         uint32 spell = Eluna::CHECKVAL<uint32>(L, 4, 0);
 
 #ifdef TRINITY
-        unit->GetThreatManager().AddThreat(victim, threat, spell ? sSpellMgr->GetSpellInfo(spell) : NULL, true, true);
+        unit->getThreatManager().AddThreat(victim, threat, spell ? sSpellMgr->GetSpellInfo(spell) : NULL, true, true);
 #elif AZEROTHCORE
         uint32 schoolMask = Eluna::CHECKVAL<uint32>(L, 5, 0);
         if (schoolMask > SPELL_SCHOOL_MASK_ALL)
