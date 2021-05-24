@@ -767,7 +767,7 @@ namespace LuaCreature
 #elif defined(MANGOS)
         ThreatList const& threatlist = creature->GetThreatManager().getThreatList();
 #elif defined(TRINITY)
-        auto const& threatlist = creature->GetThreatManager().GetSortedThreatList();
+        auto const& threatlist = creature->getThreatManager().getThreatList();
 #elif defined(AZEROTHCORE)
         auto const& threatlist = creature->getThreatManager().getThreatList();
 #endif
@@ -858,7 +858,7 @@ namespace LuaCreature
     int GetAITargets(lua_State* L, Creature* creature)
     {
 #if defined(TRINITY)
-        auto const& threatlist = creature->GetThreatManager().GetThreatenedByMeList();
+        auto const& threatlist = creature->getThreatManager().GetThreatenedByMeList();
 #elif defined(AZEROTHCORE)
 auto const& threatlist = creature->getThreatManager().getThreatList();
 #else
@@ -892,7 +892,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     int GetAITargetsCount(lua_State* L, Creature* creature)
     {
 #if defined(TRINITY)
-        Eluna::Push(L, creature->GetThreatManager().GetThreatenedByMeList().size());
+        Eluna::Push(L, creature->getThreatManager().GetThreatenedByMeList().size());
 #elif defined(AZEROTHCORE)
         Eluna::Push(L, creature->getThreatManager().getThreatList().size());
 #else
@@ -1133,7 +1133,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         float dist = Eluna::CHECKVAL<float>(L, 2);
 
 #if defined(TRINITY) || defined(AZEROTHCORE)
-        creature->SetWanderDistance(dist);
+        creature->SelectNearestTargetsInAttackDistance(dist);
 #else
         creature->SetRespawnRadius(dist);
 #endif
