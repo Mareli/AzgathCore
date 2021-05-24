@@ -272,6 +272,20 @@ namespace LuaCreature
     }
 
     /**
+     * Returns `true` if the [Creature]'s flags_extra includes Dungeon Boss (0x1000000),
+     *   and returns `false` otherwise.
+     *
+     * @return bool isDungeonBoss
+     */
+#if defined(TRINITY) || defined(AZEROTHCORE)
+    int IsDungeonBoss(lua_State* L, Creature* creature)
+    {
+        Eluna::Push(L, creature->IsDungeonBoss());
+        return 1;
+    }
+#endif
+
+    /**
      * Returns `true` if the [Creature]'s rank is Boss,
      *   and returns `false` otherwise.
      *
@@ -769,7 +783,7 @@ namespace LuaCreature
 #else
         for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
 #endif
-            {
+        {
 #if defined(TRINITY)
             Unit* target = itr->GetVictim();
 #else
@@ -800,37 +814,37 @@ namespace LuaCreature
 
         switch (targetType)
         {
-            case SELECT_TARGET_NEAREST:
-            case SELECT_TARGET_TOPAGGRO:
-                {
-                    std::list<Unit*>::const_iterator itr = targetList.begin();
-                    if (position)
-                        std::advance(itr, position);
-                    Eluna::Push(L, *itr);
-                }
-                break;
-            case SELECT_TARGET_FARTHEST:
-            case SELECT_TARGET_BOTTOMAGGRO:
-                {
-                    std::list<Unit*>::reverse_iterator ritr = targetList.rbegin();
-                    if (position)
-                        std::advance(ritr, position);
-                    Eluna::Push(L, *ritr);
-                }
-                break;
-            case SELECT_TARGET_RANDOM:
-                {
-                    std::list<Unit*>::const_iterator itr = targetList.begin();
-                    if (position)
-                        std::advance(itr, urand(0, position));
-                    else
-                        std::advance(itr, urand(0, targetList.size() - 1));
-                    Eluna::Push(L, *itr);
-                }
-                break;
-            default:
-                luaL_argerror(L, 2, "SelectAggroTarget expected");
-                break;
+        case SELECT_TARGET_NEAREST:
+        case SELECT_TARGET_TOPAGGRO:
+        {
+            std::list<Unit*>::const_iterator itr = targetList.begin();
+            if (position)
+                std::advance(itr, position);
+            Eluna::Push(L, *itr);
+        }
+        break;
+        case SELECT_TARGET_FARTHEST:
+        case SELECT_TARGET_BOTTOMAGGRO:
+        {
+            std::list<Unit*>::reverse_iterator ritr = targetList.rbegin();
+            if (position)
+                std::advance(ritr, position);
+            Eluna::Push(L, *ritr);
+        }
+        break;
+        case SELECT_TARGET_RANDOM:
+        {
+            std::list<Unit*>::const_iterator itr = targetList.begin();
+            if (position)
+                std::advance(itr, urand(0, position));
+            else
+                std::advance(itr, urand(0, targetList.size() - 1));
+            Eluna::Push(L, *itr);
+        }
+        break;
+        default:
+            luaL_argerror(L, 2, "SelectAggroTarget expected");
+            break;
         }
 
         return 1;
@@ -846,7 +860,7 @@ namespace LuaCreature
 #if defined(TRINITY)
         auto const& threatlist = creature->GetThreatManager().GetThreatenedByMeList();
 #elif defined(AZEROTHCORE)
-auto const& threatlist = creature->getThreatManager().getThreatList();
+        auto const& threatlist = creature->getThreatManager().getThreatList();
 #else
         ThreatList const& threatlist = creature->GetThreatManager().getThreatList();
 #endif
@@ -901,6 +915,24 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         return 1;
     }
 
+    /**
+     * Returns the [Creature]'s Extra flags.
+     *
+     * These are used to control whether the NPC is a civilian, uses pathfinding,
+     *   if it's a guard, etc.
+     *
+     * @return [ExtraFlags] extraFlags
+     */
+    int GetExtraFlags(lua_State* L, Creature* creature)
+    {
+#if defined(TRINITY) || defined(AZEROTHCORE)
+        Eluna::Push(L, creature->GetCreatureTemplate()->flags_extra);
+#else
+        Eluna::Push(L, creature->GetCreatureInfo()->ExtraFlags);
+#endif
+        return 1;
+    }
+
 #if defined(CLASSIC) || defined(TBC) || defined(WOTLK)
     /**
      * Returns the [Creature]'s shield block value.
@@ -929,7 +961,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int GetDBTableGUIDLow(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY)
+#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->GetSpawnId());
 #else
         // on mangos based this is same as lowguid
