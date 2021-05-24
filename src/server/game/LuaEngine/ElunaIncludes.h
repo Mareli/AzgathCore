@@ -72,11 +72,11 @@
 #endif
 
 #ifndef CLASSIC
-#include "ArenaTeam.h"
+#include "Arena.h"
 #endif
 
 #ifndef CLASSIC
-typedef Opcodes                 OpcodesList;
+typedef OpcodeTable                 OpcodesList;
 #endif
 
 /*
