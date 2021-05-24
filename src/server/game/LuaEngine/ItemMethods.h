@@ -203,7 +203,7 @@ namespace LuaItem
      */
     int IsWeaponVellum(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->IsRangedWeapon());
+        Eluna::Push(L, item->IsVellum());
         return 1;
     }
 
@@ -214,7 +214,7 @@ namespace LuaItem
      */
     int IsArmorVellum(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->IsAzeriteEmpoweredItem());
+        Eluna::Push(L, item->IsVellum());
         return 1;
     }
 #endif
