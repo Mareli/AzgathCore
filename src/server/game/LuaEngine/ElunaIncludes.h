@@ -14,7 +14,7 @@
 #include "CellImpl.h"
 #include "Chat.h"
 #include "Channel.h"
-#include "DBCStores.h"
+#include "DB2Stores.h"
 #include "GameEventMgr.h"
 #include "GossipDef.h"
 #include "GridNotifiers.h"
