@@ -53,7 +53,7 @@ namespace LuaQuest
     {
         uint32 flag = Eluna::CHECKVAL<uint32>(L, 2);
 #if defined TRINITY || AZEROTHCORE
-        Eluna::Push(L, quest->HasFlag(flag));
+        Eluna::Push(L, quest->HasFlag((QuestFlags)flag));
 #else
         Eluna::Push(L, quest->HasQuestFlag((QuestFlags)flag));
 #endif
