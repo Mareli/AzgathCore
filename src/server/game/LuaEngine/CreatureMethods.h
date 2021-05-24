@@ -25,7 +25,7 @@ namespace LuaCreature
 #if defined(AZEROTHCORE)
         Eluna::Push(L, creature->isRegeneratingHealth());
 #elif defined(TRINITY)
-        Eluna::Push(L, creature->CanRegenerateHealth());
+        Eluna::Push(L, creature->isRegeneratingHealth());
 #else
         Eluna::Push(L, creature->IsRegeneratingHealth());
 #endif
@@ -45,7 +45,7 @@ namespace LuaCreature
 #if defined(AZEROTHCORE)
         creature->SetRegeneratingHealth(enable);
 #else
-        creature->SetRegenerateHealth(enable);
+        creature->setRegeneratingHealth(enable);
 #endif
         return 0;
     }
@@ -779,13 +779,13 @@ namespace LuaCreature
 #endif
         std::list<Unit*> targetList;
 #if defined(TRINITY)
-        for (ThreatReference const* itr : threatlist)
+        for (HostileReference const* itr : threatlist)
 #else
         for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
 #endif
             {
 #if defined(TRINITY)
-            Unit* target = itr->GetVictim();
+            Unit* target = itr->getTarget();
 #else
             Unit* target = (*itr)->getTarget();
 #endif
@@ -860,7 +860,7 @@ namespace LuaCreature
 #if defined(TRINITY)
         auto const& threatlist = creature->getThreatManager().GetThreatenedByMeList();
 #elif defined(AZEROTHCORE)
-auto const& threatlist = creature->getThreatManager().getThreatList();
+        auto const& threatlist = creature->getThreatManager().getThreatList();
 #else
         ThreatList const& threatlist = creature->GetThreatManager().getThreatList();
 #endif
@@ -892,7 +892,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     int GetAITargetsCount(lua_State* L, Creature* creature)
     {
 #if defined(TRINITY)
-        Eluna::Push(L, creature->getThreatManager().GetThreatenedByMeList().size());
+        Eluna::Push(L, creature->getThreatManager().getThreatList().size());
 #elif defined(AZEROTHCORE)
         Eluna::Push(L, creature->getThreatManager().getThreatList().size());
 #else
@@ -911,7 +911,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int GetNPCFlags(lua_State* L, Creature* creature)
     {
-        Eluna::Push(L, creature->GetUInt32Value(UNIT_NPC_FLAGS));
+        Eluna::Push(L, creature->GetDynamicFlags(UNIT_NPC_FLAGS));
         return 1;
     }
 
@@ -941,7 +941,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int GetShieldBlockValue(lua_State* L, Creature* creature)
     {
-        Eluna::Push(L, creature->GetShieldBlockValue());
+        Eluna::Push(L, creature->GetBlockPercent());
         return 1;
     }
 #endif
@@ -979,7 +979,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         uint32 flags = Eluna::CHECKVAL<uint32>(L, 2);
 
-        creature->SetUInt32Value(UNIT_NPC_FLAGS, flags);
+        creature->SetNpcFlags(UNIT_NPC_FLAG_NONE);
         return 0;
     }
 
@@ -1055,9 +1055,9 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         uint32 ranged = Eluna::CHECKVAL<uint32>(L, 4);
 
 #if defined(TRINITY) || defined(AZEROTHCORE)
-        creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, main_hand);
-        creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, off_hand);
-        creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, ranged);
+        creature->SetNpcFlags(UNIT_VIRTUAL_ITEM_SLOT_ID + 0);
+        creature->SetNpcFlags(UNIT_VIRTUAL_ITEM_SLOT_ID + 1);
+        creature->SetNpcFlags(UNIT_VIRTUAL_ITEM_SLOT_ID + 2);
 #else
         creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, main_hand);
         creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, off_hand);
@@ -1077,9 +1077,9 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
 
 #if defined(TRINITY) || defined(AZEROTHCORE)
         if (allow)
-            creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+            creature->RemoveDynamicFlag(UNIT_FLAG_IMMUNE_TO_NPC);
         else
-            creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+            creature->SetDynamicFlags(UNIT_FLAG_IMMUNE_TO_NPC);
 #else
         if (allow)
             creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
@@ -1115,7 +1115,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         if (creature->IsAIEnabled)
             creature->AI()->DoZoneInCombat();
 #elif defined(TRINITY)
-        if (creature->IsAIEnabled())
+        if (creature->IsAIEnabled)
             creature->AI()->DoZoneInCombat();
 #else
         creature->SetInCombatWithZone();
