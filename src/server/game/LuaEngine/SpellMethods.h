@@ -65,7 +65,7 @@ namespace LuaSpell
      */
     int GetPowerCost(lua_State* L, Spell* spell)
     {
-        Eluna::Push(L, spell->GetPowerCost());
+        Eluna::Push(L, spell->GetSpellInfo());
         return 1;
     }
 
