@@ -143,7 +143,7 @@ namespace LuaCreature
         Player* player = Eluna::CHECKOBJ<Player>(L, 2);
 
 #if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, creature->isTappedBy(player));
+        Eluna::Push(L, creature->IsTappedBy(player));
 #else
         Eluna::Push(L, creature->IsTappedBy(player));
 #endif
@@ -175,7 +175,7 @@ namespace LuaCreature
     int CanAggro(lua_State* L, Creature* creature)
     {
 #if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, !creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC));
+        Eluna::Push(L, !creature->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC));
 #else
         // Eluna::Push(L, creature->CanInitiateAttack());
         Eluna::Push(L, !creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE));
@@ -475,7 +475,7 @@ namespace LuaCreature
     int GetWanderRadius(lua_State* L, Creature* creature)
     {
 #if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, creature->GetWanderDistance());
+        Eluna::Push(L, creature->GetFollowDistance());
 #else
         Eluna::Push(L, creature->GetRespawnRadius());
 #endif
