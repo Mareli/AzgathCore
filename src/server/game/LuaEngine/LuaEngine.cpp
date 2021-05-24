@@ -364,10 +364,6 @@ void Eluna::GetScripts(std::string path)
 
             // Check if file is hidden
 #ifdef ELUNA_WINDOWS
-            DWORD dwAttrib = GetFileAttributes(fullpath.c_str());
-            if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_HIDDEN))
-                continue;
-#else
             std::string name = dir_iter->path().filename().generic_string().c_str();
             if (name[0] == '.')
                 continue;
@@ -751,7 +747,7 @@ void Eluna::Push(lua_State* luastate, Object const* obj)
 }
 void Eluna::Push(lua_State* luastate, ObjectGuid const guid)
 {
-    ElunaTemplate<unsigned long long>::Push(luastate, new unsigned long long(guid.GetRawValue()));
+    ElunaTemplate<unsigned long long>::Push(luastate, new unsigned long long(guid.GetCounter()));
 }
 
 static int CheckIntegerRange(lua_State* luastate, int narg, int min, int max)
@@ -1013,7 +1009,7 @@ int Eluna::Register(lua_State* L, uint8 regtype, uint32 entry, ObjectGuid guid, 
         case Hooks::REGTYPE_PACKET:
             if (event_id < Hooks::PACKET_EVENT_COUNT)
             {
-                if (entry >= NUM_MSG_TYPES)
+                if (entry >= NUM_OPCODE_HANDLERS)
                 {
                     luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
                     luaL_error(L, "Couldn't find a creature with (ID: %d)!", entry);
@@ -1175,7 +1171,7 @@ int Eluna::Register(lua_State* L, uint8 regtype, uint32 entry, ObjectGuid guid, 
     }
     luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
     std::ostringstream oss;
-    oss << "regtype " << static_cast<uint32>(regtype) << ", event " << event_id << ", entry " << entry << ", guid " << guid.GetRawValue() << ", instance " << instanceId;
+    oss << "regtype " << static_cast<uint32>(regtype) << ", event " << event_id << ", entry " << entry << ", guid " << guid.GetCounter() << ", instance " << instanceId;
     luaL_error(L, "Unknown event type (%s)", oss.str().c_str());
     return 0;
 }
