@@ -313,8 +313,8 @@ namespace LuaItem
 #endif
 
         std::ostringstream oss;
-        oss << "|c" << std::hex << ItemQualityColors[temp->Quality] << std::dec <<
-            "|Hitem:" << temp->ItemId << ":" <<
+        oss << "|c" << std::hex << ItemQualityColors[temp->ItemSpecClassMask] << std::dec <<
+            "|Hitem:" << temp->ItemSpecClassMask << ":" <<
             item->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) << ":" <<
 #ifndef CLASSIC
             item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT) << ":" <<
@@ -322,7 +322,7 @@ namespace LuaItem
             item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_3) << ":" <<
             item->GetEnchantmentId(BONUS_ENCHANTMENT_SLOT) << ":" <<
 #endif
-            item->GetItemRandomBonusListId() << ":" << item->GetItemSuffixFactor() << ":" <<
+            item->GetItemRandomBonusListId() << ":" << item->GetBonus() << ":" <<
 #ifdef TRINITY
             (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
 #else
@@ -424,7 +424,7 @@ namespace LuaItem
     int GetSpellId(lua_State* L, Item* item)
     {
         uint32 index = Eluna::CHECKVAL<uint32>(L, 2);
-        if (index >= MAX_ITEM_PROTO_SPELLS)
+        if (index >= MAX_ITEM_SPELLS)
             return luaL_argerror(L, 2, "valid SpellIndex expected");
 
         Eluna::Push(L, item->GetTemplate()->Spells[index].SpellId);
@@ -440,7 +440,7 @@ namespace LuaItem
     int GetSpellTrigger(lua_State* L, Item* item)
     {
         uint32 index = Eluna::CHECKVAL<uint32>(L, 2);
-        if (index >= MAX_ITEM_PROTO_SPELLS)
+        if (index >= MAX_ITEM_SPELLS)
             return luaL_argerror(L, 2, "valid SpellIndex expected");
 
         Eluna::Push(L, item->GetTemplate()->Spells[index].SpellTrigger);
@@ -454,7 +454,7 @@ namespace LuaItem
      */
     int GetClass(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->Class);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -465,7 +465,7 @@ namespace LuaItem
      */
     int GetSubClass(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->SubClass);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -476,7 +476,7 @@ namespace LuaItem
      */
     int GetName(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->Name1);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -487,7 +487,7 @@ namespace LuaItem
      */
     int GetDisplayId(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->DisplayInfoID);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -498,7 +498,7 @@ namespace LuaItem
      */
     int GetQuality(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->Quality);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -509,7 +509,7 @@ namespace LuaItem
      */
     int GetBuyCount(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->BuyCount);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -520,7 +520,7 @@ namespace LuaItem
      */
     int GetBuyPrice(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->BuyPrice);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -531,7 +531,7 @@ namespace LuaItem
      */
     int GetSellPrice(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->SellPrice);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -542,7 +542,7 @@ namespace LuaItem
      */
     int GetInventoryType(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->InventoryType);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -553,7 +553,7 @@ namespace LuaItem
      */
     int GetAllowableClass(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->AllowableClass);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -564,7 +564,7 @@ namespace LuaItem
      */
     int GetAllowableRace(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->AllowableRace);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -575,7 +575,7 @@ namespace LuaItem
      */
     int GetItemLevel(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->ItemLevel);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
@@ -586,14 +586,14 @@ namespace LuaItem
      */
     int GetRequiredLevel(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->RequiredLevel);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
 #ifdef WOTLK
     int GetStatsCount(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->StatsCount);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 #endif
@@ -605,14 +605,14 @@ namespace LuaItem
      */
     int GetRandomProperty(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->RandomProperty);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
 #ifndef CLASSIC
     int GetRandomSuffix(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->RandomSuffix);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 #endif
@@ -624,7 +624,7 @@ namespace LuaItem
      */
     int GetItemSet(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->ItemSet);
+        Eluna::Push(L, item->GetTemplate()->ItemSpecClassMask);
         return 1;
     }
 
