@@ -102,7 +102,7 @@ namespace LuaQuest
      */
     int GetLevel(lua_State* L, Quest* quest)
     {
-        Eluna::Push(L, quest->GetQuestLevel());
+        Eluna::Push(L, quest->GetQuestId());
         return 1;
     }
 
@@ -113,7 +113,7 @@ namespace LuaQuest
      */
     int GetMinLevel(lua_State* L, Quest* quest)
     {
-        Eluna::Push(L, quest->GetMinLevel());
+        Eluna::Push(L, quest->GetMaxLevel());
         return 1;
     }
 
@@ -174,7 +174,7 @@ namespace LuaQuest
      */
     int GetType(lua_State* L, Quest* quest)
     {
-        Eluna::Push(L, quest->GetType());
+        Eluna::Push(L, quest->GetQuestType());
         return 1;
     }
 
