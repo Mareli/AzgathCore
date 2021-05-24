@@ -123,6 +123,7 @@ enum MageSpells
     SPELL_MAGE_ARCANE_BLAST                      = 30451,
     SPELL_MAGE_ARCANE_BARRAGE                    = 44425,
     SPELL_MAGE_ARCANE_BARRAGE_TRIGGERED          = 241241,
+    SPELL_MAGE_ARCANE_CHARGE                     = 36032,
     SPELL_MAGE_PRESENCE_OF_MIND                  = 205025,
     SPELL_MAGE_ARCANE_MISSILES_VISUAL_TWO        = 79808,
     SPELL_MAGE_ARCANE_MISSILES_VISUAL_ONE        = 170571,
@@ -271,6 +272,27 @@ class spell_mage_chrono_shift : public AuraScript
     void Register() override
     {
         DoCheckProc += AuraCheckProcFn(spell_mage_chrono_shift::CheckProc);
+    }
+};
+
+// 195302 - Arcane Charge
+class spell_mage_arcane_charge_clear : public SpellScript
+{
+    PrepareSpellScript(spell_mage_arcane_charge_clear);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_MAGE_ARCANE_CHARGE });
+    }
+
+    void RemoveArcaneCharge(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->RemoveAurasDueToSpell(SPELL_MAGE_ARCANE_CHARGE);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_mage_arcane_charge_clear::RemoveArcaneCharge, EFFECT_0, SPELL_EFFECT_DUMMY);
     }
 };
 
@@ -2922,6 +2944,7 @@ void AddSC_mage_spell_scripts()
     RegisterSpellScript(spell_mage_fire_blast);
     RegisterSpellScript(spell_mage_arcane_barrage);
     RegisterSpellScript(spell_mage_arcane_missiles_damage);
+    RegisterSpellScript(spell_mage_arcane_charge_clear);
     RegisterSpellScript(spell_mage_arcane_explosion);
 
     RegisterAuraScript(spell_mage_chrono_shift);
