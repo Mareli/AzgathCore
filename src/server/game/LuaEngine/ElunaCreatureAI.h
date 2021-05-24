@@ -38,15 +38,16 @@ struct ElunaCreatureAI : ScriptedAI
     void UpdateAI(uint32 diff) override
 #endif
     {
+#ifdef TRINITY
+        //Spawns are handled by Creature.cpp - in function Creature::Update() 
+#else
         if (justSpawned)
         {
             justSpawned = false;
-#ifdef TRINITY
-            JustAppeared();
-#else
+
             JustRespawned();
-#endif
         }
+#endif
 
         if (!movepoints.empty())
         {
@@ -73,7 +74,7 @@ struct ElunaCreatureAI : ScriptedAI
 #ifdef TRINITY
     // Called for reaction when initially engaged - this will always happen _after_ JustEnteredCombat
     // Called at creature aggro either by MoveInLOS or Attack Start
-    void JustEngagedWith(Unit* target)
+    void JustEngagedWith(Unit* target) override
     {
         if (!sEluna->EnterCombat(me, target))
             ScriptedAI::JustEngagedWith(target);
@@ -166,7 +167,7 @@ struct ElunaCreatureAI : ScriptedAI
 
 #ifdef TRINITY
     // Called when creature appears in the world (spawn, respawn, grid load etc...)
-    void JustAppeared()
+    void JustAppeared() override
     {
         if (!sEluna->JustRespawned(me))
             ScriptedAI::JustAppeared();
@@ -217,7 +218,7 @@ struct ElunaCreatureAI : ScriptedAI
 
     // Called when hit by a spell
 #if defined TRINITY
-    void SpellHit(WorldObject* caster, SpellInfo const* spell)
+    void SpellHit(WorldObject* caster, SpellInfo const* spell) override
 #else
     void SpellHit(Unit* caster, SpellInfo const* spell) override
 #endif
@@ -228,7 +229,7 @@ struct ElunaCreatureAI : ScriptedAI
 
     // Called when spell hits a target
 #if defined TRINITY
-    void SpellHitTarget(WorldObject* target, SpellInfo const* spell)
+    void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
 #else
     void SpellHitTarget(Unit* target, SpellInfo const* spell) override
 #endif
@@ -241,7 +242,7 @@ struct ElunaCreatureAI : ScriptedAI
 
 #if defined TRINITY
     // Called when the creature is summoned successfully by other creature
-    void IsSummonedBy(WorldObject* summoner)
+    void IsSummonedBy(WorldObject* summoner) override
     {
         if (!summoner->ToUnit() || !sEluna->OnSummoned(me, summoner->ToUnit()))
             ScriptedAI::IsSummonedBy(summoner);

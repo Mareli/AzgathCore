@@ -14,7 +14,7 @@
 #include "CellImpl.h"
 #include "Chat.h"
 #include "Channel.h"
-#include "DB2Stores.h"
+#include "DBCStores.h"
 #include "GameEventMgr.h"
 #include "GossipDef.h"
 #include "GridNotifiers.h"
@@ -69,6 +69,14 @@
 
 #if (!defined(TBC) && !defined(CLASSIC))
 #include "Vehicle.h"
+#endif
+
+#ifndef CLASSIC
+#include "ArenaTeam.h"
+#endif
+
+#ifndef CLASSIC
+typedef Opcodes                 OpcodesList;
 #endif
 
 /*

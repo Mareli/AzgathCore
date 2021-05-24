@@ -9,24 +9,19 @@
 #include "Object.h"
 #include "Unit.h"
 #include "GameObject.h"
-#include "DB2Stores.h"
+#include "DBCStores.h"
+#ifdef MANGOS
+#include "Timer.h"
+#endif
 
 uint32 ElunaUtil::GetCurrTime()
 {
-#if !defined TRINITY && !AZEROTHCORE
-    return WorldTimer::getMSTime();
-#else
     return getMSTime();
-#endif
 }
 
 uint32 ElunaUtil::GetTimeDiff(uint32 oldMSTime)
 {
-#if !defined TRINITY && !AZEROTHCORE
-    return WorldTimer::getMSTimeDiff(oldMSTime, GetCurrTime());
-#else
     return GetMSTimeDiffToNow(oldMSTime);
-#endif
 }
 
 ElunaUtil::ObjectGUIDCheck::ObjectGUIDCheck(ObjectGuid guid) : _guid(guid)
@@ -91,7 +86,7 @@ bool ElunaUtil::WorldObjectInRangeCheck::operator()(WorldObject* u)
                 if (i_obj_fact)
                 {
 #if defined TRINITY || AZEROTHCORE
-                    if ((i_obj_fact->IsHostileTo(target->GetFactionTemplateEntry())) != (i_hostile == 1))
+                    if ((i_obj_fact->IsHostileTo(*target->GetFactionTemplateEntry())) != (i_hostile == 1))
                         return false;
 #else
                     if ((i_obj_fact->IsHostileTo(*target->getFactionTemplateEntry())) != (i_hostile == 1))
