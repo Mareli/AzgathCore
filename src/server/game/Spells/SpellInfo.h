@@ -352,7 +352,7 @@ public:
     SpellImplicitTargetInfo TargetB;
     SpellRadiusEntry const* RadiusEntry;
     SpellRadiusEntry const* MaxRadiusEntry;
-    uint32    ChainTargets;
+    int32     ChainTargets;
     uint32    ItemType;
     uint32    TriggerSpell;
     flag128   SpellClassMask;

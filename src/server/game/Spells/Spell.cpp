@@ -1673,7 +1673,7 @@ void Spell::SelectImplicitChainTargets(SpellEffIndex effIndex, SpellImplicitTarg
     if (!effect)
         return;
 
-    uint32 maxTargets = effect->ChainTargets;
+    int32 maxTargets = effect->ChainTargets;
     if (Player* modOwner = m_caster->GetSpellModOwner())
         modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_JUMP_TARGETS, maxTargets, this);
 
