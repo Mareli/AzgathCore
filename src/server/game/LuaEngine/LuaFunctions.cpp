@@ -759,8 +759,6 @@ ElunaRegister<Creature> CreatureMethods[] =
 {
     // Getters
     { "GetAITarget", &LuaCreature::GetAITarget },
-    { "GetAITargets", &LuaCreature::GetAITarget },
-    { "GetAITargetsCount", &LuaCreature::GetAITarget },
     { "GetHomePosition", &LuaCreature::GetHomePosition },
     { "GetCorpseDelay", &LuaCreature::GetCorpseDelay },
     { "GetCreatureSpellCooldownDelay", &LuaCreature::GetCreatureSpellCooldownDelay },
@@ -781,8 +779,7 @@ ElunaRegister<Creature> CreatureMethods[] =
 #endif
     { "GetLootRecipient", &LuaCreature::GetLootRecipient },
     { "GetLootRecipientGroup", &LuaCreature::GetLootRecipientGroup },
-    { "GetNPCFlags", &LuaCreature::SetNPCFlags },
-    { "GetExtraFlags", &LuaCreature::SetNPCFlags },
+    { "SetNPCFlags", &LuaCreature::SetNPCFlags },
 #if defined(CLASSIC) || defined(TBC) || defined(WOTLK)
     { "GetShieldBlockValue", &LuaCreature::GetShieldBlockValue },
 #endif
@@ -810,7 +807,7 @@ ElunaRegister<Creature> CreatureMethods[] =
     { "SetDeathState", &LuaCreature::SetDeathState },
     { "SetWalk", &LuaCreature::SetWalk },
     { "SetHomePosition", &LuaCreature::SetHomePosition },
-    { "SetEquipmentSlots", &LuaCreature::HasLootMode },
+    { "SetLootMode", &LuaCreature::SetLootMode },
 
     // Boolean
     { "IsRegeneratingHealth", &LuaCreature::IsRegeneratingHealth },
