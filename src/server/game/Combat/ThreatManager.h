@@ -295,5 +295,3 @@ namespace Trinity
     };
 }
 #endif
-
-void ForwardThreatForAssistingMe(Unit* assistant, float baseAmount, SpellInfo const* spell = nullptr, bool ignoreModifiers = false);

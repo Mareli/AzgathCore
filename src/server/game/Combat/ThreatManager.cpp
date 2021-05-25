@@ -609,7 +609,3 @@ void ThreatManager::resetAllAggro()
 
     setDirty(true);
 }
-
-void ForwardThreatForAssistingMe(Unit* assistant, float baseAmount, SpellInfo const* spell, bool ignoreModifiers)
-{
-}
