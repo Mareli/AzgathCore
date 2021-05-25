@@ -80,7 +80,7 @@ namespace LuaGroup
     int IsAssistant(lua_State* L, Group* group)
     {
         ObjectGuid guid = Eluna::CHECKVAL<ObjectGuid>(L, 2);
-        Eluna::Push(L, group->IsAssistant(guid));
+        Eluna::Push(L, group->RollIsActive());
         return 1;
     }
 

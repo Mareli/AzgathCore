@@ -298,7 +298,7 @@ namespace LuaQuery
         for (uint32 i = 0; i < col; ++i)
         {
 #if defined TRINITY || AZEROTHCORE
-            Eluna::Push(L, RESULT->GetFieldName(i));
+            Eluna::Push(L, RESULT->GetFieldCount());
 
             const char* str = row[i].GetCString();
             if (row[i].IsNull() || !str)
@@ -306,28 +306,8 @@ namespace LuaQuery
             else
             {
                 // MYSQL_TYPE_LONGLONG Interpreted as string for lua
-                switch (row[i].GetType())
+                switch (row[i].GetUInt32())
                 {
-#ifndef AZEROTHCORE
-                    case DatabaseFieldTypes::Int8:
-                    case DatabaseFieldTypes::Int16:
-                    case DatabaseFieldTypes::Int32:
-                    case DatabaseFieldTypes::Int64:
-                    case DatabaseFieldTypes::Float:
-                    case DatabaseFieldTypes::Double:
-#else
-                    case MYSQL_TYPE_TINY:
-                    case MYSQL_TYPE_YEAR:
-                    case MYSQL_TYPE_SHORT:
-                    case MYSQL_TYPE_INT24:
-                    case MYSQL_TYPE_LONG:
-                    case MYSQL_TYPE_LONGLONG:
-                    case MYSQL_TYPE_BIT:
-                    case MYSQL_TYPE_FLOAT:
-                    case MYSQL_TYPE_DOUBLE:
-                    case MYSQL_TYPE_DECIMAL:
-                    case MYSQL_TYPE_NEWDECIMAL:
-#endif
                         Eluna::Push(L, strtod(str, NULL));
                         break;
                     default:

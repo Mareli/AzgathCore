@@ -850,89 +850,6 @@ namespace LuaCreature
         return 1;
     }
 
-    /**
-     * Returns all [Unit]s in the [Creature]'s threat list.
-     *
-     * @return table targets
-     */
-    int GetAITargets(lua_State* L, Creature* creature)
-    {
-#if defined(TRINITY)
-        auto const& threatlist = creature->getThreatManager().GetThreatenedByMeList();
-#elif defined(AZEROTHCORE)
-        auto const& threatlist = creature->getThreatManager().getThreatList();
-#else
-        ThreatList const& threatlist = creature->GetThreatManager().getThreatList();
-#endif
-        lua_createtable(L, threatlist.size(), 0);
-        int tbl = lua_gettop(L);
-        uint32 i = 0;
-        for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
-        {
-#if defined(TRINITY)
-            Unit* target = itr->second->GetOwner();
-#else
-            Unit* target = (*itr)->getTarget();
-#endif
-            if (!target)
-                continue;
-            Eluna::Push(L, target);
-            lua_rawseti(L, tbl, ++i);
-        }
-
-        lua_settop(L, tbl);
-        return 1;
-    }
-
-    /**
-     * Returns the number of [Unit]s in this [Creature]'s threat list.
-     *
-     * @return int targetsCount
-     */
-    int GetAITargetsCount(lua_State* L, Creature* creature)
-    {
-#if defined(TRINITY)
-        Eluna::Push(L, creature->getThreatManager().getThreatList().size());
-#elif defined(AZEROTHCORE)
-        Eluna::Push(L, creature->getThreatManager().getThreatList().size());
-#else
-        Eluna::Push(L, creature->GetThreatManager().getThreatList().size());
-#endif
-        return 1;
-    }
-
-    /**
-     * Returns the [Creature]'s NPC flags.
-     *
-     * These are used to control whether the NPC is a vendor, can repair items,
-     *   can give quests, etc.
-     *
-     * @return [NPCFlags] npcFlags
-     */
-    int GetNPCFlags(lua_State* L, Creature* creature)
-    {
-        Eluna::Push(L, creature->GetDynamicFlags(UNIT_NPC_FLAGS));
-        return 1;
-    }
-
-    /**
-     * Returns the [Creature]'s Extra flags.
-     *
-     * These are used to control whether the NPC is a civilian, uses pathfinding,
-     *   if it's a guard, etc.
-     *
-     * @return [ExtraFlags] extraFlags
-     */
-    int GetExtraFlags(lua_State* L, Creature* creature)
-    {
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, creature->GetCreatureTemplate()->flags_extra);
-#else
-        Eluna::Push(L, creature->GetCreatureInfo()->ExtraFlags);
-#endif
-        return 1;
-    }
-
 #if defined(CLASSIC) || defined(TBC) || defined(WOTLK)
     /**
      * Returns the [Creature]'s shield block value.
@@ -1038,31 +955,6 @@ namespace LuaCreature
         bool enable = Eluna::CHECKVAL<bool>(L, 2, true);
 
         creature->SetWalk(enable);
-        return 0;
-    }
-
-    /**
-     * Equips given [Item]s to the [Unit]. Using 0 removes the equipped [Item]
-     *
-     * @param uint32 main_hand : main hand [Item]'s entry
-     * @param uint32 off_hand : off hand [Item]'s entry
-     * @param uint32 ranged : ranged [Item]'s entry
-     */
-    int SetEquipmentSlots(lua_State* L, Creature* creature)
-    {
-        uint32 main_hand = Eluna::CHECKVAL<uint32>(L, 2);
-        uint32 off_hand = Eluna::CHECKVAL<uint32>(L, 3);
-        uint32 ranged = Eluna::CHECKVAL<uint32>(L, 4);
-
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        creature->SetNpcFlags(UNIT_VIRTUAL_ITEM_SLOT_ID + 0);
-        creature->SetNpcFlags(UNIT_VIRTUAL_ITEM_SLOT_ID + 1);
-        creature->SetNpcFlags(UNIT_VIRTUAL_ITEM_SLOT_ID + 2);
-#else
-        creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, main_hand);
-        creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, off_hand);
-        creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, ranged);
-#endif
         return 0;
     }
 

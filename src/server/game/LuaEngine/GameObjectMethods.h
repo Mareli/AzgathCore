@@ -132,7 +132,7 @@ namespace LuaGameObject
      */
     int GetLootRecipient(lua_State* L, GameObject* go)
     {
-        Eluna::Push(L, go->GetLootRecipient());
+        Eluna::Push(L, go->GetLootMode());
         return 1;
     }
 
@@ -146,7 +146,7 @@ namespace LuaGameObject
     int GetLootRecipientGroup(lua_State* L, GameObject* go)
     {
 #if defined TRINITY || AZEROTHCORE
-        Eluna::Push(L, go->GetLootRecipientGroup());
+        Eluna::Push(L, go->GetLootMode());
 #else
         Eluna::Push(L, go->GetGroupLootRecipient());
 #endif
@@ -194,7 +194,7 @@ namespace LuaGameObject
         else if (state == 2)
         {
 #ifdef TRINITY
-            go->SetGoState(GO_STATE_DESTROYED);
+            go->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
 #else
             go->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
 #endif
@@ -274,7 +274,7 @@ namespace LuaGameObject
         if (deldb)
         {
 #ifdef TRINITY
-            GameObject::DeleteFromDB(go->GetSpawnId());
+            go->DeleteFromDB();
 #else
             go->DeleteFromDB();
 #endif

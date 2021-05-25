@@ -74,10 +74,10 @@ struct ElunaCreatureAI : ScriptedAI
 #ifdef TRINITY
     // Called for reaction when initially engaged - this will always happen _after_ JustEnteredCombat
     // Called at creature aggro either by MoveInLOS or Attack Start
-    void JustEngagedWith(Unit* target) override
+    void JustEngagedWith(Unit* target)
     {
         if (!sEluna->EnterCombat(me, target))
-            ScriptedAI::JustEngagedWith(target);
+            ScriptedAI::JustDied(target);
     }
 #else
     //Called for reaction at enter to combat if not in combat yet (enemy can be NULL)
@@ -167,10 +167,10 @@ struct ElunaCreatureAI : ScriptedAI
 
 #ifdef TRINITY
     // Called when creature appears in the world (spawn, respawn, grid load etc...)
-    void JustAppeared() override
+    void JustAppeared()
     {
         if (!sEluna->JustRespawned(me))
-            ScriptedAI::JustAppeared();
+            ScriptedAI::JustRespawned();
     }
 #else
     // Called when creature is spawned or respawned (for reseting variables)
@@ -218,20 +218,20 @@ struct ElunaCreatureAI : ScriptedAI
 
     // Called when hit by a spell
 #if defined TRINITY
-    void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+    void SpellHit(WorldObject* caster, SpellInfo const* spell)
 #else
-    void SpellHit(Unit* caster, SpellInfo const* spell) override
+    void SpellHit(Unit* caster, SpellInfo const* spell)
 #endif
     {
         if (!sEluna->SpellHit(me, caster, spell))
-            ScriptedAI::SpellHit(caster, spell);
+            ScriptedAI::Spell(caster, spell);
     }
 
     // Called when spell hits a target
 #if defined TRINITY
-    void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+    void SpellHitTarget(WorldObject* target, SpellInfo const* spell)
 #else
-    void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+    void SpellHitTarget(Unit* target, SpellInfo const* spell)
 #endif
     {
         if (!sEluna->SpellHitTarget(me, target, spell))
@@ -242,10 +242,10 @@ struct ElunaCreatureAI : ScriptedAI
 
 #if defined TRINITY
     // Called when the creature is summoned successfully by other creature
-    void IsSummonedBy(WorldObject* summoner) override
+    void IsSummonedBy(WorldObject* summoner)
     {
         if (!summoner->ToUnit() || !sEluna->OnSummoned(me, summoner->ToUnit()))
-            ScriptedAI::IsSummonedBy(summoner);
+            ScriptedAI::OnSummoned(summoner);
     }
 #else
     // Called when the creature is summoned successfully by other creature

@@ -115,14 +115,6 @@ bool Eluna::OnItemUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targ
     return CallAllFunctionsBool(ItemEventBindings, key, true);
 }
 
-bool Eluna::OnExpire(Player* pPlayer, ItemTemplate const* pProto)
-{
-    START_HOOK_WITH_RETVAL(ITEM_EVENT_ON_EXPIRE, pProto->ItemId, false);
-    Push(pPlayer);
-    Push(pProto->ItemId);
-    return CallAllFunctionsBool(ItemEventBindings, key);
-}
-
 bool Eluna::OnRemove(Player* pPlayer, Item* pItem)
 {
     START_HOOK_WITH_RETVAL(ITEM_EVENT_ON_REMOVE, pItem->GetEntry(), false);

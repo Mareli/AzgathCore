@@ -67,7 +67,7 @@ namespace LuaGuild
     int GetMemberCount(lua_State* L, Guild* guild)
     {
 #if defined TRINITY || AZEROTHCORE
-        Eluna::Push(L, guild->GetMemberCount());
+        Eluna::Push(L, guild->GetMembersCount());
 #else
         Eluna::Push(L, guild->GetMemberSize());
 #endif

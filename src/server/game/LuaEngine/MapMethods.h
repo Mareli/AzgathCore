@@ -117,12 +117,7 @@ namespace LuaMap
         float y = Eluna::CHECKVAL<float>(L, 3);
 #if (defined(TBC) || defined(CLASSIC))
         float z = map->GetHeight(x, y, MAX_HEIGHT);
-#else
-        uint32 phasemask = Eluna::CHECKVAL<uint32>(L, 4, 1);
-        float z = map->GetHeight(phasemask, x, y, MAX_HEIGHT);
 #endif
-        if (z != INVALID_HEIGHT)
-            Eluna::Push(L, z);
         return 1;
     }
 
@@ -192,8 +187,6 @@ namespace LuaMap
         float z = Eluna::CHECKVAL<float>(L, 4);
 #if defined TRINITY
         float phasemask = Eluna::CHECKVAL<uint32>(L, 5, PHASEMASK_NORMAL);
-
-        Eluna::Push(L, map->GetAreaId(phasemask, x, y, z));
 #elif defined AZEROTHCORE
         Eluna::Push(L, map->GetAreaId(x, y, z));
 #else
