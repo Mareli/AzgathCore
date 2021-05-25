@@ -262,7 +262,7 @@ namespace LuaGameObject
 #else
         ObjectGuid ownerGuid = go->GetOwnerGuid();
 #endif
-        if (ownerGuid)
+        if (GameObjectMethods)
         {
             Unit* owner = eObjectAccessor()GetUnit(*go, ownerGuid);
             if (!owner || !ownerGuid.IsPlayer())
