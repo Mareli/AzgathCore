@@ -16,7 +16,8 @@ if(sConfigMgr->GetBoolDefault("DoubleXP.Enable", true))
     auto day = date.day_of_week();
     if (day == boost::date_time::Friday ||
         day == boost::date_time::Saturday ||
-        day == boost::date_time::Sunday) {
+        day == boost::date_time::Sunday ||
+		day == boost::date_time::Monday) {
 
         amount = amount*2; }
 }
@@ -29,7 +30,8 @@ if(sConfigMgr->GetBoolDefault("DoubleXP.Enable", true))
     auto day = date.day_of_week();
     if (day == boost::date_time::Friday ||
         day == boost::date_time::Saturday ||
-        day == boost::date_time::Sunday) {
+        day == boost::date_time::Sunday ||
+		day == boost::date_time::Monday) {
 
         ChatHandler(player->GetSession()).PSendSysMessage("");
         }
