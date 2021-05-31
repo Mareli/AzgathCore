@@ -200,11 +200,6 @@ namespace LuaGlobalFunctions
         });
 #else
         {
-#if defined TRINITY || AZEROTHCORE
-            std::shared_lock<std::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
-#else
-            HashMapHolder<Player>::ReadGuard g(HashMapHolder<Player>::GetLock());
-#endif
             const HashMapHolder<Player>::MapType& m = eObjectAccessor()GetPlayers();
             for (HashMapHolder<Player>::MapType::const_iterator it = m.begin(); it != m.end(); ++it)
             {
@@ -296,7 +291,7 @@ namespace LuaGlobalFunctions
     int GetPlayerGUID(lua_State* L)
     {
         uint32 lowguid = Eluna::CHECKVAL<uint32>(L, 1);
-        Eluna::Push(L, MAKE_NEW_GUID(lowguid, 0, HIGHGUID_PLAYER));
+        (L, _GUILDMGR_H(lowguid, 0, HIGHGUID_PLAYER));
         return 1;
     }
 
@@ -312,7 +307,7 @@ namespace LuaGlobalFunctions
     int GetItemGUID(lua_State* L)
     {
         uint32 lowguid = Eluna::CHECKVAL<uint32>(L, 1);
-        Eluna::Push(L, MAKE_NEW_GUID(lowguid, 0, HIGHGUID_ITEM));
+        (L, _GUILDMGR_H(lowguid, 0, HIGHGUID_ITEM));
         return 1;
     }
 
@@ -331,7 +326,7 @@ namespace LuaGlobalFunctions
     {
         uint32 lowguid = Eluna::CHECKVAL<uint32>(L, 1);
         uint32 entry = Eluna::CHECKVAL<uint32>(L, 2);
-        Eluna::Push(L, MAKE_NEW_GUID(lowguid, entry, HIGHGUID_GAMEOBJECT));
+        (L, _GUILDMGR_H(lowguid, entry, HIGHGUID_GAMEOBJECT));
         return 1;
     }
 
@@ -346,13 +341,7 @@ namespace LuaGlobalFunctions
      * @param uint32 entry : entry ID of the [Creature]
      * @return ObjectGuid guid
      */
-    int GetUnitGUID(lua_State* L)
-    {
-        uint32 lowguid = Eluna::CHECKVAL<uint32>(L, 1);
-        uint32 entry = Eluna::CHECKVAL<uint32>(L, 2);
-        Eluna::Push(L, MAKE_NEW_GUID(lowguid, entry, HIGHGUID_UNIT));
-        return 1;
-    }
+    
 
     /**
      * Returns the low GUID from a GUID.
@@ -401,32 +390,8 @@ namespace LuaGlobalFunctions
      * @param [LocaleConstant] locale = DEFAULT_LOCALE : locale to return the [Item] name in
      * @return string itemLink
      */
-    int GetItemLink(lua_State* L)
-    {
-        uint32 entry = Eluna::CHECKVAL<uint32>(L, 1);
-        uint8 locale = Eluna::CHECKVAL<uint8>(L, 2, DEFAULT_LOCALE);
-        if (locale >= TOTAL_LOCALES)
-            return luaL_argerror(L, 2, "valid LocaleConstant expected");
-
-        const ItemTemplate* temp = eObjectMgr->GetItemTemplate(entry);
-        if (!temp)
-            return luaL_argerror(L, 1, "valid ItemEntry expected");
-
-        std::string name = temp->Name1;
-        if (ItemLocale const* il = eObjectMgr->GetItemLocale(entry))
-            ObjectMgr::GetLocaleString(il->Name, static_cast<LocaleConstant>(locale), name);
-
-        std::ostringstream oss;
-        oss << "|c" << std::hex << ItemQualityColors[temp->Quality] << std::dec <<
-            "|Hitem:" << entry << ":0:" <<
-#ifndef CLASSIC
-            "0:0:0:0:" <<
-#endif
-            "0:0:0:0|h[" << name << "]|h|r";
-
-        Eluna::Push(L, oss.str());
-        return 1;
-    }
+        
+        
 
     /**
      * Returns the type ID from a GUID.
@@ -495,11 +460,6 @@ namespace LuaGlobalFunctions
         if (!areaEntry)
             return luaL_argerror(L, 1, "valid Area or Zone ID expected");
 
-#if defined(TRINITY)
-        Eluna::Push(L, areaEntry->AreaName[locale]);
-#else
-        Eluna::Push(L, areaEntry->area_name[locale]);
-#endif
         return 1;
     }
 
@@ -1705,18 +1665,13 @@ namespace LuaGlobalFunctions
             if (save)
             {
                 Creature* creature = new Creature();
-#ifndef AZEROTHCORE
-                if (!creature->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, phase, entry, pos))
-#else
-                if (!creature->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, phase, entry, 0, x, y, z, o))
-#endif
+
                 {
                     delete creature;
                     Eluna::Push(L);
                     return 1;
                 }
 
-                creature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), phase);
 
                 uint32 db_guid = creature->GetSpawnId();
 
@@ -1725,11 +1680,7 @@ namespace LuaGlobalFunctions
                 creature->CleanupsBeforeDelete();
                 delete creature;
                 creature = new Creature();
-#ifndef AZEROTHCORE
-                if (!creature->LoadFromDB(db_guid, map, true, true))
-#else
-                if (!creature->LoadFromDB(db_guid, map, true))
-#endif
+
                 {
                     delete creature;
                     Eluna::Push(L);
@@ -1775,14 +1726,6 @@ namespace LuaGlobalFunctions
             }
 
             GameObject* object = new GameObject;
-#ifndef AZEROTHCORE
-            uint32 guidLow = map->GenerateLowGuid<HighGuid::GameObject>();
-            QuaternionData rot = QuaternionData::fromEulerAnglesZYX(o, 0.f, 0.f);
-            if (!object->Create(guidLow, objectInfo->entry, map, phase, Position(x, y, z, o), rot, 0, GO_STATE_READY))
-#else
-            uint32 guidLow = map->GenerateLowGuid<HighGuid::GameObject>();
-            if (!object->Create(guidLow, entry, map, phase, x, y, z, o, G3D::Quat(0.0f, 0.0f, 0.0f, 0.0f), 100, GO_STATE_READY))
-#endif
             {
                 delete object;
                 Eluna::Push(L);
@@ -1795,8 +1738,7 @@ namespace LuaGlobalFunctions
             if (save)
             {
                 // fill the gameobject data and save to the db
-                object->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), phase);
-                guidLow = object->GetSpawnId();
+              
 
                 // delete the old object and do a clean load from DB with a fresh new GameObject instance.
                 // this is required to avoid weird behavior and memory leaks
@@ -1804,21 +1746,11 @@ namespace LuaGlobalFunctions
 
                 object = new GameObject();
                 // this will generate a new lowguid if the object is in an instance
-#ifndef AZEROTHCORE
-                if (!object->LoadFromDB(guidLow, map, true))
-#else
-                if (!object->LoadFromDB(guidLow, map))
-#endif
                 {
                     delete object;
                     Eluna::Push(L);
                     return 1;
                 }
-#ifndef AZEROTHCORE
-                eObjectMgr->AddGameobjectToGrid(guidLow, eObjectMgr->GetGameObjectData(guidLow));
-#else
-                eObjectMgr->AddGameobjectToGrid(guidLow, eObjectMgr->GetGOData(guidLow));
-#endif
             }
             else
                 map->AddToMap(object);
@@ -1839,12 +1771,11 @@ namespace LuaGlobalFunctions
      */
     int CreatePacket(lua_State* L)
     {
-        uint32 opcode = Eluna::CHECKVAL<uint32>(L, 1);
+        uint32 opcodeTable = Eluna::CHECKVAL<uint32>(L, 1);
         size_t size = Eluna::CHECKVAL<size_t>(L, 2);
-        if (opcode >= NUM_MSG_TYPES)
+        if (opcodeTable >= NUM_OPCODE_HANDLERS)
             return luaL_argerror(L, 1, "valid opcode expected");
 
-        Eluna::Push(L, new WorldPacket((OpcodesList)opcode, size));
         return 1;
     }
 
@@ -1870,10 +1801,6 @@ namespace LuaGlobalFunctions
         if (!eObjectMgr->IsVendorItemValid(entry, item, maxcount, incrtime, extendedcost, 1))
             return 0;
         eObjectMgr->AddVendorItem(entry, item, maxcount, incrtime, extendedcost, 1);
-#else
-        if (!eObjectMgr->IsVendorItemValid(entry, item, maxcount, incrtime, extendedcost))
-            return 0;
-        eObjectMgr->AddVendorItem(entry, item, maxcount, incrtime, extendedcost);
 #endif
 #else
         if (!eObjectMgr->IsVendorItemValid(false, "npc_vendor", entry, item, maxcount, incrtime, extendedcost, 0))
@@ -1903,7 +1830,7 @@ namespace LuaGlobalFunctions
 #if defined(CATA) || defined(MISTS)
         eObjectMgr->RemoveVendorItem(entry, item, 1);
 #else
-        eObjectMgr->RemoveVendorItem(entry, item);
+        eObjectMgr->RemoveVendorItem(entry, item, 1);
 #endif
         return 0;
     }
@@ -1926,11 +1853,6 @@ namespace LuaGlobalFunctions
 #if defined(CATA) || defined(MISTS)
             eObjectMgr->RemoveVendorItem(entry, (*itr)->item, 1);
 #else
-#ifdef TRINITY
-            eObjectMgr->RemoveVendorItem(entry, itr->item);
-#else
-            eObjectMgr->RemoveVendorItem(entry, (*itr)->item);
-#endif
 #endif
         return 0;
     }
@@ -1944,7 +1866,7 @@ namespace LuaGlobalFunctions
     {
         Player* player = Eluna::CHECKOBJ<Player>(L, 1);
 #ifdef TRINITY
-        player->GetSession()->KickPlayer("GlobalMethods::Kick Kick the player");
+        player->GetSession()->KickPlayer();
 #else
         player->GetSession()->KickPlayer();
 #endif
@@ -2137,35 +2059,15 @@ namespace LuaGlobalFunctions
                 luaL_error(L, "Item entry %d does not exist", entry);
                 continue;
             }
-            if (amount < 1 || (item_proto->MaxCount > 0 && amount > uint32(item_proto->MaxCount)))
             {
                 luaL_error(L, "Item entry %d has invalid amount %d", entry, amount);
                 continue;
             }
-            if (Item* item = Item::CreateItem(entry, amount))
             {
-#if defined TRINITY || AZEROTHCORE
-                item->SaveToDB(trans);
-#else
-                item->SaveToDB();
-#endif
-                draft.AddItem(item);
-#if defined TRINITY || AZEROTHCORE
-                Eluna::Push(L, item->GetGUID().GetCounter());
-#else
-                Eluna::Push(L, item->GetGUIDLow());
-#endif
                 ++addedItems;
             }
         }
 
-        Player* receiverPlayer = eObjectAccessor()FindPlayer(MAKE_NEW_GUID(receiverGUIDLow, 0, HIGHGUID_PLAYER));
-#if defined TRINITY || AZEROTHCORE
-        draft.SendMailTo(trans, MailReceiver(receiverPlayer, receiverGUIDLow), sender, MAIL_CHECK_MASK_NONE, delay);
-        CharacterDatabase.CommitTransaction(trans);
-#else
-        draft.SendMailTo(MailReceiver(receiverPlayer, MAKE_NEW_GUID(receiverGUIDLow, 0, HIGHGUID_PLAYER)), sender);
-#endif
         return addedItems;
     }
 
@@ -2564,33 +2466,20 @@ namespace LuaGlobalFunctions
      *
      * @param ...
      */
-    int PrintInfo(lua_State* L)
-    {
-        ELUNA_LOG_INFO("%s", GetStackAsString(L).c_str());
-        return 0;
-    }
+    
 
     /**
      * Prints given parameters to the error log.
      *
      * @param ...
      */
-    int PrintError(lua_State* L)
-    {
-        ELUNA_LOG_ERROR("%s", GetStackAsString(L).c_str());
-        return 0;
-    }
-
+    
     /**
      * Prints given parameters to the debug log.
      *
      * @param ...
      */
-    int PrintDebug(lua_State* L)
-    {
-        ELUNA_LOG_DEBUG("%s", GetStackAsString(L).c_str());
-        return 0;
-    }
+    
 
     /**
     * Starts the event by eventId, if force is set, the event will force start regardless of previous event state.

@@ -1162,13 +1162,6 @@ namespace LuaUnit
 #endif
         if (!entry)
             return 1;
-
-#ifdef TRINITY
-        Eluna::Push(L, entry->Name[locale]);
-#else
-        Eluna::Push(L, entry->name[locale]);
-#endif
-        return 1;
     }
 
     /**
@@ -1205,12 +1198,6 @@ namespace LuaUnit
 #endif
         if (!entry)
             return 1;
-
-#ifdef TRINITY
-        Eluna::Push(L, entry->Name[locale]);
-#else
-        Eluna::Push(L, entry->name[locale]);
-#endif
         return 1;
     }
 
@@ -1835,12 +1822,6 @@ namespace LuaUnit
      *
      * @param uint8 state : stand state
      */
-    int SetStandState(lua_State* L, Unit* unit)
-    {
-        uint8 state = Eluna::CHECKVAL<uint8>(L, 2);
-        unit->SetStandState(state);
-        return 0;
-    }
 
 #if (!defined(TBC) && !defined(CLASSIC))
     /**
@@ -1852,19 +1833,6 @@ namespace LuaUnit
     {
         bool apply = Eluna::CHECKVAL<bool>(L, 2, true);
 
-#ifdef TRINITY
-        if (apply)
-        {
-            unit->SetByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
-            for (Unit::ControlList::iterator itr = unit->m_Controlled.begin(); itr != unit->m_Controlled.end(); ++itr)
-                (*itr)->SetByteValue(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
-        }
-        else
-        {
-            unit->RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
-            for (Unit::ControlList::iterator itr = unit->m_Controlled.begin(); itr != unit->m_Controlled.end(); ++itr)
-                (*itr)->RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
-        }
 #elif AZEROTHCORE
         if (apply)
         {
@@ -1889,21 +1857,6 @@ namespace LuaUnit
      *
      * @param bool apply = true
      */
-    int SetSanctuary(lua_State* L, Unit* unit)
-    {
-        bool apply = Eluna::CHECKVAL<bool>(L, 2, true);
-
-        if (apply)
-        {
-            unit->SetByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_SANCTUARY);
-            unit->CombatStop();
-            unit->CombatStopWithPets();
-        }
-        else
-            unit->RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_SANCTUARY);
-
-        return 0;
-    }
 
     int SetCritterGUID(lua_State* L, Unit* unit)
     {
@@ -2054,13 +2007,6 @@ namespace LuaUnit
      *
      * @param uint32 emoteId
      */
-    int EmoteState(lua_State* L, Unit* unit)
-    {
-        uint32 emoteId = Eluna::CHECKVAL<uint32>(L, 2);
-
-        unit->SetUInt32Value(UNIT_NPC_EMOTESTATE, emoteId);
-        return 0;
-    }
 
     /**
      * Returns calculated percentage from Health
@@ -2105,16 +2051,6 @@ namespace LuaUnit
             return luaL_argerror(L, 3, "valid Language expected");
 
         WorldPacket data;
-#if defined TRINITY || AZEROTHCORE
-        ChatHandler::BuildChatPacket(data, ChatMsg(type), Language(lang), unit, target, msg);
-#else
-        ChatHandler::BuildChatPacket(data, ChatMsg(type), msg.c_str(), Language(lang), 0, unit->GET_GUID(), unit->GetName(), target->GET_GUID(), target->GetName());
-#endif
-#ifdef CMANGOS
-        target->GetSession()->SendPacket(data);
-#else
-        target->GetSession()->SendPacket(&data);
-#endif
         return 0;
     }
 
@@ -2460,24 +2396,6 @@ namespace LuaUnit
         Item* castItem = Eluna::CHECKOBJ<Item>(L, 8, false);
         ObjectGuid originalCaster = Eluna::CHECKVAL<ObjectGuid>(L, 9, ObjectGuid());
 
-#ifdef TRINITY
-        CastSpellExtraArgs args;
-        if (has_bp0)
-            args.AddSpellMod(SPELLVALUE_BASE_POINT0, bp0);
-        if (has_bp1)
-            args.AddSpellMod(SPELLVALUE_BASE_POINT1, bp1);
-        if (has_bp2)
-            args.AddSpellMod(SPELLVALUE_BASE_POINT2, bp2);
-        if (triggered)
-            args.TriggerFlags = TRIGGERED_FULL_MASK;
-        if (castItem)
-            args.SetCastItem(castItem);
-        if (originalCaster)
-            args.SetOriginalCaster(originalCaster);
-        unit->CastSpell(target, spell, args);
-#else
-        unit->CastCustomSpell(target, spell, has_bp0 ? &bp0 : NULL, has_bp1 ? &bp1 : NULL, has_bp2 ? &bp2 : NULL, triggered, castItem, NULL, ObjectGuid(originalCaster));
-#endif
         return 0;
     }
     
@@ -2505,12 +2423,6 @@ namespace LuaUnit
 #endif
 #ifdef AZEROTHCORE
         unit->CastSpell(_x, _y, _z, spell, triggered);
-#endif
-#ifdef TRINITY
-        CastSpellExtraArgs args;
-        if (triggered)
-            args.TriggerFlags = TRIGGERED_FULL_MASK;
-        unit->CastSpell(Position(_x, _y, _z), spell, args);
 #endif
         return 0;
     }
@@ -2734,122 +2646,11 @@ namespace LuaUnit
         // flat melee damage without resistence/etc reduction
         if (school == MAX_SPELL_SCHOOL)
         {
-#if defined TRINITY || AZEROTHCORE
-            Unit::DealDamage(unit, target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, durabilityloss);
-            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, 1, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_HIT, 0);
-#else
-            unit->DealDamage(target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, durabilityloss);
-            unit->SendAttackStateUpdate(HITINFO_NORMALSWING2, target, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_NORMAL, 0);
-#endif
             return 0;
         }
 
         SpellSchoolMask schoolmask = SpellSchoolMask(1 << school);
 
-#if defined TRINITY || AZEROTHCORE
-        if (Unit::IsDamageReducedByArmor(schoolmask))
-            damage = Unit::CalcArmorReducedDamage(unit, target, damage, NULL, BASE_ATTACK);
-#else
-        if (schoolmask & SPELL_SCHOOL_MASK_NORMAL)
-            damage = unit->CalcArmorReducedDamage(target, damage);
-#endif
-
-#ifdef TRINITY
-        // melee damage by specific school
-        if (!spell)
-        {
-            DamageInfo dmgInfo(unit, target, damage, nullptr, schoolmask, SPELL_DIRECT_DAMAGE, BASE_ATTACK);
-            unit->CalcAbsorbResist(dmgInfo);
-
-            if (!dmgInfo.GetDamage())
-                damage = 0;
-            else
-                damage = dmgInfo.GetDamage();
-
-            uint32 absorb = dmgInfo.GetAbsorb();
-            uint32 resist = dmgInfo.GetResist();
-            unit->DealDamageMods(target, damage, &absorb);
-#ifdef TRINITY
-            Unit::DealDamage(unit, target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
-#else
-            unit->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
-#endif
-            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, 0, schoolmask, damage, absorb, resist, VICTIMSTATE_HIT, 0);
-            return 0;
-        }
-
-        if (!spell)
-            return 0;
-
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell);
-        if (!spellInfo)
-            return 0;
-
-        SpellNonMeleeDamage dmgInfo(unit, target, spell, spellInfo->GetSchoolMask());
-#ifdef TRINITY
-        Unit::DealDamageMods(dmgInfo.target, dmgInfo.damage, &dmgInfo.absorb);
-#else
-        damage = unit->SpellDamageBonusDone(target, spellInfo, damage, SPELL_DIRECT_DAMAGE;
-        damage = target->SpellDamageBonusTaken(unit, spellInfo, damage, SPELL_DIRECT_DAMAGE);
-        unit->CalculateSpellDamageTaken(&dmgInfo, damage, spellInfo);
-        unit->DealDamageMods(dmgInfo.target, dmgInfo.damage, &dmgInfo.absorb);
-#endif
-
-        unit->SendSpellNonMeleeDamageLog(&dmgInfo);
-        unit->DealSpellDamage(&dmgInfo, true);
-        return 0;
-#elif AZEROTHCORE
-        if (!spell)
-        {
-            uint32 absorb = 0;
-            uint32 resist = 0;
-            unit->CalcAbsorbResist(unit, target, schoolmask, SPELL_DIRECT_DAMAGE, damage, &absorb, &resist);
-            if (damage <= absorb + resist)
-                damage = 0;
-            else
-                damage -= absorb + resist;
-
-            unit->DealDamageMods(target, damage, &absorb);
-            Unit::DealDamage(unit, target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
-            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, 0, schoolmask, damage, absorb, resist, VICTIMSTATE_HIT, 0);
-            return 0;
-        }
-
-        if (!spell)
-            return 0;
-
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell);
-        if (!spellInfo)
-            return 0;
-
-        SpellNonMeleeDamage dmgInfo(unit, target, spell, spellInfo->GetSchoolMask());
-        Unit::DealDamageMods(dmgInfo.target, dmgInfo.damage, &dmgInfo.absorb);
-        unit->SendSpellNonMeleeDamageLog(&dmgInfo);
-        unit->DealSpellDamage(&dmgInfo, true);
-        return 0;
-#else
-        // melee damage by specific school
-        if (!spell)
-        {
-            uint32 absorb = 0;
-            uint32 resist = 0;
-            target->CalculateDamageAbsorbAndResist(unit, schoolmask, SPELL_DIRECT_DAMAGE, damage, &absorb, &resist);
-
-            if (damage <= absorb + resist)
-                damage = 0;
-            else
-                damage -= absorb + resist;
-
-            unit->DealDamageMods(target, damage, &absorb);
-            unit->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
-            unit->SendAttackStateUpdate(HITINFO_NORMALSWING2, target, schoolmask, damage, absorb, resist, VICTIMSTATE_NORMAL, 0);
-            return 0;
-        }
-
-        // non-melee damage
-        unit->SpellNonMeleeDamageLog(target, spell, damage);
-        return 0;
-#endif
     }
 
     /**
@@ -2901,11 +2702,6 @@ namespace LuaUnit
         Unit* target = Eluna::CHECKOBJ<Unit>(L, 2);
         bool durLoss = Eluna::CHECKVAL<bool>(L, 3, true);
 
-#if defined TRINITY || AZEROTHCORE
-        Unit::Kill(unit, target, durLoss);
-#else
-        unit->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, durLoss);
-#endif
         return 0;
     }
 
@@ -2937,28 +2733,6 @@ namespace LuaUnit
         float threat = Eluna::CHECKVAL<float>(L, 3, true);
         uint32 spell = Eluna::CHECKVAL<uint32>(L, 4, 0);
 
-#ifdef TRINITY
-        unit->getThreatManager().AddThreat(victim, threat, spell ? sSpellMgr->GetSpellInfo(spell) : NULL, true, true);
-#elif AZEROTHCORE
-        uint32 schoolMask = Eluna::CHECKVAL<uint32>(L, 5, 0);
-        if (schoolMask > SPELL_SCHOOL_MASK_ALL)
-        {
-            return luaL_argerror(L, 4, "valid SpellSchoolMask expected");
-        }
-        unit->AddThreat(victim, threat, (SpellSchoolMask)schoolMask, spell ? sSpellMgr->GetSpellInfo(spell) : NULL);
-#else
-#ifdef CMANGOS
-        SpellEntry const* spellEntry = GetSpellStore()->LookupEntry<SpellEntry>(spell);
-        unit->AddThreat(victim, threat, false, spellEntry ? spellEntry->SchoolMask : SPELL_SCHOOL_MASK_NONE, spellEntry);
-#else
-        SpellEntry const* spellEntry = sSpellStore.LookupEntry(spell);
-#ifdef CLASSIC
-        unit->AddThreat(victim, threat, false, spellEntry ? GetSchoolMask(spellEntry->School) : SPELL_SCHOOL_MASK_NONE, spellEntry);
-#else
-        unit->AddThreat(victim, threat, false, spellEntry ? static_cast<SpellSchoolMask>(spellEntry->SchoolMask) : SPELL_SCHOOL_MASK_NONE, spellEntry);
-#endif
-#endif
-#endif
         return 0;
     }
 
@@ -3037,4 +2811,3 @@ namespace LuaUnit
     return 1;
     }*/
 };
-#endif

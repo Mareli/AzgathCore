@@ -49,10 +49,9 @@ namespace LuaPacket
      */
     int SetOpcode(lua_State* L, WorldPacket* packet)
     {
-        uint32 opcode = Eluna::CHECKVAL<uint32>(L, 2);
-        if (opcode >= NUM_OPCODE_HANDLERS)
+        uint32 opcodeTable = Eluna::CHECKVAL<uint32>(L, 2);
+        if (opcodeTable >= NUM_OPCODE_HANDLERS)
             return luaL_argerror(L, 2, "valid opcode expected");
-        packet->SetOpcode((OpcodesList)opcode);
         return 0;
     }
 

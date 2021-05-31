@@ -42,7 +42,7 @@ namespace LuaWorldObject
      */
     int GetPhaseMask(lua_State* L, WorldObject* obj)
     {
-        Eluna::Push(L, obj->GetPhaseMask());
+        (L, obj->GetPhaseShift());
         return 1;
     }
 
@@ -56,7 +56,7 @@ namespace LuaWorldObject
     {
         uint32 phaseMask = Eluna::CHECKVAL<uint32>(L, 2);
         bool update = Eluna::CHECKVAL<bool>(L, 3, true);
-        obj->SetPhaseMask(phaseMask, update);
+        obj->ClearUpdateMask(phaseMask);
         return 0;
     }
 #endif
@@ -660,12 +660,12 @@ namespace LuaWorldObject
         WorldObject* target = Eluna::CHECKOBJ<WorldObject>(L, 2, false);
 #if defined TRINITY && !AZEROTHCORE
         if (target)
-            Eluna::Push(L, obj->GetAbsoluteAngle(target));
+            Eluna::Push(L, obj->GetAngle(target));
         else
         {
             float x = Eluna::CHECKVAL<float>(L, 2);
             float y = Eluna::CHECKVAL<float>(L, 3);
-            Eluna::Push(L, obj->GetAbsoluteAngle(x, y));
+            Eluna::Push(L, obj->GetAngle(x, y));
         }
 #else
         if (target)
@@ -717,7 +717,7 @@ namespace LuaWorldObject
         uint32 respawnDelay = Eluna::CHECKVAL<uint32>(L, 7, 30);
 #ifdef TRINITY
         QuaternionData rot = QuaternionData::fromEulerAnglesZYX(o, 0.f, 0.f);
-        Eluna::Push(L, obj->SummonGameObject(entry, Position(x, y, z, o), rot, Seconds(respawnDelay)));
+        Eluna::Push(L, obj->IsWorldObject());
 #elif AZEROTHCORE
         Eluna::Push(L, obj->SummonGameObject(entry, x, y, z, o, 0, 0, 0, 0, respawnDelay));
 #else
@@ -1192,7 +1192,7 @@ namespace LuaWorldObject
     {
         uint32 soundId = Eluna::CHECKVAL<uint32>(L, 2);
         Player* player = Eluna::CHECKOBJ<Player>(L, 3, false);
-        if (!sSoundEntriesStore.LookupEntry(soundId))
+        if (!sSoundKitStore.LookupEntry(soundId))
             return 0;
 
         if (player)
@@ -1218,7 +1218,7 @@ namespace LuaWorldObject
     {
         uint32 soundId = Eluna::CHECKVAL<uint32>(L, 2);
         Player* player = Eluna::CHECKOBJ<Player>(L, 3, false);
-        if (!sSoundEntriesStore.LookupEntry(soundId))
+        if (!sSoundKitStore.LookupEntry(soundId))
             return 0;
 
         if (player)

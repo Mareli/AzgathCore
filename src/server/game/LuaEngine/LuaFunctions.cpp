@@ -91,7 +91,6 @@ luaL_Reg GlobalMethods[] =
     { "GetPlayerGUID", &LuaGlobalFunctions::GetPlayerGUID },
     { "GetItemGUID", &LuaGlobalFunctions::GetItemGUID },
     { "GetObjectGUID", &LuaGlobalFunctions::GetObjectGUID },
-    { "GetUnitGUID", &LuaGlobalFunctions::GetUnitGUID },
     { "GetGUIDLow", &LuaGlobalFunctions::GetGUIDLow },
     { "GetGUIDType", &LuaGlobalFunctions::GetGUIDType },
     { "GetGUIDEntry", &LuaGlobalFunctions::GetGUIDEntry },
@@ -102,13 +101,9 @@ luaL_Reg GlobalMethods[] =
     { "bit_lshift", &LuaGlobalFunctions::bit_lshift },
     { "bit_or", &LuaGlobalFunctions::bit_or },
     { "bit_and", &LuaGlobalFunctions::bit_and },
-    { "GetItemLink", &LuaGlobalFunctions::GetItemLink },
     { "GetMapById", &LuaGlobalFunctions::GetMapById },
     { "GetCurrTime", &LuaGlobalFunctions::GetCurrTime },
     { "GetTimeDiff", &LuaGlobalFunctions::GetTimeDiff },
-    { "PrintInfo", &LuaGlobalFunctions::PrintInfo },
-    { "PrintError", &LuaGlobalFunctions::PrintError },
-    { "PrintDebug", &LuaGlobalFunctions::PrintDebug },
     { "GetActiveGameEvents", &LuaGlobalFunctions::GetActiveGameEvents },
 
     // Boolean
@@ -320,7 +315,6 @@ ElunaRegister<Unit> UnitMethods[] =
     { "SetPvP", &LuaUnit::SetPvP },
 #if (!defined(TBC) && !defined(CLASSIC))
     { "SetFFA", &LuaUnit::SetFFA },
-    { "SetSanctuary", &LuaUnit::SetSanctuary },
 #endif
     // {"SetCanFly", &LuaUnit::SetCanFly},                             // :SetCanFly(apply) - UNDOCUMENTED
     // {"SetVisible", &LuaUnit::SetVisible},                           // :SetVisible(x) - UNDOCUMENTED
@@ -334,7 +328,6 @@ ElunaRegister<Unit> UnitMethods[] =
     { "SetCritterGUID", &LuaUnit::SetCritterGUID },
 #endif
     { "SetWaterWalk", &LuaUnit::SetWaterWalk },
-    { "SetStandState", &LuaUnit::SetStandState },
     { "ModifyPower", &LuaUnit::ModifyPower },
 
     // Boolean
@@ -401,7 +394,6 @@ ElunaRegister<Unit> UnitMethods[] =
     { "InterruptSpell", &LuaUnit::InterruptSpell },
     { "SendChatMessageToPlayer", &LuaUnit::SendChatMessageToPlayer },
     { "PerformEmote", &LuaUnit::PerformEmote },
-    { "EmoteState", &LuaUnit::EmoteState },
     { "CountPctFromCurHealth", &LuaUnit::CountPctFromCurHealth },
     { "CountPctFromMaxHealth", &LuaUnit::CountPctFromMaxHealth },
     { "Dismount", &LuaUnit::Dismount },
@@ -451,10 +443,9 @@ ElunaRegister<Player> PlayerMethods[] =
     { "GetAccountId", &LuaPlayer::GetAccountId },
     { "GetAccountName", &LuaPlayer::GetAccountName },
 #if defined (TBC) || defined (WOTLK)
-    { "GetArenaPoints", &LuaPlayer::GetArenaPoints },
-    { "GetHonorPoints", &LuaPlayer::GetHonorPoints },
+    
 #endif
-    { "GetLifetimeKills", &LuaPlayer::GetLifetimeKills },
+   
     { "GetPlayerIP", &LuaPlayer::GetPlayerIP },
     { "GetLevelPlayedTime", &LuaPlayer::GetLevelPlayedTime },
     { "GetTotalPlayedTime", &LuaPlayer::GetTotalPlayedTime },
@@ -464,27 +455,20 @@ ElunaRegister<Player> PlayerMethods[] =
     { "GetReputation", &LuaPlayer::GetReputation },
     { "GetEquippedItemBySlot", &LuaPlayer::GetEquippedItemBySlot },
     { "GetQuestLevel", &LuaPlayer::GetQuestLevel },
-    { "GetChatTag", &LuaPlayer::GetChatTag },
-    { "GetRestBonus", &LuaPlayer::GetRestBonus },
+   
 #ifdef WOTLK
-    { "GetPhaseMaskForSpawn", &LuaPlayer::GetPhaseMaskForSpawn },
+    
 #endif
     { "GetReqKillOrCastCurrentCount", &LuaPlayer::GetReqKillOrCastCurrentCount },
     { "GetQuestStatus", &LuaPlayer::GetQuestStatus },
     { "GetInGameTime", &LuaPlayer::GetInGameTime },
-    { "GetComboPoints", &LuaPlayer::GetComboPoints },
-    { "GetComboTarget", &LuaPlayer::GetComboTarget },
     { "GetGuildName", &LuaPlayer::GetGuildName },
-    { "GetFreeTalentPoints", &LuaPlayer::GetFreeTalentPoints },
 #if (!defined(TBC) && !defined(CLASSIC))
-    { "GetActiveSpec", &LuaPlayer::GetActiveSpec },
-    { "GetSpecsCount", &LuaPlayer::GetSpecsCount },
+   
 #endif
     { "GetSpellCooldownDelay", &LuaPlayer::GetSpellCooldownDelay },
-    { "GetGuildRank", &LuaPlayer::GetGuildRank },
     { "GetDifficulty", &LuaPlayer::GetDifficulty },
     { "GetHealthBonusFromStamina", &LuaPlayer::GetHealthBonusFromStamina },
-    { "GetManaBonusFromIntellect", &LuaPlayer::GetManaBonusFromIntellect },
     { "GetMaxSkillValue", &LuaPlayer::GetMaxSkillValue },
     { "GetPureMaxSkillValue", &LuaPlayer::GetPureMaxSkillValue },
     { "GetSkillValue", &LuaPlayer::GetSkillValue },
@@ -496,7 +480,6 @@ ElunaRegister<Player> PlayerMethods[] =
     { "GetDrunkValue", &LuaPlayer::GetDrunkValue },
     { "GetBattlegroundId", &LuaPlayer::GetBattlegroundId },
     { "GetBattlegroundTypeId", &LuaPlayer::GetBattlegroundTypeId },
-    { "GetXPRestBonus", &LuaPlayer::GetXPRestBonus },
     { "GetGroupInvite", &LuaPlayer::GetGroupInvite },
     { "GetSubGroup", &LuaPlayer::GetSubGroup },
     { "GetNextRandomRaidMember", &LuaPlayer::GetNextRandomRaidMember },
@@ -513,7 +496,7 @@ ElunaRegister<Player> PlayerMethods[] =
     { "GetGossipTextId", &LuaPlayer::GetGossipTextId },
     { "GetQuestRewardStatus", &LuaPlayer::GetQuestRewardStatus },
 #if defined(CLASSIC) || defined(TBC) || defined(WOTLK)
-    { "GetShieldBlockValue", &LuaPlayer::GetShieldBlockValue },
+    
 #endif
 #ifdef CLASSIC
     { "GetHonorStoredKills", &LuaPlayer::GetHonorStoredKills },
@@ -522,10 +505,6 @@ ElunaRegister<Player> PlayerMethods[] =
 #endif
 
     // Setters
-    { "AdvanceSkillsToMax", &LuaPlayer::AdvanceSkillsToMax },
-    { "AdvanceSkill", &LuaPlayer::AdvanceSkill },
-    { "AdvanceAllSkills", &LuaPlayer::AdvanceAllSkills },
-    { "AddLifetimeKills", &LuaPlayer::AddLifetimeKills },
     { "SetCoinage", &LuaPlayer::SetCoinage },
 #ifndef CLASSIC
     { "SetKnownTitle", &LuaPlayer::SetKnownTitle },
@@ -533,33 +512,26 @@ ElunaRegister<Player> PlayerMethods[] =
 #endif
     { "SetBindPoint", &LuaPlayer::SetBindPoint },
 #if defined(TBC) || defined(WOTLK)
-    { "SetArenaPoints", &LuaPlayer::SetArenaPoints },
-    { "SetHonorPoints", &LuaPlayer::SetHonorPoints },
+   
 #endif
 #ifdef CLASSIC
     { "SetHonorStoredKills", &LuaPlayer::SetHonorStoredKills },
     { "SetRankPoints", &LuaPlayer::SetRankPoints },
     { "SetHonorLastWeekStandingPos", &LuaPlayer::SetHonorLastWeekStandingPos },
 #endif
-    { "SetLifetimeKills", &LuaPlayer::SetLifetimeKills },
     { "SetGameMaster", &LuaPlayer::SetGameMaster },
     { "SetGMChat", &LuaPlayer::SetGMChat },
     { "SetTaxiCheat", &LuaPlayer::SetTaxiCheat },
     { "SetGMVisible", &LuaPlayer::SetGMVisible },
     { "SetPvPDeath", &LuaPlayer::SetPvPDeath },
     { "SetAcceptWhispers", &LuaPlayer::SetAcceptWhispers },
-    { "SetRestBonus", &LuaPlayer::SetRestBonus },
     { "SetQuestStatus", &LuaPlayer::SetQuestStatus },
     { "SetReputation", &LuaPlayer::SetReputation },
-    { "SetFreeTalentPoints", &LuaPlayer::SetFreeTalentPoints },
-    { "SetGuildRank", &LuaPlayer::SetGuildRank },
     // {"SetMovement", &LuaPlayer::SetMovement},                  // :SetMovement(type) - UNDOCUMENTED - Sets player's movement type
     { "SetSkill", &LuaPlayer::SetSkill },
     { "SetFactionForRace", &LuaPlayer::SetFactionForRace },
     { "SetDrunkValue", &LuaPlayer::SetDrunkValue },
     { "SetAtLoginFlag", &LuaPlayer::SetAtLoginFlag },
-    { "SetPlayerLock", &LuaPlayer::SetPlayerLock },
-    { "SetGender", &LuaPlayer::SetGender },
     { "SetSheath", &LuaPlayer::SetSheath },
 #if !defined TRINITY && !AZEROTHCORE
     { "SetFFA", &LuaPlayer::SetFFA },
@@ -576,8 +548,6 @@ ElunaRegister<Player> PlayerMethods[] =
     { "HasTitle", &LuaPlayer::HasTitle },
 #endif
     { "HasItem", &LuaPlayer::HasItem },
-    { "Teleport", &LuaPlayer::Teleport },
-    { "AddItem", &LuaPlayer::AddItem },
 #ifndef CLASSIC
     { "IsInArenaTeam", &LuaPlayer::IsInArenaTeam },
 #endif
@@ -606,7 +576,6 @@ ElunaRegister<Player> PlayerMethods[] =
 #endif
 #endif
     { "CanUninviteFromGroup", &LuaPlayer::CanUninviteFromGroup },
-    { "IsRested", &LuaPlayer::IsRested },
     // {"CanFlyInZone", &LuaPlayer::CanFlyInZone},                                          // :CanFlyInZone(mapid, zone) - UNDOCUMENTED - Returns true if the player can fly in the area
     // {"IsNeverVisible", &LuaPlayer::IsNeverVisible},                                      // :IsNeverVisible() - UNDOCUMENTED - Returns true if the player is never visible
     { "IsVisibleForPlayer", &LuaPlayer::IsVisibleForPlayer },
@@ -654,17 +623,12 @@ ElunaRegister<Player> PlayerMethods[] =
 
     // Other
     { "SendBroadcastMessage", &LuaPlayer::SendBroadcastMessage },
-    { "SendAreaTriggerMessage", &LuaPlayer::SendAreaTriggerMessage },
     { "SendNotification", &LuaPlayer::SendNotification },
     { "SendPacket", &LuaPlayer::SendPacket },
-    { "SendAddonMessage", &LuaPlayer::SendAddonMessage },
     { "ModifyMoney", &LuaPlayer::ModifyMoney },
     { "LearnSpell", &LuaPlayer::LearnSpell },
-    { "LearnTalent", &LuaPlayer::LearnTalent },
     { "RemoveItem", &LuaPlayer::RemoveItem },
-    { "RemoveLifetimeKills", &LuaPlayer::RemoveLifetimeKills },
     { "ResurrectPlayer", &LuaPlayer::ResurrectPlayer },
-    { "EquipItem", &LuaPlayer::EquipItem },
     { "ResetSpellCooldown", &LuaPlayer::ResetSpellCooldown },
     { "ResetTypeCooldowns", &LuaPlayer::ResetTypeCooldowns },
     { "ResetAllCooldowns", &LuaPlayer::ResetAllCooldowns },
@@ -675,7 +639,6 @@ ElunaRegister<Player> PlayerMethods[] =
     { "Yell", &LuaPlayer::Yell },
     { "TextEmote", &LuaPlayer::TextEmote },
     { "Whisper", &LuaPlayer::Whisper },
-    { "CompleteQuest", &LuaPlayer::CompleteQuest },
     { "IncompleteQuest", &LuaPlayer::IncompleteQuest },
     { "FailQuest", &LuaPlayer::FailQuest },
     { "AddQuest", &LuaPlayer::AddQuest },
@@ -689,14 +652,10 @@ ElunaRegister<Player> PlayerMethods[] =
     // {"KillGOCredit", &LuaPlayer::KillGOCredit},                                          // :KillGOCredit(GOEntry[, GUID]) - UNDOCUMENTED - Credits the player for destroying a GO, guid is optional
     { "TalkedToCreature", &LuaPlayer::TalkedToCreature },
 #if (!defined(TBC) && !defined(CLASSIC))
-    { "ResetPetTalents", &LuaPlayer::ResetPetTalents },
+  
 #endif
-    { "AddComboPoints", &LuaPlayer::AddComboPoints },
     // {"GainSpellComboPoints", &LuaPlayer::GainSpellComboPoints},                          // :GainSpellComboPoints(amount) - UNDOCUMENTED - Player gains spell combo points
-    { "ClearComboPoints", &LuaPlayer::ClearComboPoints },
     { "RemoveSpell", &LuaPlayer::RemoveSpell },
-    { "ResetTalents", &LuaPlayer::ResetTalents },
-    { "ResetTalentsCost", &LuaPlayer::ResetTalentsCost },
     // {"AddTalent", &LuaPlayer::AddTalent},                                                // :AddTalent(spellid, spec, learning) - UNDOCUMENTED - Adds a talent spell for the player to given spec
     { "RemoveFromGroup", &LuaPlayer::RemoveFromGroup },
     { "KillPlayer", &LuaPlayer::KillPlayer },
@@ -708,39 +667,30 @@ ElunaRegister<Player> PlayerMethods[] =
     { "DurabilityRepairAll", &LuaPlayer::DurabilityRepairAll },
     { "DurabilityRepair", &LuaPlayer::DurabilityRepair },
 #if defined(TBC) || defined(WOTLK)
-    { "ModifyHonorPoints", &LuaPlayer::ModifyHonorPoints },
-    { "ModifyArenaPoints", &LuaPlayer::ModifyArenaPoints },
+   
 #endif
     { "LeaveBattleground", &LuaPlayer::LeaveBattleground },
     // {"BindToInstance", &LuaPlayer::BindToInstance},                                      // :BindToInstance() - UNDOCUMENTED - Binds the player to the current instance
-    { "UnbindInstance", &LuaPlayer::UnbindInstance },
-    { "UnbindAllInstances", &LuaPlayer::UnbindAllInstances },
     { "RemoveFromBattlegroundRaid", &LuaPlayer::RemoveFromBattlegroundRaid },
 #if (!defined(TBC) && !defined(CLASSIC))
     { "ResetAchievements", &LuaPlayer::ResetAchievements },
 #endif
-    { "KickPlayer", &LuaPlayer::KickPlayer },
     { "LogoutPlayer", &LuaPlayer::LogoutPlayer },
-    { "SendTrainerList", &LuaPlayer::SendTrainerList },
     { "SendListInventory", &LuaPlayer::SendListInventory },
     { "SendShowBank", &LuaPlayer::SendShowBank },
     { "SendTabardVendorActivate", &LuaPlayer::SendTabardVendorActivate },
     { "SendSpiritResurrect", &LuaPlayer::SendSpiritResurrect },
     { "SendTaxiMenu", &LuaPlayer::SendTaxiMenu },
     { "RewardQuest", &LuaPlayer::RewardQuest },
-    { "SendAuctionMenu", &LuaPlayer::SendAuctionMenu },
     { "SendShowMailBox", &LuaPlayer::SendShowMailBox },
     { "StartTaxi", &LuaPlayer::StartTaxi },
     { "GossipSendPOI", &LuaPlayer::GossipSendPOI },
-    { "GossipAddQuests", &LuaPlayer::GossipAddQuests },
-    { "SendQuestTemplate", &LuaPlayer::SendQuestTemplate },
     { "SpawnBones", &LuaPlayer::SpawnBones },
     { "RemovedInsignia", &LuaPlayer::RemovedInsignia },
     { "SendGuildInvite", &LuaPlayer::SendGuildInvite },
     { "Mute", &LuaPlayer::Mute },
     { "SummonPlayer", &LuaPlayer::SummonPlayer },
     { "SaveToDB", &LuaPlayer::SaveToDB },
-    { "GroupInvite", &LuaPlayer::GroupInvite },
     { "GroupCreate", &LuaPlayer::GroupCreate },
     { "SendCinematicStart", &LuaPlayer::SendCinematicStart },
 #if !defined(CLASSIC) && !defined(TBC)
@@ -902,16 +852,12 @@ ElunaRegister<GameObject> GameObjectMethods[] =
 ElunaRegister<Item> ItemMethods[] =
 {
     // Getters
-    { "GetOwnerGUID", &LuaItem::GetOwnerGUID },
     { "GetOwner", &LuaItem::GetOwner },
     { "GetCount", &LuaItem::GetCount },
     { "GetMaxStackCount", &LuaItem::GetMaxStackCount },
     { "GetSlot", &LuaItem::GetSlot },
     { "GetBagSlot", &LuaItem::GetBagSlot },
     { "GetEnchantmentId", &LuaItem::GetEnchantmentId },
-    { "GetSpellId", &LuaItem::GetSpellId },
-    { "GetSpellTrigger", &LuaItem::GetSpellTrigger },
-    { "GetItemLink", &LuaItem::GetItemLink },
     { "GetClass", &LuaItem::GetClass },
     { "GetSubClass", &LuaItem::GetSubClass },
     { "GetName", &LuaItem::GetName },
@@ -1353,18 +1299,15 @@ void RegisterFunctions(Eluna* E)
     ElunaTemplate<Unit>::Register(E, "Unit");
     ElunaTemplate<Unit>::SetMethods(E, ObjectMethods);
     ElunaTemplate<Unit>::SetMethods(E, WorldObjectMethods);
-    ElunaTemplate<Unit>::SetMethods(E, UnitMethods);
 
     ElunaTemplate<Player>::Register(E, "Player");
     ElunaTemplate<Player>::SetMethods(E, ObjectMethods);
     ElunaTemplate<Player>::SetMethods(E, WorldObjectMethods);
-    ElunaTemplate<Player>::SetMethods(E, UnitMethods);
-    ElunaTemplate<Player>::SetMethods(E, PlayerMethods);
+   
 
     ElunaTemplate<Creature>::Register(E, "Creature");
     ElunaTemplate<Creature>::SetMethods(E, ObjectMethods);
     ElunaTemplate<Creature>::SetMethods(E, WorldObjectMethods);
-    ElunaTemplate<Creature>::SetMethods(E, UnitMethods);
     ElunaTemplate<Creature>::SetMethods(E, CreatureMethods);
 
     ElunaTemplate<GameObject>::Register(E, "GameObject");
@@ -1379,7 +1322,6 @@ void RegisterFunctions(Eluna* E)
 
     ElunaTemplate<Item>::Register(E, "Item");
     ElunaTemplate<Item>::SetMethods(E, ObjectMethods);
-    ElunaTemplate<Item>::SetMethods(E, ItemMethods);
 
 #ifndef CLASSIC
 #ifndef TBC

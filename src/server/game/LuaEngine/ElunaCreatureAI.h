@@ -217,44 +217,8 @@ struct ElunaCreatureAI : ScriptedAI
     }
 
     // Called when hit by a spell
-#if defined TRINITY
-    void SpellHit(WorldObject* caster, SpellInfo const* spell)
-#else
-    void SpellHit(Unit* caster, SpellInfo const* spell)
-#endif
-    {
-        if (!sEluna->SpellHit(me, caster, spell))
-            ScriptedAI::Spell(caster, spell);
-    }
 
     // Called when spell hits a target
-#if defined TRINITY
-    void SpellHitTarget(WorldObject* target, SpellInfo const* spell)
-#else
-    void SpellHitTarget(Unit* target, SpellInfo const* spell)
-#endif
-    {
-        if (!sEluna->SpellHitTarget(me, target, spell))
-            ScriptedAI::SpellHitTarget(target, spell);
-    }
-
-#if defined TRINITY || AZEROTHCORE
-
-#if defined TRINITY
-    // Called when the creature is summoned successfully by other creature
-    void IsSummonedBy(WorldObject* summoner)
-    {
-        if (!summoner->ToUnit() || !sEluna->OnSummoned(me, summoner->ToUnit()))
-            ScriptedAI::OnSummoned(summoner);
-    }
-#else
-    // Called when the creature is summoned successfully by other creature
-    void IsSummonedBy(Unit* summoner) override
-    {
-        if (!sEluna->OnSummoned(me, summoner))
-            ScriptedAI::IsSummonedBy(summoner);
-    }
-#endif
 
     void SummonedCreatureDies(Creature* summon, Unit* killer) override
     {
@@ -275,11 +239,5 @@ struct ElunaCreatureAI : ScriptedAI
         if (!sEluna->OwnerAttacked(me, target))
             ScriptedAI::OwnerAttacked(target);
     }
-#endif
-
-#if defined MANGOS || defined CMANGOS
-#undef me
-#endif
 };
-
 #endif

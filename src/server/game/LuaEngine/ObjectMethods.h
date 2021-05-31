@@ -70,12 +70,6 @@ namespace LuaObject
      * @param uint16 index
      * @return uint32 value
      */
-    int GetDynamicFlags(lua_State* L, Object* obj)
-    {
-        uint16 index = Eluna::CHECKVAL<uint16>(L, 2);
-        Eluna::Push(L, obj->GetDynamicFlags());
-        return 1;
-    }
 
     /**
      * Returns the data at the specified index, casted to a single-precision floating point value.

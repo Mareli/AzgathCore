@@ -36,11 +36,9 @@ namespace LuaPlayer
         uint32 spellId = Eluna::CHECKVAL<uint32>(L, 2);
 #ifdef MANGOS
         uint8 maxSpecs = MAX_TALENT_SPEC_COUNT;
-#else
-        uint8 maxSpecs = MAX_TALENT_SPECS;
 #endif
         uint8 spec = Eluna::CHECKVAL<uint8>(L, 3);
-        if (spec >= maxSpecs)
+        if (spec >= spec)
             return 1;
         Eluna::Push(L, player->HasTalent(spellId, spec));
         return 1;
@@ -430,7 +428,7 @@ namespace LuaPlayer
     int IsInArenaTeam(lua_State* L, Player* player)
     {
         uint32 type = Eluna::CHECKVAL<uint32>(L, 2);
-        if (type < MAX_ARENA_SLOT && player->GetArenaTeamId(type))
+        if (type < MAX_ARENA_SLOT && player->InArena())
             Eluna::Push(L, true);
         else
             Eluna::Push(L, false);
@@ -630,11 +628,6 @@ namespace LuaPlayer
      *
      * @return bool isRested
      */
-    int IsRested(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetRestBonus() > 0.0f);
-        return 1;
-    }
 
     /**
      * Returns 'true' if the [Player] is currently in a [BattleGround] queue, 'false' otherwise.
@@ -760,79 +753,6 @@ namespace LuaPlayer
         return 1;
     }*/
 
-#if (!defined(TBC) && !defined(CLASSIC))
-    /**
-     * Returns the amount of available specs the [Player] currently has
-     *
-     * @return uint8 specCount
-     */
-    int GetSpecsCount(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetSpecsCount());
-        return 1;
-    }
-
-    /**
-     * Returns the [Player]s active spec ID
-     *
-     * @return uint32 specId
-     */
-    int GetActiveSpec(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetActiveSpec());
-        return 1;
-    }
-#endif
-
-#ifdef WOTLK
-    /**
-     * Returns the normal phase of the player instead of the actual phase possibly containing GM phase
-     *
-     * @return uint32 phasemask
-     */
-    int GetPhaseMaskForSpawn(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetPhaseMaskForSpawn());
-        return 1;
-    }
-#endif
-
-#if defined(TBC) || defined (WOTLK)
-    /**
-     * Returns the [Player]s current amount of Arena Points
-     *
-     * @return uint32 arenaPoints
-     */
-    int GetArenaPoints(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetArenaPoints());
-        return 1;
-    }
-
-    /**
-     * Returns the [Player]s current amount of Honor Points
-     *
-     * @return uint32 honorPoints
-     */
-    int GetHonorPoints(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetHonorPoints());
-        return 1;
-    }
-#endif
-#if defined(CLASSIC) || defined(TBC) || defined (WOTLK)
-    /**
-     * Returns the [Player]s current shield block value
-     *
-     * @return uint32 blockValue
-     */
-    int GetShieldBlockValue(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetShieldBlockValue());
-        return 1;
-    }
-#endif
-
     /**
      * Returns the [Player]s cooldown delay by specified [Spell] ID
      *
@@ -942,14 +862,7 @@ namespace LuaPlayer
      * @param uint32 xp
      * @return uint32 xpBonus
      */
-    int GetXPRestBonus(lua_State* L, Player* player)
-    {
-        uint32 xp = Eluna::CHECKVAL<uint32>(L, 2);
-
-        Eluna::Push(L, player->GetXPRestBonus(xp));
-        return 1;
-    }
-
+  
     /**
      * Returns the [Player]s current [BattleGround] type ID
      *
@@ -1108,11 +1021,6 @@ namespace LuaPlayer
      *
      * @return float bonus
      */
-    int GetManaBonusFromIntellect(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetManaBonusFromIntellect());
-        return 1;
-    }
 
     /**
      * Returns health bonus from amount of stamina
@@ -1133,14 +1041,6 @@ namespace LuaPlayer
      */
     int GetDifficulty(lua_State* L, Player* player)
     {
-#ifdef TBC
-        Eluna::Push(L, player->GetDifficulty());
-#elif defined(CLASSIC)
-        Eluna::Push(L, (Difficulty)0);
-#else
-        bool isRaid = Eluna::CHECKVAL<bool>(L, 2, true);
-        Eluna::Push(L, player->GetDifficulty(isRaid));
-#endif
         return 1;
     }
 
@@ -1149,22 +1049,12 @@ namespace LuaPlayer
      *
      * @return uint32 guildRank
      */
-    int GetGuildRank(lua_State* L, Player* player) // TODO: Move to Guild Methods
-    {
-        Eluna::Push(L, player->GetRank());
-        return 1;
-    }
 
     /**
      * Returns the [Player]s free talent point amount
      *
      * @return uint32 freeTalentPointAmt
      */
-    int GetFreeTalentPoints(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetFreeTalentPoints());
-        return 1;
-    }
 
     /**
      * Returns the name of the [Player]s current [Guild]
@@ -1198,26 +1088,12 @@ namespace LuaPlayer
      *
      * @return [Unit] target
      */
-    int GetComboTarget(lua_State* L, Player* player)
-    {
-#if defined TRINITY || AZEROTHCORE
-        Eluna::Push(L, player->GetComboTarget());
-#else
-        Eluna::Push(L, player->GetMap()->GetUnit(player->GetComboTargetGuid()));
-#endif
-        return 1;
-    }
 
     /**
      * Returns [Player]'s combo points
      *
      * @return uint8 comboPoints
      */
-    int GetComboPoints(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetComboPoints());
-        return 1;
-    }
 
     /**
      * Returns the amount of time the [Player] has spent ingame
@@ -1314,23 +1190,13 @@ namespace LuaPlayer
      *
      * @return float restBonus
      */
-    int GetRestBonus(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetRestBonus());
-        return 1;
-    }
 
     /**
      * Returns active GM chat tag
      *
      * @return uint8 tag
      */
-    int GetChatTag(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetChatTag());
-        return 1;
-    }
-
+  
     /**
      * Returns an item in given bag on given slot.
      *
@@ -1488,11 +1354,6 @@ namespace LuaPlayer
      *
      * @return uint32 lifeTimeKils
      */
-    int GetLifetimeKills(lua_State* L, Player* player)
-    {
-        Eluna::Push(L, player->GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS));
-        return 1;
-    }
 
     /**
      * Returns the [Player]s IP address
@@ -1639,22 +1500,6 @@ namespace LuaPlayer
      *
      * @param bool apply = true : lock if true and unlock if false
      */
-    int SetPlayerLock(lua_State* L, Player* player)
-    {
-        bool apply = Eluna::CHECKVAL<bool>(L, 2, true);
-
-        if (apply)
-        {
-            player->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_SILENCED);
-            player->SetClientControl(player, 0);
-        }
-        else
-        {
-            player->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_SILENCED);
-            player->SetClientControl(player, 1);
-        }
-        return 0;
-    }
 
     /**
      * Sets the [Player]s login flag to the flag specified
@@ -1706,11 +1551,6 @@ namespace LuaPlayer
     {
         uint8 race = Eluna::CHECKVAL<uint8>(L, 2);
 
-#ifdef TRINITY
-        player->SetFactionForRace(race);
-#else
-        player->setFactionForRace(race);
-#endif
         return 0;
     }
 
@@ -1742,32 +1582,12 @@ namespace LuaPlayer
      *
      * @param uint8 rank
      */
-    int SetGuildRank(lua_State* L, Player* player) // TODO: Move to Guild Methods
-    {
-        uint8 rank = Eluna::CHECKVAL<uint8>(L, 2);
-
-        if (!player->GetGuildId())
-            return 0;
-
-        player->SetRank(rank);
-        return 0;
-    }
 
     /**
      * Sets the [Player]s free talent points to the amount specified for the current spec
      *
      * @param uint32 talentPointAmt
      */
-    int SetFreeTalentPoints(lua_State* L, Player* player)
-    {
-        uint32 points = Eluna::CHECKVAL<uint32>(L, 2);
-
-        player->SetFreeTalentPoints(points);
-#if (!defined(TBC) && !defined(CLASSIC))
-        player->SendTalentsInfoData(false);
-#endif
-        return 0;
-    }
 
     /**
      * Sets the [Player]s reputation amount for the faction specified
@@ -1807,13 +1627,6 @@ namespace LuaPlayer
      *
      * @param float restBonus
      */
-    int SetRestBonus(lua_State* L, Player* player)
-    {
-        float bonus = Eluna::CHECKVAL<float>(L, 2);
-
-        player->SetRestBonus(bonus);
-        return 0;
-    }
 
     /**
      * Toggles whether the [Player] accepts whispers or not
@@ -1901,53 +1714,14 @@ namespace LuaPlayer
      *
      * @param [Gender] gender
      */
-    int SetGender(lua_State* L, Player* player)
-    {
-        uint32 _gender = Eluna::CHECKVAL<uint32>(L, 2);
 
-        Gender gender;
-        switch (_gender)
-        {
-            case 0:
-                gender = GENDER_MALE;
-                break;
-            case 1:
-                gender = GENDER_FEMALE;
-                break;
-            default:
-                return luaL_argerror(L, 2, "valid Gender expected");
-        }
-
-        player->SetByteValue(UNIT_FIELD_BYTES_0, 2, gender);
-        player->SetByteValue(PLAYER_BYTES_3, 0, gender);
-        player->InitDisplayIds();
-        return 0;
-    }
-
-#if defined(TBC) || defined(WOTLK)
-    /**
-     * Sets the [Player]s Arena Points to the amount specified
-     *
-     * @param uint32 arenaPoints
-     */
-    int SetArenaPoints(lua_State* L, Player* player)
-    {
-        uint32 arenaP = Eluna::CHECKVAL<uint32>(L, 2);
-        player->SetArenaPoints(arenaP);
-        return 0;
-    }
 
     /**
      * Sets the [Player]s Honor Points to the amount specified
      *
      * @param uint32 honorPoints
      */
-    int SetHonorPoints(lua_State* L, Player* player)
-    {
-        uint32 honorP = Eluna::CHECKVAL<uint32>(L, 2);
-        player->SetHonorPoints(honorP);
-        return 0;
-    }
+    
 #endif
 
 #ifdef CLASSIC
@@ -1998,13 +1772,7 @@ namespace LuaPlayer
      *
      * @param uint32 honorableKills
      */
-    int SetLifetimeKills(lua_State* L, Player* player)
-    {
-        uint32 val = Eluna::CHECKVAL<uint32>(L, 2);
-        player->SetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS, val);
-        return 0;
-    }
-
+    
     /**
      * Sets the [Player]s amount of money to copper specified
      *
@@ -2104,19 +1872,6 @@ namespace LuaPlayer
     /**
      * Resets the [Player]s pets talent points
      */
-    int ResetPetTalents(lua_State* /*L*/, Player* player)
-    {
-#ifndef TRINITY
-        Pet* pet = player->GetPet();
-        Pet::resetTalentsForAllPetsOf(player, pet);
-        if (pet)
-            player->SendTalentsInfoData(true);
-#else
-        player->ResetPetTalents();
-        player->SendTalentsInfoData(true);
-#endif
-        return 0;
-    }
 
     /**
      * Reset the [Player]s completed achievements
@@ -2150,34 +1905,6 @@ namespace LuaPlayer
 #endif
         return 0;
     }
-
-#if defined(TBC) || defined(WOTLK)
-    /**
-     * Adds or detracts from the [Player]s current Arena Points
-     *
-     * @param int32 amount
-     */
-    int ModifyArenaPoints(lua_State* L, Player* player)
-    {
-        int32 amount = Eluna::CHECKVAL<int32>(L, 2);
-
-        player->ModifyArenaPoints(amount);
-        return 0;
-    }
-
-    /**
-     * Adds or detracts from the [Player]s current Honor Points
-     *
-     * @param int32 amount
-     */
-    int ModifyHonorPoints(lua_State* L, Player* player)
-    {
-        int32 amount = Eluna::CHECKVAL<int32>(L, 2);
-
-        player->ModifyHonorPoints(amount);
-        return 0;
-    }
-#endif
 
     /**
      * Saves the [Player] to the database
@@ -2263,35 +1990,6 @@ namespace LuaPlayer
      *
      * @param [Unit] sender
      */
-    int SendAuctionMenu(lua_State* L, Player* player)
-    {
-        Unit* unit = Eluna::CHECKOBJ<Unit>(L, 2);
-
-#ifdef TRINITY
-        AuctionHouseEntry const* ahEntry = AuctionHouseMgr::GetAuctionHouseEntry(unit->GetFaction());
-#elif AZEROTHCORE
-        AuctionHouseEntry const* ahEntry = AuctionHouseMgr::GetAuctionHouseEntry(unit->getFaction());
-#else
-        AuctionHouseEntry const* ahEntry = AuctionHouseMgr::GetAuctionHouseEntry(unit);
-#endif
-        if (!ahEntry)
-            return 0;
-
-        WorldPacket data(MSG_AUCTION_HELLO, 12);
-        data << unit->GET_GUID();
-#ifdef TRINITY
-        data << uint32(ahEntry->ID);
-#else
-        data << uint32(ahEntry->houseId);
-#endif
-        data << uint8(1);
-#ifdef CMANGOS
-        player->GetSession()->SendPacket(data);
-#else
-        player->GetSession()->SendPacket(&data);
-#endif
-        return 0;
-    }
 
     /**
      * Sends a flightmaster window to the [Player] from the [Creature] specified
@@ -2359,17 +2057,6 @@ namespace LuaPlayer
      *
      * @param [Creature] sender
      */
-    int SendTrainerList(lua_State* L, Player* player)
-    {
-        Creature* obj = Eluna::CHECKOBJ<Creature>(L, 2);
-
-#ifdef TRINITY
-        player->GetSession()->SendTrainerList(obj);
-#else
-        player->GetSession()->SendTrainerList(obj->GET_GUID());
-#endif
-        return 0;
-    }
 
     /**
      * Sends a guild invitation from the [Player]s [Guild] to the [Player] object specified
@@ -2423,70 +2110,10 @@ namespace LuaPlayer
      * @param uint32 map = true
      * @param uint32 difficulty = 0
      */
-    int UnbindInstance(lua_State* L, Player* player)
-    {
-        uint32 map = Eluna::CHECKVAL<uint32>(L, 2);
-#ifndef CLASSIC
-        uint32 difficulty = Eluna::CHECKVAL<uint32>(L, 3, 0);
-
-        if (difficulty < MAX_DIFFICULTY)
-#ifndef AZEROTHCORE
-            player->UnbindInstance(map, (Difficulty)difficulty);
-#else
-            sInstanceSaveMgr->PlayerUnbindInstance(player->GetGUID(), map, Difficulty(difficulty), true, player);
-#endif//AZEROTHCORE
-#else//CLASSIC
-        player->UnbindInstance(map);
-#endif
-        return 0;
-    }
 
     /**
      * Unbinds the [Player] from his instances except the one he currently is in.
      */
-    int UnbindAllInstances(lua_State* /*L*/, Player* player)
-    {
-#ifdef CLASSIC
-        Player::BoundInstancesMap& binds = player->GetBoundInstances();
-        for (Player::BoundInstancesMap::iterator itr = binds.begin(); itr != binds.end();)
-        {
-            if (itr->first != player->GetMapId())
-                player->UnbindInstance(itr);
-            else
-                ++itr;
-        }
-#elif defined AZEROTHCORE
-        for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
-        {
-            const BoundInstancesMap& binds = sInstanceSaveMgr->PlayerGetBoundInstances(player->GetGUID(), Difficulty(i));
-            for (BoundInstancesMap::const_iterator itr = binds.begin(); itr != binds.end();)
-            {
-                if (itr->first != player->GetMapId())
-                {
-                    sInstanceSaveMgr->PlayerUnbindInstance(player->GetGUID(), itr->first, Difficulty(i), true, player);
-                    itr = binds.begin();
-                }
-                else
-                {
-                    ++itr;
-                }
-            }
-        }
-#else
-        for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
-        {
-            Player::BoundInstancesMap& binds = player->GetBoundInstances(Difficulty(i));
-            for (Player::BoundInstancesMap::iterator itr = binds.begin(); itr != binds.end();)
-            {
-                if (itr->first != player->GetMapId())
-                    player->UnbindInstance(itr, Difficulty(i));
-                else
-                    ++itr;
-            }
-        }
-#endif
-        return 0;
-    }
 
     /**
      * Forces the [Player] to leave a [BattleGround]
@@ -2653,43 +2280,12 @@ namespace LuaPlayer
      *
      * @return uint32 resetCost
      */
-    int ResetTalentsCost(lua_State* L, Player* player)
-    {
-#ifdef CATA
-        Eluna::Push(L, player->GetNextResetTalentsCost());
-#else
-#ifdef TRINITY
-        Eluna::Push(L, player->ResetTalentsCost());
-#else
-        Eluna::Push(L, player->resetTalentsCost());
-#endif
-#endif
-        return 1;
-    }
 
     /**
      * Resets the [Player]s talents
      *
      * @param bool noCost = true
      */
-    int ResetTalents(lua_State* L, Player* player)
-    {
-        bool no_cost = Eluna::CHECKVAL<bool>(L, 2, true);
-
-#ifdef CATA
-        player->ResetTalents(no_cost);
-#else
-#ifdef TRINITY
-        player->ResetTalents(no_cost);
-#else
-        player->resetTalents(no_cost);
-#endif
-#endif
-#if (!defined(TBC) && !defined(CLASSIC))
-        player->SendTalentsInfoData(false);
-#endif
-        return 0;
-    }
 
     /**
      * Removes the [Spell] from the [Player]
@@ -2713,26 +2309,13 @@ namespace LuaPlayer
     /**
      * Clears the [Player]s combo points
      */
-    int ClearComboPoints(lua_State* /*L*/, Player* player)
-    {
-        player->ClearComboPoints();
-        return 0;
-    }
-
+    
     /**
      * Adds combo points to the [Player]
      *
      * @param [Unit] target
      * @param int8 count
      */
-    int AddComboPoints(lua_State* L, Player* player)
-    {
-        Unit* target = Eluna::CHECKOBJ<Unit>(L, 2);
-        int8 count = Eluna::CHECKVAL<int8>(L, 3);
-
-        player->AddComboPoints(target, count);
-        return 0;
-    }
 
     /**
      * Gives [Quest] monster talked to credit
@@ -2823,124 +2406,7 @@ namespace LuaPlayer
      *
      * @param uint32 entry : quest entry
      */
-    int CompleteQuest(lua_State* L, Player* player)
-    {
-        uint32 entry = Eluna::CHECKVAL<uint32>(L, 2);
 
-        Quest const* quest = eObjectMgr->GetQuestTemplate(entry);
-
-        // If player doesn't have the quest
-        if (!quest || player->GetQuestStatus(entry) == QUEST_STATUS_NONE)
-            return 0;
-
-        // Add quest items for quests that require items
-        for (uint8 x = 0; x < QUEST_ITEM_OBJECTIVES_COUNT; ++x)
-        {
-#if defined TRINITY || AZEROTHCORE
-            uint32 id = quest->RequiredItemId[x];
-            uint32 count = quest->RequiredItemCount[x];
-#else
-            uint32 id = quest->ReqItemId[x];
-            uint32 count = quest->ReqItemCount[x];
-#endif
-
-            if (!id || !count)
-                continue;
-
-            uint32 curItemCount = player->GetItemCount(id, true);
-
-            ItemPosCountVec dest;
-            uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, id, count - curItemCount);
-            if (msg == EQUIP_ERR_OK)
-            {
-                Item* item = player->StoreNewItem(dest, id, true);
-                player->SendNewItem(item, count - curItemCount, true, false);
-            }
-        }
-
-        // All creature/GO slain/cast (not required, but otherwise it will display "Creature slain 0/10")
-        for (uint8 i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
-        {
-#if defined TRINITY || AZEROTHCORE
-            int32 creature = quest->RequiredNpcOrGo[i];
-            uint32 creatureCount = quest->RequiredNpcOrGoCount[i];
-
-            if (creature > 0)
-            {
-                if (CreatureTemplate const* creatureInfo = sObjectMgr->GetCreatureTemplate(creature))
-                    for (uint16 z = 0; z < creatureCount; ++z)
-                        player->KilledMonster(creatureInfo, ObjectGuid::Empty);
-            }
-            else if (creature < 0)
-                for (uint16 z = 0; z < creatureCount; ++z)
-                    player->KillCreditGO(creature);
-#else
-            int32 creature = quest->ReqCreatureOrGOId[i];
-            uint32 creaturecount = quest->ReqCreatureOrGOCount[i];
-
-            if (uint32 spell_id = quest->ReqSpell[i])
-            {
-                for (uint16 z = 0; z < creaturecount; ++z)
-                    player->CastedCreatureOrGO(creature, ObjectGuid(), spell_id);
-            }
-            else if (creature > 0)
-            {
-                if (CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(creature))
-                    for (uint16 z = 0; z < creaturecount; ++z)
-                        player->KilledMonster(cInfo, ObjectGuid());
-            }
-            else if (creature < 0)
-            {
-                for (uint16 z = 0; z < creaturecount; ++z)
-                    player->CastedCreatureOrGO(-creature, ObjectGuid(), 0);
-            }
-#endif
-        }
-
-
-        // If the quest requires reputation to complete
-        if (uint32 repFaction = quest->GetRepObjectiveFaction())
-        {
-            uint32 repValue = quest->GetRepObjectiveValue();
-            uint32 curRep = player->GetReputationMgr().GetReputation(repFaction);
-            if (curRep < repValue)
-                if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(repFaction))
-                    player->GetReputationMgr().SetReputation(factionEntry, repValue);
-        }
-
-#if defined TRINITY || AZEROTHCORE
-        // If the quest requires a SECOND reputation to complete
-        if (uint32 repFaction = quest->GetRepObjectiveFaction2())
-        {
-            uint32 repValue2 = quest->GetRepObjectiveValue2();
-            uint32 curRep = player->GetReputationMgr().GetReputation(repFaction);
-            if (curRep < repValue2)
-                if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(repFaction))
-                    player->GetReputationMgr().SetReputation(factionEntry, repValue2);
-        }
-#endif
-
-        // If the quest requires money
-        int32 ReqOrRewMoney = quest->GetRewOrReqMoney();
-        if (ReqOrRewMoney < 0)
-            player->ModifyMoney(-ReqOrRewMoney);
-
-#ifdef TRINITY
-        if (sWorld->getBoolConfig(CONFIG_QUEST_ENABLE_QUEST_TRACKER)) // check if Quest Tracker is enabled
-        {
-            // prepare Quest Tracker datas
-            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_QUEST_TRACK_GM_COMPLETE);
-            stmt->setUInt32(0, quest->GetQuestId());
-            stmt->setUInt32(1, player->GetGUID().GetCounter());
-
-            // add to Quest Tracker
-            CharacterDatabase.Execute(stmt);
-        }
-#endif
-
-        player->CompleteQuest(entry);
-        return 0;
-    }
 
     /**
      * Tries to add the given quest entry for the [Player].
@@ -2956,38 +2422,6 @@ namespace LuaPlayer
         if (!quest)
             return 0;
 
-#if defined TRINITY || AZEROTHCORE
-        // check item starting quest (it can work incorrectly if added without item in inventory)
-#ifndef AZEROTHCORE
-        ItemTemplateContainer const& itc = sObjectMgr->GetItemTemplateStore();
-        auto itr = std::find_if(std::begin(itc), std::end(itc), [quest](ItemTemplateContainer::value_type const& value)
-        {
-            return value.second.StartQuest == quest->GetQuestId();
-        });
-
-        if (itr != std::end(itc))
-            return 0;
-#else
-        ItemTemplateContainer const* itc = sObjectMgr->GetItemTemplateStore();
-        ItemTemplateContainer::const_iterator result = find_if(itc->begin(), itc->end(), Finder<uint32, ItemTemplate>(entry, &ItemTemplate::StartQuest));
-
-        if (result != itc->end())
-            return 0;
-#endif
-        // ok, normal (creature/GO starting) quest
-        if (player->CanAddQuest(quest, true))
-            player->AddQuestAndCheckCompletion(quest, NULL);
-#else
-        // check item starting quest (it can work incorrectly if added without item in inventory)
-        for (uint32 id = 0; id < sItemStorage.GetMaxEntry(); ++id)
-        {
-            ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(id);
-            if (!pProto)
-                continue;
-
-            if (pProto->StartQuest == entry)
-                return 0;
-        }
 
         // ok, normal (creature/GO starting) quest
         if (player->CanAddQuest(quest, true))
@@ -2997,7 +2431,6 @@ namespace LuaPlayer
             if (player->CanCompleteQuest(entry))
                 player->CompleteQuest(entry);
         }
-#endif
 
         return 0;
     }
@@ -3037,16 +2470,6 @@ namespace LuaPlayer
             }
         }
 
-#if defined TRINITY || AZEROTHCORE
-        player->RemoveActiveQuest(entry, false);
-        player->RemoveRewardedQuest(entry);
-#else
-        // set quest status to not started (will updated in DB at next save)
-        player->SetQuestStatus(entry, QUEST_STATUS_NONE);
-
-        // reset rewarded for restart repeatable quest
-        player->getQuestStatusMap()[entry].m_rewarded = false;
-#endif
         return 0;
     }
 
@@ -3198,45 +2621,6 @@ namespace LuaPlayer
      * @param uint32 slot : equipment slot to equip the item to The slot can be [EquipmentSlots] or [InventorySlots]
      * @return [Item] equippedItem : item or nil if equipping failed
      */
-    int EquipItem(lua_State* L, Player* player)
-    {
-        uint16 dest = 0;
-        Item* item = Eluna::CHECKOBJ<Item>(L, 2, false);
-        uint32 slot = Eluna::CHECKVAL<uint32>(L, 3);
-
-        if (slot >= INVENTORY_SLOT_BAG_END)
-            return 1;
-
-        if (!item)
-        {
-            uint32 entry = Eluna::CHECKVAL<uint32>(L, 2);
-            item = Item::CreateItem(entry, 1, player);
-            if (!item)
-                return 1;
-
-            InventoryResult result = player->CanEquipItem(slot, dest, item, false);
-            if (result != EQUIP_ERR_OK)
-            {
-                delete item;
-                return 1;
-            }
-            player->ItemAddedQuestCheck(entry, 1);
-#if (!defined(TBC) && !defined(CLASSIC))
-            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_RECEIVE_EPIC_ITEM, entry, 1);
-#endif
-        }
-        else
-        {
-            InventoryResult result = player->CanEquipItem(slot, dest, item, false);
-            if (result != EQUIP_ERR_OK)
-                return 1;
-            player->RemoveItem(item->GetBagSlot(), item->GetSlot(), true);
-        }
-
-        Eluna::Push(L, player->EquipItem(dest, item, true));
-        player->AutoUnequipOffhandIfNeed();
-        return 1;
-    }
     
     /**
      * Returns true if the player can equip the given [Item] or item entry to the given slot, false otherwise.
@@ -3302,50 +2686,12 @@ namespace LuaPlayer
     /**
      * Advances all of the [Player]s weapon skills to the maximum amount available
      */
-    int AdvanceSkillsToMax(lua_State* /*L*/, Player* player)
-    {
-#ifdef TRINITY
-        player->UpdateWeaponsSkillsToMaxSkillsForLevel();
-#else
-        player->UpdateSkillsToMaxSkillsForLevel();
-#endif
-        return 0;
-    }
 
     /**
      * Advances all of the [Player]s skills to the amount specified
      *
      * @param uint32 skillStep
      */
-    int AdvanceAllSkills(lua_State* L, Player* player)
-    {
-        uint32 step = Eluna::CHECKVAL<uint32>(L, 2);
-
-        if (!step)
-            return 0;
-
-        for (uint32 i = 0; i < sSkillLineStore.GetNumRows(); ++i)
-        {
-            if (SkillLineEntry const* entry = sSkillLineStore.LookupEntry(i))
-            {
-#ifdef TRINITY
-                if (entry->CategoryID == SKILL_CATEGORY_LANGUAGES || entry->CategoryID == SKILL_CATEGORY_GENERIC)
-                    continue;
-
-                if (player->HasSkill(entry->ID))
-                    player->UpdateSkill(entry->ID, step);
-#else
-                if (entry->categoryId == SKILL_CATEGORY_LANGUAGES || entry->categoryId == SKILL_CATEGORY_GENERIC)
-                    continue;
-
-                if (player->HasSkill(entry->id))
-                    player->UpdateSkill(entry->id, step);
-#endif
-            }
-        }
-
-        return 0;
-    }
 
     /**
      * Advances a [Player]s specific skill to the amount specified
@@ -3353,17 +2699,6 @@ namespace LuaPlayer
      * @param uint32 skillId
      * @param uint32 skillStep
      */
-    int AdvanceSkill(lua_State* L, Player* player)
-    {
-        uint32 _skillId = Eluna::CHECKVAL<uint32>(L, 2);
-        uint32 _step = Eluna::CHECKVAL<uint32>(L, 3);
-        if (_skillId && _step)
-        {
-            if (player->HasSkill(_skillId))
-                player->UpdateSkill(_skillId, _step);
-        }
-        return 0;
-    }
 
     /**
      * Teleports a [Player] to the location specified
@@ -3374,42 +2709,6 @@ namespace LuaPlayer
      * @param float zCoord
      * @param float orientation
      */
-    int Teleport(lua_State* L, Player* player)
-    {
-        uint32 mapId = Eluna::CHECKVAL<uint32>(L, 2);
-        float x = Eluna::CHECKVAL<float>(L, 3);
-        float y = Eluna::CHECKVAL<float>(L, 4);
-        float z = Eluna::CHECKVAL<float>(L, 5);
-        float o = Eluna::CHECKVAL<float>(L, 6);
-#if defined AZEROTHCORE
-        if (player->IsInFlight())
-        {
-            player->GetMotionMaster()->MovementExpired();
-            player->m_taxi.ClearTaxiDestinations();
-        }
-#elif defined TRINITY
-        if (player->IsInFlight())
-            player->FinishTaxiFlight();
-        else
-            player->SaveRecallPosition();
-#else
-        if (player->IsTaxiFlying())
-        {
-            player->GetMotionMaster()->MovementExpired();
-            player->m_taxi.ClearTaxiDestinations();
-        }
-#endif
-        Eluna::Push(L, player->TeleportTo(mapId, x, y, z, o));
-        return 1;
-    }
-
-    int AddLifetimeKills(lua_State* L, Player* player)
-    {
-        uint32 val = Eluna::CHECKVAL<uint32>(L, 2);
-        uint32 currentKills = player->GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS);
-        player->SetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS, currentKills + val);
-        return 0;
-    }
     
     /**
      * Adds the given amount of the specified item entry to the player.
@@ -3418,33 +2717,6 @@ namespace LuaPlayer
      * @param uint32 itemCount = 1 : amount of the item to add
      * @return [Item] item : the item that was added or nil
      */
-    int AddItem(lua_State* L, Player* player)
-    {
-        uint32 itemId = Eluna::CHECKVAL<uint32>(L, 2);
-        uint32 itemCount = Eluna::CHECKVAL<uint32>(L, 3, 1);
-
-#if defined TRINITY || AZEROTHCORE
-        uint32 noSpaceForCount = 0;
-        ItemPosCountVec dest;
-        InventoryResult msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, itemCount, &noSpaceForCount);
-        if (msg != EQUIP_ERR_OK)
-            itemCount -= noSpaceForCount;
-
-        if (itemCount == 0 || dest.empty())
-            return 1;
-#ifndef AZEROTHCORE
-        Item* item = player->StoreNewItem(dest, itemId, true, GenerateItemRandomPropertyId(itemId));
-#else
-        Item* item = player->StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
-#endif
-        if (item)
-            player->SendNewItem(item, itemCount, true, false);
-        Eluna::Push(L, item);
-#else
-        Eluna::Push(L, player->StoreNewItemInInventorySlot(itemId, itemCount));
-#endif
-        return 1;
-    }
     
     /**
      * Removes the given amount of the specified [Item] from the player.
@@ -3479,15 +2751,6 @@ namespace LuaPlayer
      *
      * @param uint32 val : kills to remove
      */
-    int RemoveLifetimeKills(lua_State* L, Player* player)
-    {
-        uint32 val = Eluna::CHECKVAL<uint32>(L, 2);
-        uint32 currentKills = player->GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS);
-        if (val > currentKills)
-            val = currentKills;
-        player->SetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS, currentKills - val);
-        return 0;
-    }
 
     /**
      * Resets cooldown of the specified spell
@@ -3566,13 +2829,6 @@ namespace LuaPlayer
      *
      * @param string message
      */
-    int SendAreaTriggerMessage(lua_State* L, Player* player)
-    {
-        std::string msg = Eluna::CHECKVAL<std::string>(L, 2);
-        if (msg.length() > 0)
-            player->GetSession()->SendAreaTriggerMessage("%s", msg.c_str());
-        return 0;
-    }
 
     /**
      * Sends a Notification to the [Player]
@@ -3620,46 +2876,10 @@ namespace LuaPlayer
      * @param [Player] receiver
      *
      */
-    int SendAddonMessage(lua_State* L, Player* player)
-    {
-        std::string prefix = Eluna::CHECKVAL<std::string>(L, 2);
-        std::string message = Eluna::CHECKVAL<std::string>(L, 3);
-        uint8 channel = Eluna::CHECKVAL<uint8>(L, 4);
-        Player* receiver = Eluna::CHECKOBJ<Player>(L, 5);
-
-        std::string fullmsg = prefix + "\t" + message;
-
-        WorldPacket data(SMSG_MESSAGECHAT, 100);
-        data << uint8(channel);
-        data << int32(LANG_ADDON);
-        data << player->GET_GUID();
-#ifndef CLASSIC
-        data << uint32(0);
-        data << receiver->GET_GUID();
-#endif
-        data << uint32(fullmsg.length() + 1);
-        data << fullmsg;
-        data << uint8(0);
-#ifdef CMANGOS
-        receiver->GetSession()->SendPacket(data);
-#else
-        receiver->GetSession()->SendPacket(&data);
-#endif
-        return 0;
-    }
-
+    
     /**
      * Kicks the [Player] from the server
      */
-    int KickPlayer(lua_State* /*L*/, Player* player)
-    {
-#ifdef TRINITY
-        player->GetSession()->KickPlayer("PlayerMethods::KickPlayer Kick the player");
-#else
-        player->GetSession()->KickPlayer();
-#endif
-        return 0;
-    }
 
     /**
      * Adds or subtracts from the [Player]s money in copper
@@ -3699,23 +2919,6 @@ namespace LuaPlayer
      * @param uint32 talent_id
      * @param uint32 talentRank
      */
-    int LearnTalent(lua_State* L, Player* player)
-    {
-        uint32 id = Eluna::CHECKVAL<uint32>(L, 2);
-        uint32 rank = Eluna::CHECKVAL<uint32>(L, 3);
-
-        player->LearnTalent(id, rank);
-#if (!defined(TBC) && !defined(CLASSIC))
-        player->SendTalentsInfoData(false);
-#endif
-
-#if !defined TRINITY && !AZEROTHCORE
-        // if player has a pet, update owner talent auras
-        if (player->GetPet())
-            player->GetPet()->CastOwnerTalentAuras();
-#endif
-        return 0;
-    }
 
     /**
      * Resurrects the [Player].
@@ -3879,22 +3082,6 @@ namespace LuaPlayer
      *
      * @param [WorldObject] source : a questgiver with quests
      */
-    int GossipAddQuests(lua_State* L, Player* player)
-    {
-        WorldObject* source = Eluna::CHECKOBJ<WorldObject>(L, 2);
-
-        if (source->GetTypeId() == TYPEID_UNIT)
-        {
-            if (source->GetUInt32Value(UNIT_NPC_FLAGS) & UNIT_NPC_FLAG_QUESTGIVER)
-                player->PrepareQuestMenu(source->GET_GUID());
-        }
-        else if (source->GetTypeId() == TYPEID_GAMEOBJECT)
-        {
-            if (source->ToGameObject()->GetGoType() == GAMEOBJECT_TYPE_QUESTGIVER)
-                player->PrepareQuestMenu(source->GET_GUID());
-        }
-        return 0;
-    }
 
     /**
      * Shows a quest accepting window to the [Player] for the given quest.
@@ -3902,18 +3089,6 @@ namespace LuaPlayer
      * @param uint32 questId : entry of a quest
      * @param bool activateAccept = true : auto finish the quest
      */
-    int SendQuestTemplate(lua_State* L, Player* player)
-    {
-        uint32 questId = Eluna::CHECKVAL<uint32>(L, 2);
-        bool activateAccept = Eluna::CHECKVAL<bool>(L, 3, true);
-
-        Quest const* quest = eObjectMgr->GetQuestTemplate(questId);
-        if (!quest)
-            return 0;
-
-        player->PlayerTalkClass->SendQuestGiverQuestDetails(quest, player->GET_GUID(), activateAccept);
-        return 0;
-    }
 
     /**
      * Converts [Player]'s corpse to bones
@@ -3942,63 +3117,6 @@ namespace LuaPlayer
      * @param [Player] invited : player to invite to group
      * @return bool success : true if the player was invited to a group
      */
-    int GroupInvite(lua_State* L, Player* player)
-    {
-        Player* invited = Eluna::CHECKOBJ<Player>(L, 2);
-
-        if (invited->GetGroup() || invited->GetGroupInvite())
-        {
-            Eluna::Push(L, false);
-            return 1;
-        }
-
-        // Get correct existing group if any
-        Group* group = player->GetGroup();
-        if (group && group->isBGGroup())
-            group = player->GetOriginalGroup();
-
-        bool success = false;
-
-        // Try invite if group found
-        if (group)
-            success = !group->IsFull() && group->AddInvite(invited);
-        else
-        {
-            // Create new group if one not found
-            group = new Group;
-            success = group->AddLeaderInvite(player) && group->AddInvite(invited);
-            if (!success)
-                delete group;
-        }
-
-        if (success)
-        {
-#if defined(CLASSIC) || defined(TBC)
-            WorldPacket data(SMSG_GROUP_INVITE, 10);                // guess size
-            data << player->GetName();
-#ifdef CMANGOS
-            invited->GetSession()->SendPacket(data);
-#else
-            invited->GetSession()->SendPacket(&data);
-#endif
-#else
-            WorldPacket data(SMSG_GROUP_INVITE, 10);                // guess size
-            data << uint8(1);                                       // invited/already in group flag
-            data << player->GetName();                              // max len 48
-            data << uint32(0);                                      // unk
-            data << uint8(0);                                       // count
-            data << uint32(0);                                      // unk
-#ifdef CMANGOS
-            invited->GetSession()->SendPacket(data);
-#else
-            invited->GetSession()->SendPacket(&data);
-#endif
-#endif
-        }
-
-        Eluna::Push(L, success);
-        return 1;
-    }
 
     /**
      * Creates a new [Group] with the creator [Player] as leader.
@@ -4165,4 +3283,3 @@ namespace LuaPlayer
     return 0;
     }*/
 };
-#endif

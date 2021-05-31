@@ -36,11 +36,6 @@ namespace LuaGuild
         });
 #else
         {
-#if defined TRINITY || AZEROTHCORE
-            std::shared_lock<std::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
-#else
-            HashMapHolder<Player>::ReadGuard g(HashMapHolder<Player>::GetLock());
-#endif
             const HashMapHolder<Player>::MapType& m = eObjectAccessor()GetPlayers();
             for (HashMapHolder<Player>::MapType::const_iterator it = m.begin(); it != m.end(); ++it)
             {
@@ -163,7 +158,7 @@ namespace LuaGuild
         Player* player = Eluna::CHECKOBJ<Player>(L, 2);
 
 #if defined TRINITY || AZEROTHCORE
-        guild->HandleSetLeader(player->GetSession(), player->GetName());
+        guild->HandleSetNewGuildMaster(player->GetSession(), player->GetName(), player->GetGuildId());
 #else
         guild->SetLeader(player->GET_GUID());
 #endif

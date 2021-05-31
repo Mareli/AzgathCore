@@ -437,7 +437,6 @@ class TC_GAME_API Group
         bool GetMaxCountOfRolesForArenaQueue(uint8 role);
         ObjectGuid m_challengeOwner;
         ObjectGuid m_challengeItem;
-        MapChallengeModeEntry const* m_challengeEntry;
         uint32 m_challengeLevel;
         uint32 m_challengeInstanceID;
         std::array<uint32, 3> m_affixes{};

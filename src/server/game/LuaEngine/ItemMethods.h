@@ -257,91 +257,6 @@ namespace LuaItem
      * @param [LocaleConstant] locale = DEFAULT_LOCALE : locale to return the [Item]'s name in
      * @return string itemLink
      */
-    int GetItemLink(lua_State* L, Item* item)
-    {
-        uint8 locale = Eluna::CHECKVAL<uint8>(L, 2, DEFAULT_LOCALE);
-        if (locale >= TOTAL_LOCALES)
-            return luaL_argerror(L, 2, "valid LocaleConstant expected");
-
-        const ItemTemplate* temp = item->GetTemplate();
-        std::string name = temp->Name1;
-        if (ItemLocale const* il = eObjectMgr->GetItemLocale(temp->ItemId))
-            ObjectMgr::GetLocaleString(il->Name, static_cast<LocaleConstant>(locale), name);
-
-#ifndef CLASSIC
-        if (int32 itemRandPropId = item->GetItemRandomBonusListId())
-        {
-#if defined(CATA) || defined (MISTS)
-            char* suffix = NULL;
-#else
-#ifdef TRINITY
-            std::array<char const*, 16> const* suffix = NULL;
-#else
-            char* const* suffix = NULL;
-#endif
-#endif
-            if (itemRandPropId < 0)
-            {
-                const ItemRandomSuffixEntry* itemRandEntry = sItemRandomSuffixStore.LookupEntry(-item->GetItemRandomBonusListId());
-                if (itemRandEntry)
-#ifdef TRINITY
-                    suffix = &itemRandEntry->Name;
-#else
-                    suffix = itemRandEntry->nameSuffix;
-#endif
-            }
-            else
-            {
-                const ItemRandomPropertiesEntry* itemRandEntry = sItemRandomPropertiesStore.LookupEntry(item->GetItemRandomBonusListId());
-                if (itemRandEntry)
-#ifdef TRINITY
-                    suffix = &itemRandEntry->Name;
-#else
-                    suffix = itemRandEntry->nameSuffix;
-#endif
-            }
-            if (suffix)
-            {
-                name += ' ';
-#if defined TRINITY
-                name += (*suffix)[(name != temp->Name1) ? locale : uint8(DEFAULT_LOCALE)];
-#else
-                name += suffix[(name != temp->Name1) ? locale : uint8(DEFAULT_LOCALE)];
-#endif
-            }
-        }
-#endif
-
-        std::ostringstream oss;
-        oss << "|c" << std::hex << ItemQualityColors[temp->ItemSpecClassMask] << std::dec <<
-            "|Hitem:" << temp->ItemSpecClassMask << ":" <<
-            item->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) << ":" <<
-#ifndef CLASSIC
-            item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT) << ":" <<
-            item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_2) << ":" <<
-            item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_3) << ":" <<
-            item->GetEnchantmentId(BONUS_ENCHANTMENT_SLOT) << ":" <<
-#endif
-            item->GetItemRandomBonusListId() << ":" << item->GetBonus() << ":" <<
-#ifdef TRINITY
-            (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
-#else
-            (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
-#endif
-
-        Eluna::Push(L, oss.str());
-        return 1;
-    }
-
-    int GetOwnerGUID(lua_State* L, Item* item)
-    {
-#if defined TRINITY || AZEROTHCORE
-        Eluna::Push(L, item->GetOwnerGUID());
-#else
-        Eluna::Push(L, item->GetOwnerGuid());
-#endif
-        return 1;
-    }
 
     /**
      * Returns the [Player] who currently owns the [Item]
@@ -421,15 +336,6 @@ namespace LuaItem
      * @param uint32 spellIndex : the spell index specified
      * @return uint32 spellId : the id of the spell
      */
-    int GetSpellId(lua_State* L, Item* item)
-    {
-        uint32 index = Eluna::CHECKVAL<uint32>(L, 2);
-        if (index >= MAX_ITEM_SPELLS)
-            return luaL_argerror(L, 2, "valid SpellIndex expected");
-
-        Eluna::Push(L, item->GetTemplate()->Spells[index].SpellId);
-        return 1;
-    }
 
     /**
      * Returns the spell trigger tied to the [Item] by spell index
@@ -437,15 +343,6 @@ namespace LuaItem
      * @param uint32 spellIndex : the spell index specified
      * @return uint32 spellTrigger : the spell trigger of the specified index
      */
-    int GetSpellTrigger(lua_State* L, Item* item)
-    {
-        uint32 index = Eluna::CHECKVAL<uint32>(L, 2);
-        if (index >= MAX_ITEM_SPELLS)
-            return luaL_argerror(L, 2, "valid SpellIndex expected");
-
-        Eluna::Push(L, item->GetTemplate()->Spells[index].SpellTrigger);
-        return 1;
-    }
 
     /**
      * Returns class of the [Item]
