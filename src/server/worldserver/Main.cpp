@@ -345,7 +345,7 @@ extern int main(int argc, char** argv)
         TC_LOG_INFO("server.worldserver", "Starting up anti-freeze thread (%u seconds max stuck time)...", coreStuckTime);
     }
 
-    TC_LOG_INFO("server.worldserver", "AzgathCore");
+    TC_LOG_INFO("server.worldserver", "AzgathCore :: Azgath System Start");
     TC_LOG_INFO("server.worldserver", "%s (worldserver-daemon) ready...", GitRevision::GetFullVersion());
     
     sScriptMgr->OnStartup();
